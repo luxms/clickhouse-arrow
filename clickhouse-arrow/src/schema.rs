@@ -88,6 +88,7 @@ impl std::fmt::Display for ClickHouseEngine {
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct CreateOptions {
     pub engine: String,
+    pub cluster_name: Option<String>,
     pub order_by: Vec<String>,
     pub primary_keys: Vec<String>,
     pub partition_by: Option<String>,
@@ -100,6 +101,16 @@ pub struct CreateOptions {
 }
 
 impl CreateOptions {
+    /// Set the `ON CLUSTER` name; empty input leaves the current option unchanged.
+    #[must_use]
+    pub fn with_cluster(mut self, cluster_name: impl Into<String>) -> Self {
+        let cluster_name = cluster_name.into();
+        if !cluster_name.is_empty() {
+            self.cluster_name = Some(cluster_name);
+        }
+        self
+    }
+
     /// Creates a new `CreateOptions` with the specified engine.
     ///
     /// # Arguments
@@ -595,7 +606,17 @@ pub(crate) fn create_table_statement<T: ColumnDefine>(
     let db_pre = database.map(|c| format!("{c}.")).unwrap_or_default();
     let table = table.trim_matches('`');
     let mut sql = String::new();
-    let _ = writeln!(sql, "CREATE TABLE IF NOT EXISTS {db_pre}`{table}` (");
+    let _ = write!(sql, "CREATE TABLE IF NOT EXISTS {db_pre}`{table}`");
+    if let Some(cluster) = options
+        .cluster_name
+        .as_deref()
+        .filter(|name| !name.is_empty())
+    {
+        // Quote the identifier; names may contain backticks or backslashes.
+        let cluster = cluster.replace('\\', "\\\\").replace('`', "\\`");
+        let _ = write!(sql, " ON CLUSTER `{cluster}`");
+    }
+    let _ = writeln!(sql, " (");
 
     let total = definitions.len();
     for (i, (name, type_, default_value)) in definitions.into_iter().enumerate() {
@@ -953,6 +974,43 @@ mod tests {
             sql,
             "CREATE TABLE IF NOT EXISTS my_db.`my_table` (\nid Int32\n)\nENGINE = Memory\nORDER \
              BY tuple()",
+        );
+    }
+
+    #[test]
+    fn test_create_table_statement_with_cluster() {
+        let schema = Arc::new(Schema::new(vec![Field::new("id", DataType::Int32, false)]));
+        let options = CreateOptions::new("ReplicatedMergeTree").with_cluster("analytics");
+        let sql =
+            create_table_statement_from_arrow(Some("my_db"), "events", &schema, &options, None)
+                .unwrap();
+        assert!(
+            sql.starts_with("CREATE TABLE IF NOT EXISTS my_db.`events` ON CLUSTER `analytics` (")
+        );
+        assert!(sql.contains("ENGINE = ReplicatedMergeTree"));
+    }
+
+    #[test]
+    fn test_cluster_identifier_escaping_and_empty_name() {
+        let schema = Arc::new(Schema::new(vec![Field::new("id", DataType::Int32, false)]));
+        let options = CreateOptions::new("Memory")
+            .with_cluster("a`b\\c")
+            .with_cluster("");
+        let sql =
+            create_table_statement_from_arrow(None, "events", &schema, &options, None).unwrap();
+        assert!(sql.contains(" ON CLUSTER `a\\`b\\\\c` ("));
+        for cluster_name in [None, Some(String::new())] {
+            let options = CreateOptions {
+                cluster_name,
+                ..CreateOptions::new("Memory")
+            };
+            let sql =
+                create_table_statement_from_arrow(None, "events", &schema, &options, None).unwrap();
+            assert!(!sql.contains("ON CLUSTER"));
+        }
+        assert_eq!(
+            CreateOptions::new("Memory").with_cluster("").cluster_name,
+            None
         );
     }
 
