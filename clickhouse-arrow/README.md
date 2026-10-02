@@ -1,5 +1,11 @@
 # 🛰️ `ClickHouse` *Native Protocol* Rust Client w/ Arrow Compatibility
 
+> **Luxms fork:** start with the [repository README](../README.md) for the
+> current Arrow 59 installation instructions, tested query example, and the
+> relationship to the [ADBC driver](https://github.com/luxms/adbc-clickhouse).
+> This detailed guide retains upstream examples and historical benchmarks;
+> crates.io badges and upstream CI results below do not describe this fork.
+
 `ClickHouse` access in rust over `ClickHouse`'s native protocol.
 
 Currently supports revision `54479`, `DBMS_MIN_REVISION_WITH_VERSIONED_CLUSTER_FUNCTION_PROTOCOL`, the latest revision as of June 2025.
