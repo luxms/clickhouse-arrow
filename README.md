@@ -1,5 +1,26 @@
 # 🛰️ ClickHouse Arrow Client for Rust
 
+## Luxms Arrow 59 compatibility branch
+
+This branch targets Arrow 59 and pins Rust **1.96.0**, matching Kuboring, for
+compilation, formatting, linting, tests, and coverage. Nightly is not required.
+Stable rustfmt necessarily reformats code previously using nightly-only options.
+
+The compatibility changes use fallible union-field construction, reject nullable
+map keys before Arrow can panic, and explicitly request LZ4 when selected rather
+than depending on the server's compression default.
+
+Before committing, run `just checks` with Docker running. This includes the
+default and extended-type integration suites and the existing 90% line-coverage
+gate. Run `just check-features` for the feature-specific compile/lint matrix.
+If the test image is already cached locally, set `CLICKHOUSE_PULL_LATEST=false`
+to avoid refreshing the mutable Docker tag on every test startup.
+
+Local verification on macOS (2026-10-02), using ClickHouse 26.9.8.3:
+`just checks` and the strict `just check-features` matrix passed. Default features
+passed 929 unit and 25 integration tests; extended types passed 1,111 unit and
+30 integration tests. Combined line coverage was 90.51% (31,134 / 34,397 lines).
+
 ## Crates
 
 The project consists of two main crates:

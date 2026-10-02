@@ -37,7 +37,9 @@ impl Serializer for TupleSerializer {
         state: &mut SerializerState,
     ) -> Result<()> {
         let Type::Tuple(inner_types) = &type_ else {
-            return Err(Error::serialize("TupleSerializer called with non-tuple type"));
+            return Err(Error::serialize(
+                "TupleSerializer called with non-tuple type",
+            ));
         };
 
         let mut columns = vec![Vec::with_capacity(values.len()); inner_types.len()];
@@ -61,7 +63,9 @@ impl Serializer for TupleSerializer {
         state: &mut SerializerState,
     ) -> Result<()> {
         let Type::Tuple(inner_types) = &type_ else {
-            return Err(Error::serialize("TupleSerializer called with non-tuple type"));
+            return Err(Error::serialize(
+                "TupleSerializer called with non-tuple type",
+            ));
         };
 
         let mut columns = vec![Vec::with_capacity(values.len()); inner_types.len()];

@@ -30,23 +30,26 @@ impl std::fmt::Display for TruncationReason {
 /// Statistics about the limited query results.
 #[derive(Debug, Clone, Copy, Default)]
 pub struct QueryStats {
-    pub rows_returned:     u64,
-    pub batches_returned:  u64,
-    pub memory_bytes:      usize,
-    pub truncated:         bool,
+    pub rows_returned: u64,
+    pub batches_returned: u64,
+    pub memory_bytes: usize,
+    pub truncated: bool,
     pub truncation_reason: Option<TruncationReason>,
 }
 
 impl QueryStats {
     #[must_use]
-    pub fn is_truncated(&self) -> bool { self.truncated }
+    pub fn is_truncated(&self) -> bool {
+        self.truncated
+    }
 
     #[must_use]
     pub fn summary(&self) -> String {
         let truncation = if self.truncated {
             format!(
                 " (TRUNCATED: {})",
-                self.truncation_reason.map_or("unknown".to_string(), |r| r.to_string())
+                self.truncation_reason
+                    .map_or("unknown".to_string(), |r| r.to_string())
             )
         } else {
             String::new()
@@ -63,13 +66,15 @@ impl QueryStats {
 #[derive(Debug, Clone, Copy, Default)]
 pub struct QueryLimits {
     pub max_memory_bytes: Option<usize>,
-    pub max_rows:         Option<u64>,
-    pub max_batches:      Option<u64>,
+    pub max_rows: Option<u64>,
+    pub max_batches: Option<u64>,
 }
 
 impl QueryLimits {
     #[must_use]
-    pub fn none() -> Self { Self::default() }
+    pub fn none() -> Self {
+        Self::default()
+    }
 
     #[must_use]
     pub fn with_max_memory(mut self, bytes: usize) -> Self {
@@ -78,7 +83,9 @@ impl QueryLimits {
     }
 
     #[must_use]
-    pub fn with_max_memory_mb(self, mb: usize) -> Self { self.with_max_memory(mb * 1024 * 1024) }
+    pub fn with_max_memory_mb(self, mb: usize) -> Self {
+        self.with_max_memory(mb * 1024 * 1024)
+    }
 
     #[must_use]
     pub fn with_max_memory_gb(self, gb: usize) -> Self {
@@ -105,20 +112,20 @@ impl QueryLimits {
 
 #[derive(Debug, Default)]
 struct LimitState {
-    total_rows:        u64,
-    total_batches:     u64,
-    total_memory:      usize,
-    truncated:         bool,
+    total_rows: u64,
+    total_batches: u64,
+    total_memory: usize,
+    truncated: bool,
     truncation_reason: Option<TruncationReason>,
 }
 
 impl LimitState {
     fn to_stats(&self) -> QueryStats {
         QueryStats {
-            rows_returned:     self.total_rows,
-            batches_returned:  self.total_batches,
-            memory_bytes:      self.total_memory,
-            truncated:         self.truncated,
+            rows_returned: self.total_rows,
+            batches_returned: self.total_batches,
+            memory_bytes: self.total_memory,
+            truncated: self.truncated,
             truncation_reason: self.truncation_reason,
         }
     }
@@ -127,9 +134,9 @@ impl LimitState {
 #[pin_project]
 pub struct LimitedStream<S> {
     #[pin]
-    inner:   S,
-    limits:  QueryLimits,
-    state:   LimitState,
+    inner: S,
+    limits: QueryLimits,
+    state: LimitState,
     stopped: bool,
 }
 
@@ -138,10 +145,17 @@ where
     S: Stream<Item = Result<RecordBatch>>,
 {
     pub fn new(inner: S, limits: QueryLimits) -> Self {
-        Self { inner, limits, state: LimitState::default(), stopped: false }
+        Self {
+            inner,
+            limits,
+            state: LimitState::default(),
+            stopped: false,
+        }
     }
 
-    pub fn stats(&self) -> QueryStats { self.state.to_stats() }
+    pub fn stats(&self) -> QueryStats {
+        self.state.to_stats()
+    }
 }
 
 impl<S> Stream for LimitedStream<S>
@@ -221,12 +235,18 @@ where
     S: Stream<Item = Result<RecordBatch>>,
 {
     pub fn new(inner: S, limits: QueryLimits) -> Self {
-        Self { stream: LimitedStream::new(inner, limits) }
+        Self {
+            stream: LimitedStream::new(inner, limits),
+        }
     }
 
-    pub fn stats(&self) -> QueryStats { self.stream.stats() }
+    pub fn stats(&self) -> QueryStats {
+        self.stream.stats()
+    }
 
-    pub fn is_truncated(&self) -> bool { self.stream.state.truncated }
+    pub fn is_truncated(&self) -> bool {
+        self.stream.state.truncated
+    }
 
     pub fn truncation_reason(&self) -> Option<TruncationReason> {
         self.stream.state.truncation_reason
@@ -281,17 +301,20 @@ mod tests {
 
         assert_eq!(count, 1);
         assert!(limited.is_truncated());
-        assert_eq!(limited.truncation_reason(), Some(TruncationReason::RowLimit));
+        assert_eq!(
+            limited.truncation_reason(),
+            Some(TruncationReason::RowLimit)
+        );
         assert_eq!(limited.stats().rows_returned, 100);
     }
 
     #[tokio::test]
     async fn query_stats_summary_reports_truncation() {
         let stats = QueryStats {
-            rows_returned:     200,
-            batches_returned:  2,
-            memory_bytes:      4096,
-            truncated:         true,
+            rows_returned: 200,
+            batches_returned: 2,
+            memory_bytes: 4096,
+            truncated: true,
             truncation_reason: Some(TruncationReason::BatchLimit),
         };
 
@@ -304,15 +327,21 @@ mod tests {
 
     #[test]
     fn truncation_reason_display_and_stats_helpers() {
-        assert_eq!(TruncationReason::MemoryLimit.to_string(), "memory limit exceeded");
+        assert_eq!(
+            TruncationReason::MemoryLimit.to_string(),
+            "memory limit exceeded"
+        );
         assert_eq!(TruncationReason::RowLimit.to_string(), "row limit exceeded");
-        assert_eq!(TruncationReason::BatchLimit.to_string(), "batch limit exceeded");
+        assert_eq!(
+            TruncationReason::BatchLimit.to_string(),
+            "batch limit exceeded"
+        );
 
         let full = QueryStats {
-            rows_returned:     5,
-            batches_returned:  1,
-            memory_bytes:      128,
-            truncated:         false,
+            rows_returned: 5,
+            batches_returned: 1,
+            memory_bytes: 128,
+            truncated: false,
             truncation_reason: None,
         };
         assert!(!full.is_truncated());
@@ -324,7 +353,10 @@ mod tests {
         let none = QueryLimits::none();
         assert!(!none.has_limits());
 
-        let limits = QueryLimits::none().with_max_memory(1024).with_max_rows(9).with_max_batches(3);
+        let limits = QueryLimits::none()
+            .with_max_memory(1024)
+            .with_max_rows(9)
+            .with_max_batches(3);
         assert_eq!(limits.max_memory_bytes, Some(1024));
         assert_eq!(limits.max_rows, Some(9));
         assert_eq!(limits.max_batches, Some(3));
@@ -353,7 +385,10 @@ mod tests {
         assert!(limited.next().await.unwrap().is_ok());
         assert!(limited.next().await.is_none());
         assert!(limited.is_truncated());
-        assert_eq!(limited.truncation_reason(), Some(TruncationReason::MemoryLimit));
+        assert_eq!(
+            limited.truncation_reason(),
+            Some(TruncationReason::MemoryLimit)
+        );
     }
 
     #[tokio::test]
@@ -369,7 +404,10 @@ mod tests {
         assert!(limited.next().await.unwrap().is_ok());
         assert!(limited.next().await.is_none());
         assert!(limited.is_truncated());
-        assert_eq!(limited.truncation_reason(), Some(TruncationReason::BatchLimit));
+        assert_eq!(
+            limited.truncation_reason(),
+            Some(TruncationReason::BatchLimit)
+        );
 
         let stream = futures_util::stream::iter(vec![Err(crate::Error::Protocol("err".into()))]);
         let mut passthrough = LimitedResponse::new(stream, QueryLimits::none().with_max_rows(100));

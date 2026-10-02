@@ -141,7 +141,11 @@ mod tests {
     #[test]
     fn test_typed_list_builder_nested_type() {
         let inner_inner_field = Arc::new(Field::new("item", DataType::Int32, false));
-        let inner_field = Arc::new(Field::new("inner", DataType::List(inner_inner_field), false));
+        let inner_field = Arc::new(Field::new(
+            "inner",
+            DataType::List(inner_inner_field),
+            false,
+        ));
         let data_type = DataType::List(inner_field);
         let type_ = Type::Array(Box::new(Type::Int32));
 

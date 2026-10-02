@@ -10,11 +10,15 @@ use crate::{FromSql, Result, ToSql, Type, Value, unexpected_type};
 pub struct i256(pub [u8; 32]);
 
 impl From<i256> for u256 {
-    fn from(i: i256) -> Self { u256(i.0) }
+    fn from(i: i256) -> Self {
+        u256(i.0)
+    }
 }
 
 impl ToSql for i256 {
-    fn to_sql(self, _type_hint: Option<&Type>) -> Result<Value> { Ok(Value::Int256(self)) }
+    fn to_sql(self, _type_hint: Option<&Type>) -> Result<Value> {
+        Ok(Value::Int256(self))
+    }
 }
 
 impl FromSql for i256 {
@@ -119,7 +123,11 @@ impl std::ops::Mul<i256> for i256 {
             let high_bits = !a_high;
 
             let new_low = low_bits.wrapping_add(1);
-            let new_high = if new_low == 0 { high_bits.wrapping_add(1) } else { high_bits };
+            let new_high = if new_low == 0 {
+                high_bits.wrapping_add(1)
+            } else {
+                high_bits
+            };
 
             (new_high, new_low)
         } else {
@@ -131,7 +139,11 @@ impl std::ops::Mul<i256> for i256 {
             let high_bits = !b_high;
 
             let new_low = low_bits.wrapping_add(1);
-            let new_high = if new_low == 0 { high_bits.wrapping_add(1) } else { high_bits };
+            let new_high = if new_low == 0 {
+                high_bits.wrapping_add(1)
+            } else {
+                high_bits
+            };
 
             (new_high, new_low)
         } else {
@@ -165,7 +177,9 @@ impl std::ops::Mul<i256> for i256 {
 pub struct u256(pub [u8; 32]);
 
 impl ToSql for u256 {
-    fn to_sql(self, _type_hint: Option<&Type>) -> Result<Value> { Ok(Value::UInt256(self)) }
+    fn to_sql(self, _type_hint: Option<&Type>) -> Result<Value> {
+        Ok(Value::UInt256(self))
+    }
 }
 
 impl FromSql for u256 {
@@ -181,7 +195,9 @@ impl FromSql for u256 {
 }
 
 impl From<u256> for i256 {
-    fn from(u: u256) -> Self { i256(u.0) }
+    fn from(u: u256) -> Self {
+        i256(u.0)
+    }
 }
 
 impl From<u256> for (u128, u128) {
@@ -370,18 +386,30 @@ mod tests {
     fn test_from_sql_error_handling() {
         // Test i256 with wrong type - i256 should fail with UInt256 type
         let result = i256::from_sql(&Type::UInt256, Value::Int256(i256([0u8; 32])));
-        assert!(result.is_err(), "i256::from_sql should fail with UInt256 type");
+        assert!(
+            result.is_err(),
+            "i256::from_sql should fail with UInt256 type"
+        );
 
         // Test u256 with wrong type - u256 should fail with Int256 type
         let result = u256::from_sql(&Type::Int256, Value::UInt256(u256([0u8; 32])));
-        assert!(result.is_err(), "u256::from_sql should fail with Int256 type");
+        assert!(
+            result.is_err(),
+            "u256::from_sql should fail with Int256 type"
+        );
 
         // Test correct types for comparison
         let result = i256::from_sql(&Type::Int256, Value::Int256(i256([0u8; 32])));
-        assert!(result.is_ok(), "i256::from_sql should succeed with Int256 type");
+        assert!(
+            result.is_ok(),
+            "i256::from_sql should succeed with Int256 type"
+        );
 
         let result = u256::from_sql(&Type::UInt256, Value::UInt256(u256([0u8; 32])));
-        assert!(result.is_ok(), "u256::from_sql should succeed with UInt256 type");
+        assert!(
+            result.is_ok(),
+            "u256::from_sql should succeed with UInt256 type"
+        );
     }
 
     #[test]
@@ -404,12 +432,18 @@ mod tests {
             0x1C, 0x1D, 0x1E, 0x1F,
         ]);
         let formatted = format!("{i}");
-        assert_eq!(formatted, "0x000102030405060708090A0B0C0D0E0F101112131415161718191A1B1C1D1E1F");
+        assert_eq!(
+            formatted,
+            "0x000102030405060708090A0B0C0D0E0F101112131415161718191A1B1C1D1E1F"
+        );
 
         // Test u256 display
         let u = u256([0xFF; 32]);
         let formatted = format!("{u}");
-        assert_eq!(formatted, "0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF");
+        assert_eq!(
+            formatted,
+            "0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF"
+        );
     }
 
     #[test]

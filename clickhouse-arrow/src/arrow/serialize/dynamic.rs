@@ -15,7 +15,7 @@ const DYNAMIC_TYPE_ID_UNSET: u16 = u16::MAX;
 #[derive(Debug, Clone)]
 struct DynamicUnionField {
     logical_type: Type,
-    type_id:      i8,
+    type_id: i8,
 }
 
 #[derive(Debug, Clone)]
@@ -24,11 +24,17 @@ struct DynamicTypeIdLookup {
 }
 
 impl DynamicTypeIdLookup {
-    fn new() -> Self { Self { by_type_id: [DYNAMIC_TYPE_ID_UNSET; 256] } }
+    fn new() -> Self {
+        Self {
+            by_type_id: [DYNAMIC_TYPE_ID_UNSET; 256],
+        }
+    }
 
     #[expect(clippy::cast_sign_loss)]
     #[inline]
-    fn slot(type_id: i8) -> usize { (i16::from(type_id) + 128) as usize }
+    fn slot(type_id: i8) -> usize {
+        (i16::from(type_id) + 128) as usize
+    }
 
     fn insert(&mut self, type_id: i8, field_idx: usize) -> Result<()> {
         let slot = Self::slot(type_id);
@@ -81,7 +87,10 @@ fn parse_dynamic_union_schema(
     let mut by_type_id = DynamicTypeIdLookup::new();
     for ((type_id, _field), logical_type) in fields.iter().zip(dynamic_prefix.flattened_types) {
         by_type_id.insert(type_id, field_meta.len())?;
-        field_meta.push(DynamicUnionField { logical_type, type_id });
+        field_meta.push(DynamicUnionField {
+            logical_type,
+            type_id,
+        });
     }
 
     if field_meta.is_empty() {
@@ -158,11 +167,15 @@ pub(super) async fn serialize_async<W: ClickHouseWrite>(
     state: &mut SerializerState,
 ) -> Result<()> {
     if !matches!(type_.strip_null(), Type::Dynamic { .. }) {
-        return Err(Error::ArrowSerialize(format!("Dynamic serialize type unsupported: {type_}")));
+        return Err(Error::ArrowSerialize(format!(
+            "Dynamic serialize type unsupported: {type_}"
+        )));
     }
 
     let Some(union) = column.as_any().downcast_ref::<UnionArray>() else {
-        return Err(Error::ArrowSerialize("Expected UnionArray for Dynamic serialization".into()));
+        return Err(Error::ArrowSerialize(
+            "Expected UnionArray for Dynamic serialization".into(),
+        ));
     };
 
     let dynamic_prefix = state.take_dynamic_prefix().ok_or_else(|| {
@@ -227,7 +240,10 @@ pub(super) async fn serialize_async<W: ClickHouseWrite>(
             )));
         }
 
-        if let Some(keep_mask) = source_keep_mask.as_ref().and_then(|m| m[source_idx].as_deref()) {
+        if let Some(keep_mask) = source_keep_mask
+            .as_ref()
+            .and_then(|m| m[source_idx].as_deref())
+        {
             if keep_mask.len() != source_rows {
                 return Err(Error::ArrowSerialize(format!(
                     "Dynamic keep-mask mismatch for '{}': {} != {source_rows}",
@@ -235,12 +251,20 @@ pub(super) async fn serialize_async<W: ClickHouseWrite>(
                     keep_mask.len()
                 )));
             }
-            let keep = keep_mask.iter().copied().map(Some).collect::<BooleanArray>();
+            let keep = keep_mask
+                .iter()
+                .copied()
+                .map(Some)
+                .collect::<BooleanArray>();
             values = filter(values.as_ref(), &keep)?;
         }
 
-        Box::pin(field.logical_type.serialize_async(writer, &values, values.data_type(), state))
-            .await?;
+        Box::pin(
+            field
+                .logical_type
+                .serialize_async(writer, &values, values.data_type(), state),
+        )
+        .await?;
     }
 
     Ok(())
@@ -254,11 +278,15 @@ pub(super) fn serialize<W: ClickHouseBytesWrite>(
     state: &mut SerializerState,
 ) -> Result<()> {
     if !matches!(type_.strip_null(), Type::Dynamic { .. }) {
-        return Err(Error::ArrowSerialize(format!("Dynamic serialize type unsupported: {type_}")));
+        return Err(Error::ArrowSerialize(format!(
+            "Dynamic serialize type unsupported: {type_}"
+        )));
     }
 
     let Some(union) = column.as_any().downcast_ref::<UnionArray>() else {
-        return Err(Error::ArrowSerialize("Expected UnionArray for Dynamic serialization".into()));
+        return Err(Error::ArrowSerialize(
+            "Expected UnionArray for Dynamic serialization".into(),
+        ));
     };
 
     let dynamic_prefix = state.take_dynamic_prefix().ok_or_else(|| {
@@ -323,7 +351,10 @@ pub(super) fn serialize<W: ClickHouseBytesWrite>(
             )));
         }
 
-        if let Some(keep_mask) = source_keep_mask.as_ref().and_then(|m| m[source_idx].as_deref()) {
+        if let Some(keep_mask) = source_keep_mask
+            .as_ref()
+            .and_then(|m| m[source_idx].as_deref())
+        {
             if keep_mask.len() != source_rows {
                 return Err(Error::ArrowSerialize(format!(
                     "Dynamic keep-mask mismatch for '{}': {} != {source_rows}",
@@ -331,11 +362,17 @@ pub(super) fn serialize<W: ClickHouseBytesWrite>(
                     keep_mask.len()
                 )));
             }
-            let keep = keep_mask.iter().copied().map(Some).collect::<BooleanArray>();
+            let keep = keep_mask
+                .iter()
+                .copied()
+                .map(Some)
+                .collect::<BooleanArray>();
             values = filter(values.as_ref(), &keep)?;
         }
 
-        field.logical_type.serialize(writer, &values, values.data_type(), state)?;
+        field
+            .logical_type
+            .serialize(writer, &values, values.data_type(), state)?;
     }
 
     Ok(())
@@ -352,20 +389,28 @@ mod tests {
     use super::*;
     use crate::formats::SerializerState;
 
-    fn dynamic_type() -> Type { Type::Dynamic { max_types: 8 } }
+    fn dynamic_type() -> Type {
+        Type::Dynamic { max_types: 8 }
+    }
 
     fn dynamic_data_type() -> DataType {
         DataType::Union(
-            UnionFields::new([0_i8, 1_i8], vec![
-                Field::new("Int32", DataType::Int32, false),
-                Field::new("String", DataType::Utf8, true),
-            ]),
+            UnionFields::try_new(
+                [0_i8, 1_i8],
+                vec![
+                    Field::new("Int32", DataType::Int32, false),
+                    Field::new("String", DataType::Utf8, true),
+                ],
+            )
+            .unwrap(),
             UnionMode::Dense,
         )
     }
 
     fn dynamic_column() -> ArrayRef {
-        let DataType::Union(fields, _) = dynamic_data_type() else { unreachable!() };
+        let DataType::Union(fields, _) = dynamic_data_type() else {
+            unreachable!()
+        };
 
         Arc::new(
             UnionArray::try_new(
@@ -384,7 +429,7 @@ mod tests {
     fn dynamic_prefix_state() -> DynamicPrefixState {
         DynamicPrefixState {
             serialization_version: 3,
-            flattened_types:       vec![Type::Int32, Type::String],
+            flattened_types: vec![Type::Int32, Type::String],
         }
     }
 
@@ -468,10 +513,13 @@ mod tests {
         write_dynamic_index_async(&mut writer, 4, 3).await.unwrap();
         write_dynamic_index_async(&mut writer, 8, 4).await.unwrap();
 
-        assert_eq!(writer.into_inner(), vec![
-            1_u8, 2_u8, 0_u8, 3_u8, 0_u8, 0_u8, 0_u8, 4_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8,
-            0_u8,
-        ]);
+        assert_eq!(
+            writer.into_inner(),
+            vec![
+                1_u8, 2_u8, 0_u8, 3_u8, 0_u8, 0_u8, 0_u8, 4_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8,
+                0_u8,
+            ]
+        );
     }
 
     #[test]
@@ -482,38 +530,55 @@ mod tests {
         write_dynamic_index_sync(&mut writer, 4, 3).unwrap();
         write_dynamic_index_sync(&mut writer, 8, 4).unwrap();
 
-        assert_eq!(writer, vec![
-            1_u8, 2_u8, 0_u8, 3_u8, 0_u8, 0_u8, 0_u8, 4_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8,
-            0_u8,
-        ]);
+        assert_eq!(
+            writer,
+            vec![
+                1_u8, 2_u8, 0_u8, 3_u8, 0_u8, 0_u8, 0_u8, 4_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8,
+                0_u8,
+            ]
+        );
     }
 
     #[tokio::test]
     async fn test_write_dynamic_index_async_rejects_invalid_width() {
         let mut writer = Cursor::new(Vec::new());
-        let error = write_dynamic_index_async(&mut writer, 3, 1).await.unwrap_err();
-        assert!(error.to_string().contains("invalid Dynamic discriminator width"));
+        let error = write_dynamic_index_async(&mut writer, 3, 1)
+            .await
+            .unwrap_err();
+        assert!(
+            error
+                .to_string()
+                .contains("invalid Dynamic discriminator width")
+        );
     }
 
     #[test]
     fn test_write_dynamic_index_sync_rejects_invalid_width() {
         let mut writer = Vec::new();
         let error = write_dynamic_index_sync(&mut writer, 3, 1).unwrap_err();
-        assert!(error.to_string().contains("invalid Dynamic discriminator width"));
+        assert!(
+            error
+                .to_string()
+                .contains("invalid Dynamic discriminator width")
+        );
     }
 
     #[test]
     fn test_parse_dynamic_union_schema_rejects_empty_union() {
-        let empty_union = DataType::Union(
-            UnionFields::new(Vec::<i8>::new(), Vec::<Field>::new()),
-            UnionMode::Dense,
-        );
-        let error = parse_dynamic_union_schema(&empty_union, DynamicPrefixState {
-            serialization_version: 3,
-            flattened_types:       vec![],
-        })
+        let empty_union = DataType::Union(UnionFields::empty(), UnionMode::Dense);
+        let error = parse_dynamic_union_schema(
+            &empty_union,
+            DynamicPrefixState {
+                serialization_version: 3,
+                flattened_types: vec![],
+            },
+        )
         .unwrap_err();
-        assert!(error.to_string().contains("must contain at least one child field"));
+        assert!(
+            error
+                .to_string()
+                .contains("must contain at least one child field")
+        );
     }
 
     #[tokio::test]
@@ -548,12 +613,15 @@ mod tests {
         .await
         .unwrap();
 
-        assert_eq!(writer.into_inner(), vec![
-            0_u8, // row 0 => Int32
-            2_u8, // row 1 => Dynamic null discriminator
-            0_u8, // row 2 => Int32
-            10, 0, 0, 0, 20, 0, 0, 0,
-        ]);
+        assert_eq!(
+            writer.into_inner(),
+            vec![
+                0_u8, // row 0 => Int32
+                2_u8, // row 1 => Dynamic null discriminator
+                0_u8, // row 2 => Int32
+                10, 0, 0, 0, 20, 0, 0, 0,
+            ]
+        );
     }
 
     #[tokio::test]
@@ -572,12 +640,15 @@ mod tests {
         .await
         .unwrap();
 
-        assert_eq!(writer.into_inner(), vec![
-            2_u8, // row 0 => null discriminator (child offset 0 is null)
-            0_u8, // row 1 => Int32 discriminator
-            0_u8, // row 2 => Int32 discriminator
-            20, 0, 0, 0, 30, 0, 0, 0, // filtered Int32 child values
-        ]);
+        assert_eq!(
+            writer.into_inner(),
+            vec![
+                2_u8, // row 0 => null discriminator (child offset 0 is null)
+                0_u8, // row 1 => Int32 discriminator
+                0_u8, // row 2 => Int32 discriminator
+                20, 0, 0, 0, 30, 0, 0, 0, // filtered Int32 child values
+            ]
+        );
     }
 
     #[test]
@@ -595,12 +666,15 @@ mod tests {
         )
         .unwrap();
 
-        assert_eq!(writer, vec![
-            0_u8, // row 0 => Int32
-            2_u8, // row 1 => Dynamic null discriminator
-            0_u8, // row 2 => Int32
-            10, 0, 0, 0, 20, 0, 0, 0,
-        ]);
+        assert_eq!(
+            writer,
+            vec![
+                0_u8, // row 0 => Int32
+                2_u8, // row 1 => Dynamic null discriminator
+                0_u8, // row 2 => Int32
+                10, 0, 0, 0, 20, 0, 0, 0,
+            ]
+        );
     }
 
     #[test]
@@ -618,12 +692,15 @@ mod tests {
         )
         .unwrap();
 
-        assert_eq!(writer, vec![
-            2_u8, // row 0 => null discriminator (child offset 0 is null)
-            0_u8, // row 1 => Int32 discriminator
-            0_u8, // row 2 => Int32 discriminator
-            20, 0, 0, 0, 30, 0, 0, 0, // filtered Int32 child values
-        ]);
+        assert_eq!(
+            writer,
+            vec![
+                2_u8, // row 0 => null discriminator (child offset 0 is null)
+                0_u8, // row 1 => Int32 discriminator
+                0_u8, // row 2 => Int32 discriminator
+                20, 0, 0, 0, 30, 0, 0, 0, // filtered Int32 child values
+            ]
+        );
     }
 
     #[tokio::test]
@@ -671,7 +748,7 @@ mod tests {
         let mut state = SerializerState::default();
         drop(state.replace_dynamic_prefix(DynamicPrefixState {
             serialization_version: 3,
-            flattened_types:       vec![Type::Int32],
+            flattened_types: vec![Type::Int32],
         }));
 
         let error = serialize_async(
@@ -690,10 +767,14 @@ mod tests {
     #[tokio::test]
     async fn test_serialize_dynamic_rejects_unknown_union_type_id_in_row() {
         let mismatched_data_type = DataType::Union(
-            UnionFields::new([5_i8, 6_i8], vec![
-                Field::new("Int32", DataType::Int32, false),
-                Field::new("String", DataType::Utf8, true),
-            ]),
+            UnionFields::try_new(
+                [5_i8, 6_i8],
+                vec![
+                    Field::new("Int32", DataType::Int32, false),
+                    Field::new("String", DataType::Utf8, true),
+                ],
+            )
+            .unwrap(),
             UnionMode::Dense,
         );
         let mut writer = Cursor::new(Vec::new());
@@ -735,9 +816,14 @@ mod tests {
         let mut state = SerializerState::default();
         drop(state.replace_dynamic_prefix(dynamic_prefix_state()));
         let column = Arc::new(UInt8Array::from(vec![1_u8, 2, 3])) as ArrayRef;
-        let error =
-            serialize(&dynamic_type(), &mut writer, &column, &dynamic_data_type(), &mut state)
-                .unwrap_err();
+        let error = serialize(
+            &dynamic_type(),
+            &mut writer,
+            &column,
+            &dynamic_data_type(),
+            &mut state,
+        )
+        .unwrap_err();
         assert!(error.to_string().contains("Expected UnionArray"));
     }
 
@@ -747,7 +833,7 @@ mod tests {
         let mut state = SerializerState::default();
         drop(state.replace_dynamic_prefix(DynamicPrefixState {
             serialization_version: 3,
-            flattened_types:       vec![Type::Int32],
+            flattened_types: vec![Type::Int32],
         }));
 
         let error = serialize(
@@ -765,10 +851,14 @@ mod tests {
     #[test]
     fn test_serialize_dynamic_sync_rejects_unknown_union_type_id_in_row() {
         let mismatched_data_type = DataType::Union(
-            UnionFields::new([5_i8, 6_i8], vec![
-                Field::new("Int32", DataType::Int32, false),
-                Field::new("String", DataType::Utf8, true),
-            ]),
+            UnionFields::try_new(
+                [5_i8, 6_i8],
+                vec![
+                    Field::new("Int32", DataType::Int32, false),
+                    Field::new("String", DataType::Utf8, true),
+                ],
+            )
+            .unwrap(),
             UnionMode::Dense,
         );
         let mut writer = Vec::new();

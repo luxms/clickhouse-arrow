@@ -313,7 +313,9 @@ mod tests {
     use super::*;
     use crate::native::types::Type;
 
-    fn test_ctx(row_buffer: &mut Vec<u8>) -> ArrowFieldCtx<'_> { ArrowFieldCtx::new(row_buffer) }
+    fn test_ctx(row_buffer: &mut Vec<u8>) -> ArrowFieldCtx<'_> {
+        ArrowFieldCtx::new(row_buffer)
+    }
 
     async fn deserialize_for_test(
         type_hint: &Type,
@@ -387,7 +389,10 @@ mod tests {
             .expect("Failed to deserialize Nullable(String)");
         let array = result.as_any().downcast_ref::<StringArray>().unwrap();
         assert_eq!(array, &StringArray::from(vec![Some("a"), None, Some("c")]));
-        assert_eq!(array.nulls().unwrap().iter().collect::<Vec<bool>>(), vec![true, false, true]);
+        assert_eq!(
+            array.nulls().unwrap().iter().collect::<Vec<bool>>(),
+            vec![true, false, true]
+        );
     }
 
     #[tokio::test]
@@ -401,12 +406,16 @@ mod tests {
         let mut reader = Cursor::new(input);
         let data_type = DataType::Utf8;
         let mut builder = TypedBuilder::try_new(&type_hint, &data_type).unwrap();
-        let result =
-            deserialize_sparse_for_test(&type_hint, &mut builder, &mut reader, rows, &[], vec![
-                0, 2,
-            ])
-            .await
-            .expect("Failed to deserialize sparse String");
+        let result = deserialize_sparse_for_test(
+            &type_hint,
+            &mut builder,
+            &mut reader,
+            rows,
+            &[],
+            vec![0, 2],
+        )
+        .await
+        .expect("Failed to deserialize sparse String");
         let array = result.as_any().downcast_ref::<StringArray>().unwrap();
         assert_eq!(array, &StringArray::from(vec!["a", "", "bc", ""]));
     }
@@ -435,7 +444,10 @@ mod tests {
         .await
         .expect("Failed to deserialize sparse nullable String");
         let array = result.as_any().downcast_ref::<StringArray>().unwrap();
-        assert_eq!(array, &StringArray::from(vec![Some("x"), Some(""), None, Some("")]));
+        assert_eq!(
+            array,
+            &StringArray::from(vec![Some("x"), Some(""), None, Some("")])
+        );
     }
 
     /// Tests deserialization of `FixedSizedString` with non-nullable values.
@@ -458,7 +470,10 @@ mod tests {
         let result = deserialize_for_test(&type_hint, &mut builder, &mut reader, rows, &null_mask)
             .await
             .expect("Failed to deserialize FixedSizedString(3)");
-        let array = result.as_any().downcast_ref::<FixedSizeBinaryArray>().unwrap();
+        let array = result
+            .as_any()
+            .downcast_ref::<FixedSizeBinaryArray>()
+            .unwrap();
         assert_eq!(array.value(0), b"abc");
         assert_eq!(array.value(1), b"de\0");
         assert_eq!(array.value(2), b"fgh");
@@ -485,11 +500,17 @@ mod tests {
         let result = deserialize_for_test(&type_hint, &mut builder, &mut reader, rows, &null_mask)
             .await
             .expect("Failed to deserialize Nullable(FixedSizedString(3))");
-        let array = result.as_any().downcast_ref::<FixedSizeBinaryArray>().unwrap();
+        let array = result
+            .as_any()
+            .downcast_ref::<FixedSizeBinaryArray>()
+            .unwrap();
         assert_eq!(array.value(0), b"a\0\0");
         assert!(!array.is_valid(1));
         assert_eq!(array.value(2), b"bc\0");
-        assert_eq!(array.nulls().unwrap().iter().collect::<Vec<bool>>(), vec![true, false, true]);
+        assert_eq!(
+            array.nulls().unwrap().iter().collect::<Vec<bool>>(),
+            vec![true, false, true]
+        );
     }
 
     /// Tests deserialization of `Binary` with non-nullable values.
@@ -543,7 +564,10 @@ mod tests {
         assert_eq!(array.value(0), b"ab");
         assert!(!array.is_valid(1));
         assert_eq!(array.value(2), b"cd");
-        assert_eq!(array.nulls().unwrap().iter().collect::<Vec<bool>>(), vec![true, false, true]);
+        assert_eq!(
+            array.nulls().unwrap().iter().collect::<Vec<bool>>(),
+            vec![true, false, true]
+        );
     }
 
     /// Tests deserialization of `FixedSizedBinary` with non-nullable values.
@@ -566,7 +590,10 @@ mod tests {
         let result = deserialize_for_test(&type_hint, &mut builder, &mut reader, rows, &null_mask)
             .await
             .expect("Failed to deserialize FixedSizedBinary(3)");
-        let array = result.as_any().downcast_ref::<FixedSizeBinaryArray>().unwrap();
+        let array = result
+            .as_any()
+            .downcast_ref::<FixedSizeBinaryArray>()
+            .unwrap();
         assert_eq!(array.value(0), b"abc");
         assert_eq!(array.value(1), b"de\0");
         assert_eq!(array.value(2), b"fgh");
@@ -593,11 +620,17 @@ mod tests {
         let result = deserialize_for_test(&type_hint, &mut builder, &mut reader, rows, &null_mask)
             .await
             .expect("Failed to deserialize Nullable(FixedSizedBinary(3))");
-        let array = result.as_any().downcast_ref::<FixedSizeBinaryArray>().unwrap();
+        let array = result
+            .as_any()
+            .downcast_ref::<FixedSizeBinaryArray>()
+            .unwrap();
         assert_eq!(array.value(0), b"ab\0");
         assert!(!array.is_valid(1));
         assert_eq!(array.value(2), b"cd\0");
-        assert_eq!(array.nulls().unwrap().iter().collect::<Vec<bool>>(), vec![true, false, true]);
+        assert_eq!(
+            array.nulls().unwrap().iter().collect::<Vec<bool>>(),
+            vec![true, false, true]
+        );
     }
 
     /// Tests deserialization of `Uuid` with non-nullable values.
@@ -627,7 +660,10 @@ mod tests {
         let result = deserialize_for_test(&type_hint, &mut builder, &mut reader, rows, &null_mask)
             .await
             .expect("Failed to deserialize Uuid");
-        let array = result.as_any().downcast_ref::<FixedSizeBinaryArray>().unwrap();
+        let array = result
+            .as_any()
+            .downcast_ref::<FixedSizeBinaryArray>()
+            .unwrap();
         assert_eq!(
             array.value(0),
             b"\x00\x01\x02\x03\x04\x05\x06\x07\x08\x09\x0a\x0b\x0c\x0d\x0e\x0f"
@@ -663,7 +699,10 @@ mod tests {
         let result = deserialize_for_test(&type_hint, &mut builder, &mut reader, rows, &null_mask)
             .await
             .expect("Failed to deserialize Nullable(Uuid)");
-        let array = result.as_any().downcast_ref::<FixedSizeBinaryArray>().unwrap();
+        let array = result
+            .as_any()
+            .downcast_ref::<FixedSizeBinaryArray>()
+            .unwrap();
         assert_eq!(
             array.value(0),
             b"\x00\x01\x02\x03\x04\x05\x06\x07\x08\x09\x0a\x0b\x0c\x0d\x0e\x0f"
@@ -673,7 +712,10 @@ mod tests {
             array.value(2),
             b"\x10\x11\x12\x13\x14\x15\x16\x17\x18\x19\x1a\x1b\x1c\x1d\x1e\x1f"
         );
-        assert_eq!(array.nulls().unwrap().iter().collect::<Vec<bool>>(), vec![true, false, true]);
+        assert_eq!(
+            array.nulls().unwrap().iter().collect::<Vec<bool>>(),
+            vec![true, false, true]
+        );
     }
 
     /// Tests deserialization of `Ipv4` with non-nullable values.
@@ -695,7 +737,10 @@ mod tests {
         let result = deserialize_for_test(&type_hint, &mut builder, &mut reader, rows, &null_mask)
             .await
             .expect("Failed to deserialize Ipv4");
-        let array = result.as_any().downcast_ref::<FixedSizeBinaryArray>().unwrap();
+        let array = result
+            .as_any()
+            .downcast_ref::<FixedSizeBinaryArray>()
+            .unwrap();
         assert_eq!(array.value(0), Ipv4Addr::new(192, 168, 1, 1).octets());
         assert_eq!(array.value(1), Ipv4Addr::new(10, 0, 0, 1).octets());
         assert_eq!(array.nulls(), None);
@@ -721,11 +766,17 @@ mod tests {
         let result = deserialize_for_test(&type_hint, &mut builder, &mut reader, rows, &null_mask)
             .await
             .expect("Failed to deserialize Nullable(Ipv4)");
-        let array = result.as_any().downcast_ref::<FixedSizeBinaryArray>().unwrap();
+        let array = result
+            .as_any()
+            .downcast_ref::<FixedSizeBinaryArray>()
+            .unwrap();
         assert_eq!(array.value(0), Ipv4Addr::new(192, 168, 1, 1).octets());
         assert!(!array.is_valid(1));
         assert_eq!(array.value(2), Ipv4Addr::new(10, 0, 0, 1).octets());
-        assert_eq!(array.nulls().unwrap().iter().collect::<Vec<bool>>(), vec![true, false, true]);
+        assert_eq!(
+            array.nulls().unwrap().iter().collect::<Vec<bool>>(),
+            vec![true, false, true]
+        );
     }
 
     /// Tests deserialization of `Ipv6` with non-nullable values.
@@ -747,8 +798,14 @@ mod tests {
         let result = deserialize_for_test(&type_hint, &mut builder, &mut reader, rows, &null_mask)
             .await
             .expect("Failed to deserialize Ipv6");
-        let array = result.as_any().downcast_ref::<FixedSizeBinaryArray>().unwrap();
-        assert_eq!(array.value(0), Ipv6Addr::new(0x2001, 0x0db8, 0, 0, 0, 0, 0, 1).octets());
+        let array = result
+            .as_any()
+            .downcast_ref::<FixedSizeBinaryArray>()
+            .unwrap();
+        assert_eq!(
+            array.value(0),
+            Ipv6Addr::new(0x2001, 0x0db8, 0, 0, 0, 0, 0, 1).octets()
+        );
         assert_eq!(array.value(1), Ipv6Addr::LOCALHOST.octets());
         assert_eq!(array.nulls(), None);
     }
@@ -773,11 +830,20 @@ mod tests {
         let result = deserialize_for_test(&type_hint, &mut builder, &mut reader, rows, &null_mask)
             .await
             .expect("Failed to deserialize Nullable(Ipv6)");
-        let array = result.as_any().downcast_ref::<FixedSizeBinaryArray>().unwrap();
-        assert_eq!(array.value(0), Ipv6Addr::new(0x2001, 0x0db8, 0, 0, 0, 0, 0, 1).octets());
+        let array = result
+            .as_any()
+            .downcast_ref::<FixedSizeBinaryArray>()
+            .unwrap();
+        assert_eq!(
+            array.value(0),
+            Ipv6Addr::new(0x2001, 0x0db8, 0, 0, 0, 0, 0, 1).octets()
+        );
         assert!(!array.is_valid(1));
         assert_eq!(array.value(2), Ipv6Addr::LOCALHOST.octets());
-        assert_eq!(array.nulls().unwrap().iter().collect::<Vec<bool>>(), vec![true, false, true]);
+        assert_eq!(
+            array.nulls().unwrap().iter().collect::<Vec<bool>>(),
+            vec![true, false, true]
+        );
     }
 
     /// Tests deserialization of `Int128` with non-nullable values.
@@ -799,7 +865,10 @@ mod tests {
         let result = deserialize_for_test(&type_hint, &mut builder, &mut reader, rows, &null_mask)
             .await
             .expect("Failed to deserialize Int128");
-        let array = result.as_any().downcast_ref::<FixedSizeBinaryArray>().unwrap();
+        let array = result
+            .as_any()
+            .downcast_ref::<FixedSizeBinaryArray>()
+            .unwrap();
         assert_eq!(
             array.value(0),
             b"\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
@@ -831,7 +900,10 @@ mod tests {
         let result = deserialize_for_test(&type_hint, &mut builder, &mut reader, rows, &null_mask)
             .await
             .expect("Failed to deserialize Nullable(Int128)");
-        let array = result.as_any().downcast_ref::<FixedSizeBinaryArray>().unwrap();
+        let array = result
+            .as_any()
+            .downcast_ref::<FixedSizeBinaryArray>()
+            .unwrap();
         assert_eq!(
             array.value(0),
             b"\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
@@ -841,7 +913,10 @@ mod tests {
             array.value(2),
             b"\x02\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
         );
-        assert_eq!(array.nulls().unwrap().iter().collect::<Vec<bool>>(), vec![true, false, true]);
+        assert_eq!(
+            array.nulls().unwrap().iter().collect::<Vec<bool>>(),
+            vec![true, false, true]
+        );
     }
 
     /// Tests deserialization of `Int256` with non-nullable values.
@@ -869,7 +944,10 @@ mod tests {
         let result = deserialize_for_test(&type_hint, &mut builder, &mut reader, rows, &null_mask)
             .await
             .expect("Failed to deserialize Int256");
-        let array = result.as_any().downcast_ref::<FixedSizeBinaryArray>().unwrap();
+        let array = result
+            .as_any()
+            .downcast_ref::<FixedSizeBinaryArray>()
+            .unwrap();
         let mut expected1 = vec![0u8; 31];
         expected1.insert(0, 1); // [1, 0, 0, ..., 0]
         let mut expected2 = vec![0u8; 31];
@@ -908,7 +986,10 @@ mod tests {
         let result = deserialize_for_test(&type_hint, &mut builder, &mut reader, rows, &null_mask)
             .await
             .expect("Failed to deserialize Nullable(Int256)");
-        let array = result.as_any().downcast_ref::<FixedSizeBinaryArray>().unwrap();
+        let array = result
+            .as_any()
+            .downcast_ref::<FixedSizeBinaryArray>()
+            .unwrap();
         let mut expected1 = vec![0u8; 31];
         expected1.push(1);
         expected1.reverse();
@@ -918,7 +999,10 @@ mod tests {
         assert_eq!(array.value(0), expected1.as_slice());
         assert!(!array.is_valid(1));
         assert_eq!(array.value(2), expected2.as_slice());
-        assert_eq!(array.nulls().unwrap().iter().collect::<Vec<bool>>(), vec![true, false, true]);
+        assert_eq!(
+            array.nulls().unwrap().iter().collect::<Vec<bool>>(),
+            vec![true, false, true]
+        );
     }
 
     /// Tests deserialization of `String` with zero rows.

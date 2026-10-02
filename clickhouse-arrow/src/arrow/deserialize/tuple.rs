@@ -43,7 +43,9 @@ pub(super) async fn deserialize<R: ClickHouseRead>(
 ) -> Result<ArrayRef> {
     // Read each field’s data
     let DataType::Struct(fields) = data_type else {
-        return Err(Error::ArrowDeserialize(format!("Unsupported tuple datatype: {data_type:?}")));
+        return Err(Error::ArrowDeserialize(format!(
+            "Unsupported tuple datatype: {data_type:?}"
+        )));
     };
 
     let TypedBuilder::Tuple(builders) = builder else {
@@ -54,8 +56,10 @@ pub(super) async fn deserialize<R: ClickHouseRead>(
     };
 
     if rows == 0 {
-        let arrays =
-            fields.iter().map(|field| new_empty_array(field.data_type())).collect::<Vec<_>>();
+        let arrays = fields
+            .iter()
+            .map(|field| new_empty_array(field.data_type()))
+            .collect::<Vec<_>>();
         return Ok(Arc::new(StructArray::new(fields.clone(), arrays, None)));
     }
 
@@ -65,16 +69,24 @@ pub(super) async fn deserialize<R: ClickHouseRead>(
         let data_type = field.data_type();
         let child_node = ctx.custom_child_node(idx).or(ctx.custom_node());
         let previous_node = ctx.set_custom_node(child_node);
-        let array = inner_type.deserialize_arrow(b, reader, data_type, rows, &[], ctx).await;
+        let array = inner_type
+            .deserialize_arrow(b, reader, data_type, rows, &[], ctx)
+            .await;
         let _ = ctx.set_custom_node(previous_node);
         arrays.push(array?);
     }
     let null_buffer = if nulls.is_empty() {
         None
     } else {
-        Some(NullBuffer::from(nulls.iter().map(|&n| n == 0).collect::<Vec<bool>>()))
+        Some(NullBuffer::from(
+            nulls.iter().map(|&n| n == 0).collect::<Vec<bool>>(),
+        ))
     };
-    Ok(Arc::new(StructArray::new(fields.clone(), arrays, null_buffer)))
+    Ok(Arc::new(StructArray::new(
+        fields.clone(),
+        arrays,
+        null_buffer,
+    )))
 }
 
 #[cfg(test)]
@@ -149,7 +161,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_deserialize_tuple_nullable_int32_string() {
-        let inner_types = vec![(None, Type::Nullable(Box::new(Type::Int32))), (None, Type::String)];
+        let inner_types = vec![
+            (None, Type::Nullable(Box::new(Type::Int32))),
+            (None, Type::String),
+        ];
         let rows = 3;
         let nulls = vec![];
         let input = vec![
@@ -254,8 +269,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_deserialize_tuple_nested() {
-        let inner_types =
-            vec![(None, Type::Int32), (None, Type::tuple_anon(vec![Type::String, Type::Int32]))];
+        let inner_types = vec![
+            (None, Type::Int32),
+            (None, Type::tuple_anon(vec![Type::String, Type::Int32])),
+        ];
         let rows = 2;
         let nulls = vec![];
         let input = vec![
@@ -298,11 +315,19 @@ mod tests {
         );
         let inner_struct = arrays[1].as_any().downcast_ref::<StructArray>().unwrap();
         assert_eq!(
-            inner_struct.column(0).as_any().downcast_ref::<StringArray>().unwrap(),
+            inner_struct
+                .column(0)
+                .as_any()
+                .downcast_ref::<StringArray>()
+                .unwrap(),
             &StringArray::from(vec!["a", "b"])
         );
         assert_eq!(
-            inner_struct.column(1).as_any().downcast_ref::<Int32Array>().unwrap(),
+            inner_struct
+                .column(1)
+                .as_any()
+                .downcast_ref::<Int32Array>()
+                .unwrap(),
             &Int32Array::from(vec![10, 20])
         );
         assert_eq!(struct_array.nulls(), None);

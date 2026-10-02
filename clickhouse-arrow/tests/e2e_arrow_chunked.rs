@@ -15,7 +15,12 @@ e2e_test!(
 );
 
 // Test arrow e2e lz4
-e2e_test!(e2e_chunked_arrow_lz4, tests::arrow::test_round_trip_lz4, TRACING_DIRECTIVES, Some(CONF));
+e2e_test!(
+    e2e_chunked_arrow_lz4,
+    tests::arrow::test_round_trip_lz4,
+    TRACING_DIRECTIVES,
+    Some(CONF)
+);
 
 // Test arrow e2e zstd
 e2e_test!(

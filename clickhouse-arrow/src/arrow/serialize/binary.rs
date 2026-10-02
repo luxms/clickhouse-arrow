@@ -37,7 +37,9 @@ pub(super) async fn serialize_async<W: ClickHouseWrite>(
         Type::FixedSizedString(len) => write_fixed_string_values(values, writer, *len).await?,
         Type::FixedSizedBinary(len) => write_fixed_binary_values(values, writer, *len).await?,
         _ => {
-            return Err(Error::ArrowSerialize(format!("Unsupported data type: {type_hint:?}")));
+            return Err(Error::ArrowSerialize(format!(
+                "Unsupported data type: {type_hint:?}"
+            )));
         }
     }
 
@@ -55,7 +57,9 @@ pub(super) fn serialize<W: ClickHouseBytesWrite>(
         Type::FixedSizedString(len) => put_fixed_string_values(values, writer, *len)?,
         Type::FixedSizedBinary(len) => put_fixed_binary_values(values, writer, *len)?,
         _ => {
-            return Err(Error::ArrowSerialize(format!("Unsupported data type: {type_hint:?}")));
+            return Err(Error::ArrowSerialize(format!(
+                "Unsupported data type: {type_hint:?}"
+            )));
         }
     }
 
@@ -323,10 +327,14 @@ put_fixed_values!(put_fixed_binary_values, [
 ]);
 
 /// Coerces a byte slice to itself (no-op).
-fn pass_through(v: &[u8]) -> &[u8] { v }
+fn pass_through(v: &[u8]) -> &[u8] {
+    v
+}
 
 /// Coerces a string to its byte representation.
-fn as_bytes(v: &str) -> &[u8] { v.as_bytes() }
+fn as_bytes(v: &str) -> &[u8] {
+    v.as_bytes()
+}
 
 #[cfg(test)]
 mod tests {
@@ -343,7 +351,9 @@ mod tests {
         let column =
             Arc::new(StringArray::from(vec![Some("hello"), None, Some("world")])) as ArrayRef;
         let mut writer = MockWriter::new();
-        serialize_async(&Type::String, &mut writer, &column).await.unwrap();
+        serialize_async(&Type::String, &mut writer, &column)
+            .await
+            .unwrap();
         let expected = vec![
             5, 104, 101, 108, 108, 111, // "hello" (var_uint 5 + bytes)
             0,   // "" (null, var_uint 0)
@@ -355,10 +365,15 @@ mod tests {
     #[tokio::test]
     async fn test_serialize_string_empty_and_large() {
         let large_string = "x".repeat(128); // Test var_uint >127
-        let column = Arc::new(StringArray::from(vec![Some(""), Some(&large_string), Some("abc")]))
-            as ArrayRef;
+        let column = Arc::new(StringArray::from(vec![
+            Some(""),
+            Some(&large_string),
+            Some("abc"),
+        ])) as ArrayRef;
         let mut writer = MockWriter::new();
-        serialize_async(&Type::String, &mut writer, &column).await.unwrap();
+        serialize_async(&Type::String, &mut writer, &column)
+            .await
+            .unwrap();
         let mut expected = vec![0]; // "" (var_uint 0)
         expected.extend(vec![128, 1]); // var_uint 128 (128 = 128 + 1<<7)
         expected.extend(vec![120; 128]); // 128 'x' bytes
@@ -370,7 +385,9 @@ mod tests {
     async fn test_serialize_string_unicode() {
         let column = Arc::new(StringArray::from(vec![Some("こんにちは"), Some("")])) as ArrayRef;
         let mut writer = MockWriter::new();
-        serialize_async(&Type::String, &mut writer, &column).await.unwrap();
+        serialize_async(&Type::String, &mut writer, &column)
+            .await
+            .unwrap();
         let expected = vec![
             15, // var_uint 15 (length of "こんにちは" in UTF-8)
             227, 129, 147, 227, 130, 147, 227, 129, 171, 227, 129, 161, 227, 129,
@@ -382,11 +399,15 @@ mod tests {
 
     #[tokio::test]
     async fn test_serialize_binary() {
-        let column =
-            Arc::new(BinaryArray::from(vec![Some(b"abc".as_ref()), None, Some(b"def".as_ref())]))
-                as ArrayRef;
+        let column = Arc::new(BinaryArray::from(vec![
+            Some(b"abc".as_ref()),
+            None,
+            Some(b"def".as_ref()),
+        ])) as ArrayRef;
         let mut writer = MockWriter::new();
-        serialize_async(&Type::Binary, &mut writer, &column).await.unwrap();
+        serialize_async(&Type::Binary, &mut writer, &column)
+            .await
+            .unwrap();
         let expected = vec![
             3, 97, 98, 99, // "abc" (var_uint 3 + bytes)
             0,  // "" (null, var_uint 0)
@@ -404,7 +425,9 @@ mod tests {
             Some(b"abc".as_ref()),
         ])) as ArrayRef;
         let mut writer = MockWriter::new();
-        serialize_async(&Type::Binary, &mut writer, &column).await.unwrap();
+        serialize_async(&Type::Binary, &mut writer, &column)
+            .await
+            .unwrap();
         let mut expected = vec![0]; // "" (var_uint 0)
         expected.extend(vec![128, 1]); // var_uint 128
         expected.extend(vec![255; 128]); // 128 bytes of 255
@@ -416,7 +439,9 @@ mod tests {
     async fn test_serialize_fixed_string() {
         let column = Arc::new(StringArray::from(vec!["abc", "de", "fghij"])) as ArrayRef;
         let mut writer = MockWriter::new();
-        serialize_async(&Type::FixedSizedString(5), &mut writer, &column).await.unwrap();
+        serialize_async(&Type::FixedSizedString(5), &mut writer, &column)
+            .await
+            .unwrap();
         let expected = vec![
             97, 98, 99, 0, 0, // "abc" + padding
             100, 101, 0, 0, 0, // "de" + padding
@@ -429,7 +454,9 @@ mod tests {
     async fn test_serialize_fixed_string_short_and_null() {
         let column = Arc::new(StringArray::from(vec![Some("a"), None, Some("bc")])) as ArrayRef;
         let mut writer = MockWriter::new();
-        serialize_async(&Type::FixedSizedString(3), &mut writer, &column).await.unwrap();
+        serialize_async(&Type::FixedSizedString(3), &mut writer, &column)
+            .await
+            .unwrap();
         let expected = vec![
             97, 0, 0, // "a" + padding
             0, 0, 0, // null (all zeros)
@@ -455,7 +482,9 @@ mod tests {
             .unwrap(),
         ) as ArrayRef;
         let mut writer = MockWriter::new();
-        serialize_async(&Type::FixedSizedBinary(5), &mut writer, &column).await.unwrap();
+        serialize_async(&Type::FixedSizedBinary(5), &mut writer, &column)
+            .await
+            .unwrap();
         let expected = vec![
             97, 98, 99, 0, 0, // "abc" + padding
             100, 101, 102, 0, 0, // "def" + padding
@@ -474,7 +503,9 @@ mod tests {
             .unwrap(),
         ) as ArrayRef;
         let mut writer = MockWriter::new();
-        serialize_async(&Type::FixedSizedBinary(3), &mut writer, &column).await.unwrap();
+        serialize_async(&Type::FixedSizedBinary(3), &mut writer, &column)
+            .await
+            .unwrap();
         let expected = vec![
             97, 98, 0, // "ab" + padding
             0, 0, 0, // null (all zeros)
@@ -497,7 +528,9 @@ mod tests {
     async fn test_serialize_empty_string() {
         let column = Arc::new(StringArray::from(Vec::<String>::new())) as ArrayRef;
         let mut writer = MockWriter::new();
-        serialize_async(&Type::String, &mut writer, &column).await.unwrap();
+        serialize_async(&Type::String, &mut writer, &column)
+            .await
+            .unwrap();
         assert!(writer.is_empty());
     }
 
@@ -505,7 +538,9 @@ mod tests {
     async fn test_serialize_empty_binary() {
         let column = Arc::new(BinaryArray::from(Vec::<Option<&[u8]>>::new())) as ArrayRef;
         let mut writer = MockWriter::new();
-        serialize_async(&Type::Binary, &mut writer, &column).await.unwrap();
+        serialize_async(&Type::Binary, &mut writer, &column)
+            .await
+            .unwrap();
         assert!(writer.is_empty());
     }
 
@@ -513,7 +548,9 @@ mod tests {
     async fn test_serialize_empty_fixed_string() {
         let column = Arc::new(StringArray::from(Vec::<String>::new())) as ArrayRef;
         let mut writer = MockWriter::new();
-        serialize_async(&Type::FixedSizedString(3), &mut writer, &column).await.unwrap();
+        serialize_async(&Type::FixedSizedString(3), &mut writer, &column)
+            .await
+            .unwrap();
         assert!(writer.is_empty());
     }
 
@@ -522,7 +559,9 @@ mod tests {
         let column =
             Arc::new(StringArray::from(Vec::<Option<String>>::from([None, None]))) as ArrayRef;
         let mut writer = MockWriter::new();
-        serialize_async(&Type::String, &mut writer, &column).await.unwrap();
+        serialize_async(&Type::String, &mut writer, &column)
+            .await
+            .unwrap();
         let expected = vec![0, 0]; // Two nulls
         assert_eq!(writer, expected);
     }
@@ -553,7 +592,9 @@ mod tests {
 
     async fn assert_sync_matches_async(type_hint: Type, column: ArrayRef) {
         let mut async_writer = MockWriter::new();
-        serialize_async(&type_hint, &mut async_writer, &column).await.unwrap();
+        serialize_async(&type_hint, &mut async_writer, &column)
+            .await
+            .unwrap();
 
         let mut sync_writer = MockWriter::new();
         serialize(&type_hint, &mut sync_writer, &column).unwrap();
@@ -571,8 +612,11 @@ mod tests {
 
         assert_sync_matches_async(
             Type::Binary,
-            Arc::new(BinaryArray::from(vec![Some(b"abc".as_ref()), None, Some(b"def".as_ref())]))
-                as ArrayRef,
+            Arc::new(BinaryArray::from(vec![
+                Some(b"abc".as_ref()),
+                None,
+                Some(b"def".as_ref()),
+            ])) as ArrayRef,
         )
         .await;
 

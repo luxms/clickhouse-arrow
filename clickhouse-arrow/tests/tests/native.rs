@@ -53,19 +53,30 @@ pub async fn round_trip<T: Row + std::fmt::Debug + PartialEq + Clone + Send + Sy
     let query_id = Qid::new();
     header(query_id, format!("Dropping table: {db_name}.{table_name}"));
     client
-        .execute(format!("DROP TABLE IF EXISTS {db_name}.{table_name}"), Some(table_qid))
+        .execute(
+            format!("DROP TABLE IF EXISTS {db_name}.{table_name}"),
+            Some(table_qid),
+        )
         .await?;
 
     // Drop database
     let query_id = Qid::new();
     header(query_id, format!("Dropping database: {db_name}"));
-    client.execute(format!("DROP DATABASE IF EXISTS {db_name}"), Some(table_qid)).await?;
+    client
+        .execute(
+            format!("DROP DATABASE IF EXISTS {db_name}"),
+            Some(table_qid),
+        )
+        .await?;
 
     // Create database
     let query_id = Qid::new();
     header(query_id, format!("Creating database: {db_name}"));
     client
-        .execute(format!("CREATE DATABASE IF NOT EXISTS {db_name}"), Some(table_qid))
+        .execute(
+            format!("CREATE DATABASE IF NOT EXISTS {db_name}"),
+            Some(table_qid),
+        )
         .await?;
 
     // Create table
@@ -77,7 +88,10 @@ pub async fn round_trip<T: Row + std::fmt::Debug + PartialEq + Clone + Send + Sy
 
     // Insert data
     let query_id = Qid::new();
-    header(query_id, format!("Inserting test data with {} rows", data.len()));
+    header(
+        query_id,
+        format!("Inserting test data with {} rows", data.len()),
+    );
     let query = format!("INSERT INTO {db_name}.{table_name} FORMAT Native");
     let result = client
         .insert_rows(&query, data.clone().into_iter(), Some(table_qid))
@@ -111,20 +125,36 @@ pub async fn round_trip<T: Row + std::fmt::Debug + PartialEq + Clone + Send + Sy
     header(query_id, "Verifying queried data");
     let inserted_rows = data;
 
-    assert_eq!(queried_rows.len(), inserted_rows.len(), "Expected equal rows");
+    assert_eq!(
+        queried_rows.len(),
+        inserted_rows.len(),
+        "Expected equal rows"
+    );
     assert_eq!(queried_rows, inserted_rows, "Expected round trip of data");
 
     // Truncate table
-    header(query_id, format!("Truncating table: {db_name}.{table_name}"));
-    client.execute(format!("TRUNCATE TABLE {db_name}.{table_name}"), Some(table_qid)).await?;
+    header(
+        query_id,
+        format!("Truncating table: {db_name}.{table_name}"),
+    );
+    client
+        .execute(
+            format!("TRUNCATE TABLE {db_name}.{table_name}"),
+            Some(table_qid),
+        )
+        .await?;
 
     // Drop table
     header(query_id, format!("Dropping table: {db_name}.{table_name}"));
-    client.execute(format!("DROP TABLE {db_name}.{table_name}"), None).await?;
+    client
+        .execute(format!("DROP TABLE {db_name}.{table_name}"), None)
+        .await?;
 
     // Drop database
     header(query_id, format!("Dropping database: {db_name}"));
-    client.execute(format!("DROP DATABASE {db_name}"), None).await?;
+    client
+        .execute(format!("DROP DATABASE {db_name}"), None)
+        .await?;
 
     header(query_id, "Round-trip test completed successfully");
 

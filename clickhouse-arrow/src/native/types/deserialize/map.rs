@@ -44,7 +44,9 @@ impl Deserializer for MapDeserializer {
         }
 
         let Type::Map(key, value) = type_ else {
-            return Err(Error::Deserialize("MapDeserializer called with non-map type".to_string()));
+            return Err(Error::Deserialize(
+                "MapDeserializer called with non-map type".to_string(),
+            ));
         };
 
         let mut offsets: Vec<u64> = Vec::with_capacity(rows);
@@ -57,7 +59,9 @@ impl Deserializer for MapDeserializer {
 
         let keys = key.deserialize_column(reader, total_length, state).await?;
         assert_eq!(keys.len(), total_length);
-        let values = value.deserialize_column(reader, total_length, state).await?;
+        let values = value
+            .deserialize_column(reader, total_length, state)
+            .await?;
         assert_eq!(values.len(), total_length);
 
         let mut keys = keys.into_iter();

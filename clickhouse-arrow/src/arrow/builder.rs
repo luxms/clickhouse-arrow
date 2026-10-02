@@ -156,7 +156,9 @@ impl TypedBuilder {
         }
 
         if let Type::LowCardinality(inner) = type_ {
-            return Ok(Self::LowCardinality(LowCardinalityBuilder::try_new(inner, data_type)?));
+            return Ok(Self::LowCardinality(LowCardinalityBuilder::try_new(
+                inner, data_type,
+            )?));
         }
 
         if let Type::Tuple(inner) = type_ {
@@ -218,7 +220,11 @@ impl TypedBuilder {
         }
 
         #[cfg(feature = "extended-types")]
-        if let Type::QBit { element_type, dimension } = type_ {
+        if let Type::QBit {
+            element_type,
+            dimension,
+        } = type_
+        {
             let DataType::FixedSizeList(_, size) = data_type else {
                 return Err(Error::ArrowDeserialize(format!(
                     "Unexpected datatype for QBit: {data_type:?}",
@@ -230,7 +236,10 @@ impl TypedBuilder {
                     "QBit dimension mismatch: type={dimension}, arrow={size}"
                 )));
             }
-            return Ok(Self::List(TypedListBuilder::try_new(element_type, data_type)?));
+            return Ok(Self::List(TypedListBuilder::try_new(
+                element_type,
+                data_type,
+            )?));
         }
 
         #[cfg(feature = "extended-types")]
@@ -260,22 +269,30 @@ impl TypedBuilder {
 
         #[cfg(feature = "extended-types")]
         if let Type::Time64(0..=3) = type_ {
-            return Ok(Self::Time64Ms(Time32MillisecondBuilder::with_capacity(ROWS)));
+            return Ok(Self::Time64Ms(Time32MillisecondBuilder::with_capacity(
+                ROWS,
+            )));
         }
 
         #[cfg(feature = "extended-types")]
         if let Type::Time64(4..=6) = type_ {
-            return Ok(Self::Time64Mu(Time64MicrosecondBuilder::with_capacity(ROWS)));
+            return Ok(Self::Time64Mu(Time64MicrosecondBuilder::with_capacity(
+                ROWS,
+            )));
         }
 
         #[cfg(feature = "extended-types")]
         if let Type::Time64(7..=9) = type_ {
-            return Ok(Self::Time64Nano(Time64NanosecondBuilder::with_capacity(ROWS)));
+            return Ok(Self::Time64Nano(Time64NanosecondBuilder::with_capacity(
+                ROWS,
+            )));
         }
 
         #[cfg(feature = "extended-types")]
         if let Type::BFloat16 = type_ {
-            return Ok(Self::Float32(PrimitiveBuilder::<Float32Type>::with_capacity(ROWS)));
+            return Ok(Self::Float32(
+                PrimitiveBuilder::<Float32Type>::with_capacity(ROWS),
+            ));
         }
 
         if let Type::Map(key, value) = type_ {
@@ -431,7 +448,10 @@ mod tests {
 
     #[test]
     fn test_create_typed_builder_map() {
-        let _definitions = [("col1".to_string(), Type::Int32), ("col2".to_string(), Type::String)];
+        let _definitions = [
+            ("col1".to_string(), Type::Int32),
+            ("col2".to_string(), Type::String),
+        ];
 
         // This test is more complex due to lifetime issues, so we'll just test the basic
         // functionality by creating builders directly rather than testing the helper
@@ -503,11 +523,26 @@ mod tests {
         let test_cases = vec![
             (Type::Date, DataType::Date32),
             (Type::Date32, DataType::Date32),
-            (Type::DateTime(UTC), DataType::Timestamp(TimeUnit::Second, None)),
-            (Type::DateTime64(0, UTC), DataType::Timestamp(TimeUnit::Second, None)),
-            (Type::DateTime64(3, UTC), DataType::Timestamp(TimeUnit::Millisecond, None)),
-            (Type::DateTime64(6, UTC), DataType::Timestamp(TimeUnit::Microsecond, None)),
-            (Type::DateTime64(9, UTC), DataType::Timestamp(TimeUnit::Nanosecond, None)),
+            (
+                Type::DateTime(UTC),
+                DataType::Timestamp(TimeUnit::Second, None),
+            ),
+            (
+                Type::DateTime64(0, UTC),
+                DataType::Timestamp(TimeUnit::Second, None),
+            ),
+            (
+                Type::DateTime64(3, UTC),
+                DataType::Timestamp(TimeUnit::Millisecond, None),
+            ),
+            (
+                Type::DateTime64(6, UTC),
+                DataType::Timestamp(TimeUnit::Microsecond, None),
+            ),
+            (
+                Type::DateTime64(9, UTC),
+                DataType::Timestamp(TimeUnit::Nanosecond, None),
+            ),
         ];
 
         for (type_, data_type) in test_cases {

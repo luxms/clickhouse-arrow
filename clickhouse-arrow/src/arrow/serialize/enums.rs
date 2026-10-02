@@ -87,7 +87,9 @@ pub(super) async fn serialize_async<W: ClickHouseWrite>(
         Type::Enum8(pairs) => write_enum8_values(values, writer, pairs).await?,
         Type::Enum16(pairs) => write_enum16_values(values, writer, pairs).await?,
         _ => {
-            return Err(Error::ArrowSerialize(format!("Unsupported data type: {type_hint:?}")));
+            return Err(Error::ArrowSerialize(format!(
+                "Unsupported data type: {type_hint:?}"
+            )));
         }
     }
 
@@ -103,7 +105,9 @@ pub(super) fn serialize<W: ClickHouseBytesWrite>(
         Type::Enum8(pairs) => put_enum8_values(values, writer, pairs)?,
         Type::Enum16(pairs) => put_enum16_values(values, writer, pairs)?,
         _ => {
-            return Err(Error::ArrowSerialize(format!("Unsupported data type: {type_hint:?}")));
+            return Err(Error::ArrowSerialize(format!(
+                "Unsupported data type: {type_hint:?}"
+            )));
         }
     }
 
@@ -549,7 +553,9 @@ mod tests {
         let array = Arc::new(DictionaryArray::<Int8Type>::try_new(keys, Arc::new(values)).unwrap())
             as ArrayRef;
         let mut writer = MockWriter::new();
-        serialize_async(&Type::Enum8(pairs), &mut writer, &array).await.unwrap();
+        serialize_async(&Type::Enum8(pairs), &mut writer, &array)
+            .await
+            .unwrap();
         assert_eq!(writer, vec![1, 2, 1]);
     }
 
@@ -558,7 +564,9 @@ mod tests {
         let pairs = vec![("a".to_string(), 1_i8), ("b".to_string(), 2_i8)];
         let array = Arc::new(Int8Array::from(vec![1, 2, 1])) as ArrayRef;
         let mut writer = MockWriter::new();
-        serialize_async(&Type::Enum8(pairs), &mut writer, &array).await.unwrap();
+        serialize_async(&Type::Enum8(pairs), &mut writer, &array)
+            .await
+            .unwrap();
         assert_eq!(writer, vec![1, 2, 1]);
     }
 
@@ -567,7 +575,9 @@ mod tests {
         let pairs = vec![("a".to_string(), 1_i8), ("b".to_string(), 2_i8)];
         let array = Arc::new(StringArray::from(vec!["a", "b", "a"])) as ArrayRef;
         let mut writer = MockWriter::new();
-        serialize_async(&Type::Enum8(pairs), &mut writer, &array).await.unwrap();
+        serialize_async(&Type::Enum8(pairs), &mut writer, &array)
+            .await
+            .unwrap();
         assert_eq!(writer, vec![1, 2, 1]);
     }
 
@@ -576,7 +586,9 @@ mod tests {
         let pairs = vec![("a".to_string(), 1_i8), ("b".to_string(), 2_i8)];
         let array = Arc::new(StringArray::from(vec![Some("a"), None, Some("a")])) as ArrayRef;
         let mut writer = MockWriter::new();
-        serialize_async(&Type::Enum8(pairs), &mut writer, &array).await.unwrap();
+        serialize_async(&Type::Enum8(pairs), &mut writer, &array)
+            .await
+            .unwrap();
         assert_eq!(writer, vec![1, 0, 1]);
     }
 
@@ -588,7 +600,9 @@ mod tests {
         let array = Arc::new(DictionaryArray::<Int16Type>::try_new(keys, Arc::new(values)).unwrap())
             as ArrayRef;
         let mut writer = MockWriter::new();
-        serialize_async(&Type::Enum16(pairs), &mut writer, &array).await.unwrap();
+        serialize_async(&Type::Enum16(pairs), &mut writer, &array)
+            .await
+            .unwrap();
         assert_eq!(writer, vec![10, 0, 20, 0, 10, 0]); // Little-endian
     }
 
@@ -597,7 +611,9 @@ mod tests {
         let pairs = vec![("a".to_string(), 1_i8), ("b".to_string(), 2_i8)];
         let array = Arc::new(Int8Array::from(Vec::<i8>::new())) as ArrayRef;
         let mut writer = MockWriter::new();
-        serialize_async(&Type::Enum8(pairs), &mut writer, &array).await.unwrap();
+        serialize_async(&Type::Enum8(pairs), &mut writer, &array)
+            .await
+            .unwrap();
         assert!(writer.is_empty());
     }
 
@@ -660,7 +676,9 @@ mod tests {
         let pairs = vec![("neg".to_string(), -1_i8), ("pos".to_string(), 1_i8)];
         let array = Arc::new(Int8Array::from(vec![-1, 1, -1])) as ArrayRef;
         let mut writer = MockWriter::new();
-        serialize_async(&Type::Enum8(pairs), &mut writer, &array).await.unwrap();
+        serialize_async(&Type::Enum8(pairs), &mut writer, &array)
+            .await
+            .unwrap();
         assert_eq!(writer, vec![255, 1, 255]); // -1 as i8 = 255
     }
 
@@ -669,7 +687,9 @@ mod tests {
         let pairs = vec![("a".to_string(), 100_i16), ("b".to_string(), 200_i16)];
         let array = Arc::new(Int16Array::from(vec![100, 200, 100])) as ArrayRef;
         let mut writer = MockWriter::new();
-        serialize_async(&Type::Enum16(pairs), &mut writer, &array).await.unwrap();
+        serialize_async(&Type::Enum16(pairs), &mut writer, &array)
+            .await
+            .unwrap();
         assert_eq!(writer, vec![100, 0, 200, 0, 100, 0]); // Little-endian
     }
 
@@ -695,16 +715,28 @@ mod tests {
             Arc::new(StringArray::from(vec![Some("a"), Some("b"), None])) as ArrayRef,
             Arc::new(StringViewArray::from(vec![Some("a"), Some("b"), None])) as ArrayRef,
             Arc::new(LargeStringArray::from(vec![Some("a"), Some("b"), None])) as ArrayRef,
-            Arc::new(BinaryArray::from_opt_vec(vec![Some(b"a"), Some(b"b"), None])) as ArrayRef,
-            Arc::new(BinaryViewArray::from(vec![Some(b"a" as &[u8]), Some(b"b"), None]))
-                as ArrayRef,
-            Arc::new(LargeBinaryArray::from_opt_vec(vec![Some(b"a"), Some(b"b"), None]))
-                as ArrayRef,
+            Arc::new(BinaryArray::from_opt_vec(vec![
+                Some(b"a"),
+                Some(b"b"),
+                None,
+            ])) as ArrayRef,
+            Arc::new(BinaryViewArray::from(vec![
+                Some(b"a" as &[u8]),
+                Some(b"b"),
+                None,
+            ])) as ArrayRef,
+            Arc::new(LargeBinaryArray::from_opt_vec(vec![
+                Some(b"a"),
+                Some(b"b"),
+                None,
+            ])) as ArrayRef,
         ];
         let enum_values = vec![("a".to_string(), 1), ("b".to_string(), 2)];
         for array in cases {
             let mut writer = MockWriter::new();
-            serialize_async(&Type::Enum8(enum_values.clone()), &mut writer, &array).await.unwrap();
+            serialize_async(&Type::Enum8(enum_values.clone()), &mut writer, &array)
+                .await
+                .unwrap();
             assert_eq!(writer, vec![1, 2, 0]);
         }
     }
@@ -764,11 +796,21 @@ mod tests {
             Arc::new(StringArray::from(vec![Some("a"), Some("b"), None])) as ArrayRef,
             Arc::new(StringViewArray::from(vec![Some("a"), Some("b"), None])) as ArrayRef,
             Arc::new(LargeStringArray::from(vec![Some("a"), Some("b"), None])) as ArrayRef,
-            Arc::new(BinaryArray::from_opt_vec(vec![Some(b"a"), Some(b"b"), None])) as ArrayRef,
-            Arc::new(BinaryViewArray::from(vec![Some(b"a" as &[u8]), Some(b"b"), None]))
-                as ArrayRef,
-            Arc::new(LargeBinaryArray::from_opt_vec(vec![Some(b"a"), Some(b"b"), None]))
-                as ArrayRef,
+            Arc::new(BinaryArray::from_opt_vec(vec![
+                Some(b"a"),
+                Some(b"b"),
+                None,
+            ])) as ArrayRef,
+            Arc::new(BinaryViewArray::from(vec![
+                Some(b"a" as &[u8]),
+                Some(b"b"),
+                None,
+            ])) as ArrayRef,
+            Arc::new(LargeBinaryArray::from_opt_vec(vec![
+                Some(b"a"),
+                Some(b"b"),
+                None,
+            ])) as ArrayRef,
         ];
         let enum_values = vec![("a".to_string(), 1), ("b".to_string(), 2)];
 

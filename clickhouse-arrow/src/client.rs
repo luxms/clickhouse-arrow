@@ -82,8 +82,8 @@ pub struct ConnectionContext {
 /// Emitted clickhouse events from the underlying connection
 #[derive(Debug, Clone)]
 pub struct Event {
-    pub event:     ClickHouseEvent,
-    pub qid:       Qid,
+    pub event: ClickHouseEvent,
+    pub qid: Qid,
     pub client_id: u16,
 }
 
@@ -136,9 +136,9 @@ pub enum ClickHouseEvent {
 #[derive(Clone, Debug)]
 pub struct Client<T: ClientFormat> {
     pub client_id: u16,
-    connection:    Arc<connection::Connection<T>>,
-    events:        Arc<broadcast::Sender<Event>>,
-    settings:      Option<Arc<Settings>>,
+    connection: Arc<connection::Connection<T>>,
+    events: Arc<broadcast::Sender<Event>>,
+    settings: Option<Arc<Settings>>,
 }
 
 impl<T: ClientFormat> Client<T> {
@@ -165,7 +165,9 @@ impl<T: ClientFormat> Client<T> {
     ///     .with_username("default")
     ///     .with_password("");
     /// ```
-    pub fn builder() -> ClientBuilder { ClientBuilder::new() }
+    pub fn builder() -> ClientBuilder {
+        ClientBuilder::new()
+    }
 
     /// Establishes a connection to a `ClickHouse` server over TCP, with optional TLS support.
     ///
@@ -254,7 +256,12 @@ impl<T: ClientFormat> Client<T> {
 
         debug!("created connection successfully");
 
-        Ok(Client { client_id, connection, events, settings })
+        Ok(Client {
+            client_id,
+            connection,
+            events,
+            settings,
+        })
     }
 
     /// Retrieves the status of the underlying `ClickHouse` connection.
@@ -279,7 +286,9 @@ impl<T: ClientFormat> Client<T> {
     /// let status = client.status();
     /// println!("Connection status: {status:?}");
     /// ```
-    pub fn status(&self) -> ConnectionStatus { self.connection.status() }
+    pub fn status(&self) -> ConnectionStatus {
+        self.connection.status()
+    }
 
     /// Subscribes to progress and profile events from `ClickHouse` queries.
     ///
@@ -312,7 +321,9 @@ impl<T: ClientFormat> Client<T> {
     /// // Execute a query to generate events
     /// client.query("SELECT * FROM large_table").await.unwrap();
     /// ```
-    pub fn subscribe_events(&self) -> broadcast::Receiver<Event> { self.events.subscribe() }
+    pub fn subscribe_events(&self) -> broadcast::Receiver<Event> {
+        self.events.subscribe()
+    }
 
     /// Checks the health of the underlying `ClickHouse` connection.
     ///
@@ -345,7 +356,10 @@ impl<T: ClientFormat> Client<T> {
     /// println!("Connection is healthy!");
     /// ```
     pub async fn health_check(&self, ping: bool) -> Result<()> {
-        trace!({ ATT_CID } = self.client_id, "sending health check w/ ping={ping}");
+        trace!(
+            { ATT_CID } = self.client_id,
+            "sending health check w/ ping={ping}"
+        );
         self.conn().await?.check_connection(ping).await
     }
 
@@ -478,7 +492,14 @@ impl<T: ClientFormat> Client<T> {
         // Send data
         let (tx, rx) = oneshot::channel();
         let _ = connection
-            .send_operation(Operation::Insert { data: block, response: tx }, qid, true)
+            .send_operation(
+                Operation::Insert {
+                    data: block,
+                    response: tx,
+                },
+                qid,
+                true,
+            )
             .await?;
         rx.await.map_err(|_| {
             Error::Protocol(format!("Failed to receive response from insert {qid}"))
@@ -589,7 +610,14 @@ impl<T: ClientFormat> Client<T> {
         // Send data
         let (tx, rx) = oneshot::channel();
         let _ = connection
-            .send_operation(Operation::InsertMany { data: batch, response: tx }, qid, true)
+            .send_operation(
+                Operation::InsertMany {
+                    data: batch,
+                    response: tx,
+                },
+                qid,
+                true,
+            )
             .await?;
         rx.await.map_err(|_| {
             Error::Protocol(format!("Failed to receive response from insert {qid}"))
@@ -845,7 +873,8 @@ impl<T: ClientFormat> Client<T> {
         )
     )]
     pub async fn execute_now(&self, query: impl Into<ParsedQuery>, qid: Option<Qid>) -> Result<()> {
-        self.execute_now_params(query, None::<QueryParams>, qid).await
+        self.execute_now_params(query, None::<QueryParams>, qid)
+            .await
     }
 
     /// Executes a `ClickHouse` query with query parameters without processing the response stream.
@@ -1144,8 +1173,9 @@ impl Client<NativeFormat> {
         let data = Block::from_rows(blocks.collect(), header)?;
 
         let (tx, rx) = oneshot::channel();
-        let _ =
-            connection.send_operation(Operation::Insert { data, response: tx }, qid, true).await?;
+        let _ = connection
+            .send_operation(Operation::Insert { data, response: tx }, qid, true)
+            .await?;
         rx.await.map_err(|_| {
             Error::Protocol(format!("Failed to receive response from insert {qid}"))
         })??;
@@ -1552,7 +1582,9 @@ impl Client<ArrowFormat> {
         qid: Option<Qid>,
     ) -> Result<ClickHouseResponse<RecordBatch>> {
         let (query, qid) = record_query(qid, query.into(), self.client_id);
-        Ok(ClickHouseResponse::new(Box::pin(self.query_raw(query, params, qid).await?)))
+        Ok(ClickHouseResponse::new(Box::pin(
+            self.query_raw(query, params, qid).await?,
+        )))
     }
 
     /// Executes a query with result limits.
@@ -1569,7 +1601,8 @@ impl Client<ArrowFormat> {
         limits: QueryLimits,
         qid: Option<Qid>,
     ) -> Result<LimitedResponse<ClickHouseResponse<RecordBatch>>> {
-        self.query_with_limits_params(query, None, limits, qid).await
+        self.query_with_limits_params(query, None, limits, qid)
+            .await
     }
 
     /// Executes a parameterized query with result limits.
@@ -1605,7 +1638,8 @@ impl Client<ArrowFormat> {
         options: QueryOptions,
         qid: Option<Qid>,
     ) -> Result<ClickHouseResponse<RecordBatch>> {
-        self.query_with_options_params(query, None, options, qid).await
+        self.query_with_options_params(query, None, options, qid)
+            .await
     }
 
     /// Executes a parameterized query with unified options (`EXPLAIN`, limits).
@@ -1671,8 +1705,9 @@ impl Client<ArrowFormat> {
         #[allow(clippy::disallowed_methods)]
         drop(tokio::spawn(async move {
             let result = async {
-                let mut stream =
-                    client.query_params(explain_query, params, Some(explain_qid)).await?;
+                let mut stream = client
+                    .query_params(explain_query, params, Some(explain_qid))
+                    .await?;
 
                 let mut batches = Vec::new();
                 while let Some(batch_result) = stream.next().await {
@@ -1910,7 +1945,11 @@ impl Client<ArrowFormat> {
             return Ok(None);
         };
 
-        if batch.num_rows() == 0 { Ok(None) } else { Ok(Some(Arc::clone(batch.column(0)))) }
+        if batch.num_rows() == 0 {
+            Ok(None)
+        } else {
+            Ok(Some(Arc::clone(batch.column(0))))
+        }
     }
 
     /// Executes a `ClickHouse` query and returns the first row as a [`RecordBatch`].
@@ -2035,7 +2074,10 @@ impl Client<ArrowFormat> {
         if batch.num_rows() == 0 {
             Ok(None)
         } else {
-            Ok(Some(take_record_batch(&batch, &arrow::array::UInt32Array::from(vec![0]))?))
+            Ok(Some(take_record_batch(
+                &batch,
+                &arrow::array::UInt32Array::from(vec![0]),
+            )?))
         }
     }
 

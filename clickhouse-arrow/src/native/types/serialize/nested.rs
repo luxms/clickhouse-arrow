@@ -36,7 +36,9 @@ impl Serializer for NestedSerializer {
         _writer: &mut W,
         _state: &mut SerializerState,
     ) -> Result<()> {
-        Err(Error::serialize("Nested native value serialization is not implemented"))
+        Err(Error::serialize(
+            "Nested native value serialization is not implemented",
+        ))
     }
 
     fn write_sync(
@@ -45,7 +47,9 @@ impl Serializer for NestedSerializer {
         _writer: &mut impl ClickHouseBytesWrite,
         _state: &mut SerializerState,
     ) -> Result<()> {
-        Err(Error::serialize("Nested native value serialization is not implemented"))
+        Err(Error::serialize(
+            "Nested native value serialization is not implemented",
+        ))
     }
 }
 
@@ -56,14 +60,19 @@ mod tests {
     use super::*;
 
     fn nested_type() -> Type {
-        Type::Nested(vec![("k".to_string(), Type::UInt8), ("v".to_string(), Type::String)])
+        Type::Nested(vec![
+            ("k".to_string(), Type::UInt8),
+            ("v".to_string(), Type::String),
+        ])
     }
 
     #[tokio::test]
     async fn write_prefix_async_is_noop_for_non_nested() {
         let mut writer = Cursor::new(Vec::new());
         let mut state = SerializerState::default();
-        NestedSerializer::write_prefix(&Type::UInt8, &mut writer, &mut state).await.unwrap();
+        NestedSerializer::write_prefix(&Type::UInt8, &mut writer, &mut state)
+            .await
+            .unwrap();
         assert!(writer.into_inner().is_empty());
     }
 
@@ -71,7 +80,9 @@ mod tests {
     async fn write_prefix_async_serializes_nested_children() {
         let mut writer = Cursor::new(Vec::new());
         let mut state = SerializerState::default();
-        NestedSerializer::write_prefix(&nested_type(), &mut writer, &mut state).await.unwrap();
+        NestedSerializer::write_prefix(&nested_type(), &mut writer, &mut state)
+            .await
+            .unwrap();
         assert!(writer.into_inner().is_empty());
     }
 

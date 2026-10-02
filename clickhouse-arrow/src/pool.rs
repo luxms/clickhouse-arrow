@@ -28,8 +28,8 @@ pub type ConnectionPool<T> = bb8::Pool<ConnectionManager<T>>;
 /// Helper to construct a bb8 connection pool
 pub struct ConnectionPoolBuilder<T: ClientFormat> {
     client_builder: ClientBuilder,
-    pool:           PoolBuilder<T>,
-    check_health:   bool,
+    pool: PoolBuilder<T>,
+    check_health: bool,
 }
 
 impl<T: ClientFormat> ConnectionPoolBuilder<T> {
@@ -37,22 +37,36 @@ impl<T: ClientFormat> ConnectionPoolBuilder<T> {
     /// underlying [`ClientBuilder`].
     pub fn new<A: Into<Destination>>(destination: A) -> Self {
         let client_builder = ClientBuilder::new().with_destination(destination);
-        Self { pool: bb8::Builder::new(), client_builder, check_health: false }
+        Self {
+            pool: bb8::Builder::new(),
+            client_builder,
+            check_health: false,
+        }
     }
 
     /// Initialize by providing a [`ClientBuilder`] directly.
     pub fn with_client_builder(client_builder: ClientBuilder) -> Self {
-        Self { pool: bb8::Builder::new(), client_builder, check_health: false }
+        Self {
+            pool: bb8::Builder::new(),
+            client_builder,
+            check_health: false,
+        }
     }
 
     /// Get the underlying client builder's unique identifier.
-    pub fn connection_identifier(&self) -> String { self.client_builder.connection_identifier() }
+    pub fn connection_identifier(&self) -> String {
+        self.client_builder.connection_identifier()
+    }
 
     /// Get a reference to the current configured [`ClientOptions`]
-    pub fn client_options(&self) -> &ClientOptions { self.client_builder.options() }
+    pub fn client_options(&self) -> &ClientOptions {
+        self.client_builder.options()
+    }
 
     /// Get a reference to the current configured [`Settings`]
-    pub fn client_settings(&self) -> Option<&Settings> { self.client_builder.settings() }
+    pub fn client_settings(&self) -> Option<&Settings> {
+        self.client_builder.settings()
+    }
 
     /// Whether the underlying connection will issue a `ping` when checking health.
     #[must_use]
@@ -86,9 +100,11 @@ impl<T: ClientFormat> ConnectionPoolBuilder<T> {
     /// # Errors
     /// Returns an error if the connection manager build fails, ie `Destination` fails to verify.
     pub async fn build_manager(&self) -> Result<ConnectionManager<T>> {
-        Ok(ConnectionManager::try_new_with_builder(self.client_builder.clone())
-            .await?
-            .with_check(self.check_health))
+        Ok(
+            ConnectionManager::try_new_with_builder(self.client_builder.clone())
+                .await?
+                .with_check(self.check_health),
+        )
     }
 
     /// Builds a connection pool with the given configuration.
@@ -107,9 +123,9 @@ impl<T: ClientFormat> ConnectionPoolBuilder<T> {
 /// `ConnectionManager` is the underlying manager that `bb8::Pool` uses to manage connections.
 #[derive(Clone)]
 pub struct ConnectionManager<T: ClientFormat> {
-    builder:      ClientBuilder,
+    builder: ClientBuilder,
     check_health: bool,
-    _phantom:     std::marker::PhantomData<Client<T>>,
+    _phantom: std::marker::PhantomData<Client<T>>,
 }
 
 impl<T: ClientFormat> ConnectionManager<T> {
@@ -167,7 +183,11 @@ impl<T: ClientFormat> ConnectionManager<T> {
     pub async fn try_new_with_builder(builder: ClientBuilder) -> Result<Self> {
         // Verify the connection settings
         let builder = builder.verify().await?;
-        Ok(Self { builder, check_health: false, _phantom: std::marker::PhantomData })
+        Ok(Self {
+            builder,
+            check_health: false,
+            _phantom: std::marker::PhantomData,
+        })
     }
 
     /// Whether the underlying connection will issue a `ping` when checking health.
@@ -190,9 +210,13 @@ impl<T: ClientFormat> ConnectionManager<T> {
     }
 
     /// Useful to determine if 2 connections are essentially the same
-    pub fn connection_identifier(&self) -> String { self.builder.connection_identifier() }
+    pub fn connection_identifier(&self) -> String {
+        self.builder.connection_identifier()
+    }
 
-    async fn connect(&self) -> Result<Client<T>> { self.builder.clone().build().await }
+    async fn connect(&self) -> Result<Client<T>> {
+        self.builder.clone().build().await
+    }
 }
 
 impl<T: ClientFormat> ManageConnection for ConnectionManager<T> {
@@ -236,27 +260,30 @@ impl<T: ClientFormat> ManageConnection for ConnectionManager<T> {
     }
 
     fn has_broken(&self, conn: &mut Self::Connection) -> bool {
-        matches!(conn.status(), ConnectionStatus::Error | ConnectionStatus::Closed)
+        matches!(
+            conn.status(),
+            ConnectionStatus::Error | ConnectionStatus::Closed
+        )
     }
 }
 
 #[derive(Debug, Clone, Copy)]
 pub struct ExponentialBackoff {
     current_interval: Duration,
-    factor:           f64,
-    max_interval:     Duration,
+    factor: f64,
+    max_interval: Duration,
     max_elapsed_time: Option<Duration>,
-    attempts:         u32,
+    attempts: u32,
 }
 
 impl ExponentialBackoff {
     pub fn new() -> Self {
         ExponentialBackoff {
             current_interval: Duration::from_millis(10), // Start with 100ms
-            factor:           2.0,
-            max_interval:     Duration::from_mins(1),
+            factor: 2.0,
+            max_interval: Duration::from_mins(1),
             max_elapsed_time: Some(Duration::from_mins(15)), // 15 minutes
-            attempts:         0,
+            attempts: 0,
         }
     }
 
@@ -270,15 +297,18 @@ impl ExponentialBackoff {
         }
 
         #[expect(clippy::cast_possible_wrap)]
-        let next_interval =
-            self.current_interval.mul_f64(self.factor.powi(self.attempts as i32 - 1));
+        let next_interval = self
+            .current_interval
+            .mul_f64(self.factor.powi(self.attempts as i32 - 1));
 
         Some(next_interval.min(self.max_interval))
     }
 }
 
 impl Default for ExponentialBackoff {
-    fn default() -> Self { Self::new() }
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 #[cfg(test)]
@@ -346,8 +376,9 @@ mod tests {
             .with_destination("localhost:9000")
             .with_options(ClientOptions::new().with_ipv4_only(true));
 
-        let manager =
-            ConnectionManager::<NativeFormat>::try_new_with_builder(base.clone()).await.unwrap();
+        let manager = ConnectionManager::<NativeFormat>::try_new_with_builder(base.clone())
+            .await
+            .unwrap();
         assert!(!manager.connection_identifier().is_empty());
 
         let pool_builder = ConnectionPoolBuilder::<NativeFormat>::with_client_builder(base);

@@ -8,11 +8,11 @@ use crate::{attr, check};
 /// A source data structure annotated with `#[derive(Row)]`, parsed into an internal representation.
 pub struct Container<'a> {
     /// The struct or enum name (without generics).
-    pub ident:    syn::Ident,
+    pub ident: syn::Ident,
     /// Attributes on the structure, parsed for Serde.
-    pub attrs:    attr::Container,
+    pub attrs: attr::Container,
     /// The contents of the struct or enum.
-    pub data:     Struct<'a>,
+    pub data: Struct<'a>,
     /// Any generics on the struct or enum.
     pub generics: &'a syn::Generics,
     /// Original input.
@@ -26,9 +26,9 @@ pub type Struct<'a> = Vec<Field<'a>>;
 
 /// A field of a struct.
 pub struct Field<'a> {
-    pub member:   syn::Member,
-    pub attrs:    attr::Field,
-    pub ty:       &'a syn::Type,
+    pub member: syn::Member,
+    pub attrs: attr::Field,
+    pub ty: &'a syn::Type,
     pub original: &'a syn::Field,
 }
 
@@ -73,11 +73,17 @@ fn struct_from_ast<'a>(
     match fields {
         syn::Fields::Named(fields) => fields_from_ast(cx, &fields.named, container_default),
         syn::Fields::Unnamed(fields) => {
-            cx.error_spanned_by(fields, "ClickHouse Native Row does not support tuple structs");
+            cx.error_spanned_by(
+                fields,
+                "ClickHouse Native Row does not support tuple structs",
+            );
             vec![]
         }
         syn::Fields::Unit => {
-            cx.error_spanned_by(fields, "ClickHouse Native Row does not support unit structs");
+            cx.error_spanned_by(
+                fields,
+                "ClickHouse Native Row does not support unit structs",
+            );
             vec![]
         }
     }
@@ -92,12 +98,12 @@ fn fields_from_ast<'a>(
         .iter()
         .enumerate()
         .map(|(i, field)| Field {
-            member:   match &field.ident {
+            member: match &field.ident {
                 Some(ident) => syn::Member::Named(ident.clone()),
                 None => syn::Member::Unnamed(i.into()),
             },
-            attrs:    attr::Field::from_ast(cx, i, field, container_default),
-            ty:       &field.ty,
+            attrs: attr::Field::from_ast(cx, i, field, container_default),
+            ty: &field.ty,
             original: field,
         })
         .collect()

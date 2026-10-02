@@ -18,18 +18,18 @@ pub(crate) const DEFAULT_INSERT_SAMPLE_SIZE: usize = 50;
 
 #[derive(ClickHouseRow, Clone, Serialize, Deserialize)]
 pub(crate) struct ClickHouseRsRow {
-    id:    String,
-    name:  String,
+    id: String,
+    name: String,
     value: f64,
-    ts:    i64, // DateTime64(3) maps to i64 milliseconds
+    ts: i64, // DateTime64(3) maps to i64 milliseconds
 }
 
 #[derive(Row, Clone, Serialize, Deserialize)]
 pub(crate) struct ClickHouseNativeRow {
-    id:    String,
-    name:  String,
+    id: String,
+    name: String,
     value: f64,
-    ts:    DateTime64<3>,
+    ts: DateTime64<3>,
 }
 
 pub(crate) fn init() {
@@ -74,10 +74,10 @@ pub(crate) fn setup_clickhouse_rs(ch: &'static ClickHouseContainer) -> ClickHous
 pub(crate) fn create_test_rows(rows: usize) -> Vec<ClickHouseRsRow> {
     (0..rows)
         .map(|i| ClickHouseRsRow {
-            id:    Uuid::new_v4().to_string(),
-            name:  format!("name{i}"),
+            id: Uuid::new_v4().to_string(),
+            name: format!("name{i}"),
             value: i as f64,
-            ts:    i as i64 * 1000,
+            ts: i as i64 * 1000,
         })
         .collect()
 }
@@ -89,10 +89,10 @@ pub(crate) fn create_test_rows(rows: usize) -> Vec<ClickHouseRsRow> {
 pub(crate) fn create_test_native_rows(rows: usize) -> Vec<ClickHouseNativeRow> {
     (0..rows)
         .map(|i| ClickHouseNativeRow {
-            id:    Uuid::new_v4().to_string(),
-            name:  format!("name{i}"),
+            id: Uuid::new_v4().to_string(),
+            name: format!("name{i}"),
             value: i as f64,
-            ts:    DateTime64::<3>::try_from(
+            ts: DateTime64::<3>::try_from(
                 chrono::DateTime::<chrono::Utc>::from_timestamp(i as i64 * 1000, 0).unwrap(),
             )
             .unwrap(),
@@ -118,20 +118,24 @@ pub(crate) fn insert_rs(
     let _ = group
         .sample_size(DEFAULT_INSERT_SAMPLE_SIZE)
         .measurement_time(std::time::Duration::from_secs(30))
-        .bench_with_input(BenchmarkId::new(id, rows), &(table, client), |b, (table, client)| {
-            b.to_async(rt).iter_batched(
-                || batch.to_vec(), // Setup: clone the rows for each iteration
-                |rows| async move {
-                    let mut insert: clickhouse::insert::Insert<ClickHouseRsRow> =
-                        client.insert(table).await.unwrap();
-                    for row in rows {
-                        insert.write(&row).await.unwrap();
-                    }
-                    insert.end().await.unwrap();
-                },
-                criterion::BatchSize::SmallInput,
-            );
-        });
+        .bench_with_input(
+            BenchmarkId::new(id, rows),
+            &(table, client),
+            |b, (table, client)| {
+                b.to_async(rt).iter_batched(
+                    || batch.to_vec(), // Setup: clone the rows for each iteration
+                    |rows| async move {
+                        let mut insert: clickhouse::insert::Insert<ClickHouseRsRow> =
+                            client.insert(table).await.unwrap();
+                        for row in rows {
+                            insert.write(&row).await.unwrap();
+                        }
+                        insert.end().await.unwrap();
+                    },
+                    criterion::BatchSize::SmallInput,
+                );
+            },
+        );
 }
 
 #[allow(unused)]
@@ -148,7 +152,11 @@ pub(crate) fn query_rs(
         &(query, client),
         |b, (query, client)| {
             b.to_async(rt).iter(|| async move {
-                let result = client.query(query).fetch_all::<ClickHouseRsRow>().await.unwrap();
+                let result = client
+                    .query(query)
+                    .fetch_all::<ClickHouseRsRow>()
+                    .await
+                    .unwrap();
                 black_box(result)
             });
         },

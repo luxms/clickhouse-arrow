@@ -22,15 +22,15 @@ use futures_util::StreamExt;
 
 #[derive(Debug, Clone)]
 struct TestResult {
-    workers:            usize,
-    batch_size:         usize,
-    rows:               usize,
-    avg_duration_secs:  f64, // Outlier-stripped average
+    workers: usize,
+    batch_size: usize,
+    rows: usize,
+    avg_duration_secs: f64,  // Outlier-stripped average
     best_duration_secs: f64, // Best (minimum) time
-    avg_rows_per_sec:   f64, // Average throughput
-    best_rows_per_sec:  f64, // Best (maximum) throughput
-    count_time_secs:    f64,
-    drop_time_secs:     f64,
+    avg_rows_per_sec: f64,   // Average throughput
+    best_rows_per_sec: f64,  // Best (maximum) throughput
+    count_time_secs: f64,
+    drop_time_secs: f64,
 }
 
 #[tokio::main]
@@ -69,7 +69,11 @@ async fn run(ch: &'static ClickHouseContainer) -> Result<()> {
         .filter_map(parse_number)
         .collect();
 
-    let iters: usize = std::env::var("ITERS").ok().and_then(|s| s.parse().ok()).unwrap_or(3).max(3); // Minimum 3 iterations for outlier stripping
+    let iters: usize = std::env::var("ITERS")
+        .ok()
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(3)
+        .max(3); // Minimum 3 iterations for outlier stripping
 
     // Get schema configuration
     let config = arrow_tests::BatchConfig::from_env();
@@ -264,7 +268,10 @@ async fn run(ch: &'static ClickHouseContainer) -> Result<()> {
             format!("{:.3}", result.best_duration_secs),
             format_number(result.avg_rows_per_sec as usize),
             format_number(result.best_rows_per_sec as usize),
-            format!("{:.2}", result.best_rows_per_sec * bytes_per_row / 1_000_000.0),
+            format!(
+                "{:.2}",
+                result.best_rows_per_sec * bytes_per_row / 1_000_000.0
+            ),
             format!("{:.3}", result.count_time_secs),
             format!("{:.3}", result.drop_time_secs),
         ]);
@@ -284,7 +291,11 @@ async fn run(ch: &'static ClickHouseContainer) -> Result<()> {
     // Show best result
     let best = all_results
         .iter()
-        .max_by(|a, b| a.best_rows_per_sec.partial_cmp(&b.best_rows_per_sec).unwrap())
+        .max_by(|a, b| {
+            a.best_rows_per_sec
+                .partial_cmp(&b.best_rows_per_sec)
+                .unwrap()
+        })
         .unwrap();
     eprintln!();
     eprintln!("🏆 BEST RESULT:");

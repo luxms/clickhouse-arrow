@@ -24,7 +24,7 @@ This file defines mandatory implementation and review rules for this repository.
 15. Work is not complete until ALL of the following are true:
     Unit tests pass across all feature combinations.
     Integration tests pass across all feature combinations.
-    Formatting is clean using nightly rustfmt (`cargo +nightly fmt`, respecting `rustfmt.toml`).
+    Formatting is clean using the pinned Rust 1.96.0 toolchain (`cargo fmt`, respecting `rustfmt.toml`).
     Lint warnings are resolved across all feature combinations, including pedantic.
     Line coverage is greater than 90%.
 16. Follow the existing folder structure, module layout conventions (modern modules, no `mod.rs` pattern for new work), and established code patterns. When adding new behavior, find and follow the closest existing pattern first.

@@ -39,8 +39,11 @@ impl Deserializer for TupleDeserializer {
         let inner_types = type_.unwrap_tuple()?;
         let mut tuples = vec![Value::Tuple(Vec::with_capacity(inner_types.len())); rows];
         for (_, type_) in inner_types {
-            for (i, value) in
-                type_.deserialize_column(reader, rows, state).await?.into_iter().enumerate()
+            for (i, value) in type_
+                .deserialize_column(reader, rows, state)
+                .await?
+                .into_iter()
+                .enumerate()
             {
                 match &mut tuples[i] {
                     Value::Tuple(values) => {

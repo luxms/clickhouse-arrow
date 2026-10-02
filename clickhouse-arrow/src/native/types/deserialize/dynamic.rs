@@ -32,7 +32,9 @@ impl Deserializer for DynamicDeserializer {
         state: &mut DeserializerState<T>,
     ) -> Result<()> {
         if !matches!(type_, Type::Dynamic { .. }) {
-            return Err(Error::deserialize("DynamicDeserializer called with non-dynamic type"));
+            return Err(Error::deserialize(
+                "DynamicDeserializer called with non-dynamic type",
+            ));
         }
 
         let serialization_version = reader.read_u64_le().await?;
@@ -78,7 +80,9 @@ impl Deserializer for DynamicDeserializer {
         _rows: usize,
         _state: &mut DeserializerState,
     ) -> Result<Vec<Value>> {
-        Err(Error::deserialize("DynamicDeserializer native value read is not implemented"))
+        Err(Error::deserialize(
+            "DynamicDeserializer native value read is not implemented",
+        ))
     }
 
     // TODO: Remove

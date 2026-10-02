@@ -49,7 +49,10 @@ impl Serializer for NullableSerializer {
             )));
         };
 
-        let mask = values.iter().map(|value| u8::from(value == &Value::Null)).collect::<Vec<u8>>();
+        let mask = values
+            .iter()
+            .map(|value| u8::from(value == &Value::Null))
+            .collect::<Vec<u8>>();
         writer.write_all(&mask).await?;
 
         inner_type.serialize_column(values, writer, state).await?;
@@ -70,7 +73,10 @@ impl Serializer for NullableSerializer {
             )));
         };
 
-        let mask = values.iter().map(|value| u8::from(value == &Value::Null)).collect::<Vec<u8>>();
+        let mask = values
+            .iter()
+            .map(|value| u8::from(value == &Value::Null))
+            .collect::<Vec<u8>>();
         writer.put_slice(&mask);
 
         inner_type.serialize_column_sync(values, writer, state)?;

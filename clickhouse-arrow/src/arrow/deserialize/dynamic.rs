@@ -104,7 +104,12 @@ pub(super) async fn deserialize<R: ClickHouseRead>(
     let mut type_ids = Vec::with_capacity(rows);
     let mut offsets = Vec::with_capacity(rows);
 
-    for outer_null in nulls.iter().copied().chain(std::iter::repeat(0_u8)).take(rows) {
+    for outer_null in nulls
+        .iter()
+        .copied()
+        .chain(std::iter::repeat(0_u8))
+        .take(rows)
+    {
         #[expect(clippy::cast_possible_truncation)]
         let discriminator = match discriminator_width {
             1 => reader.read_u8().await? as usize,
@@ -169,7 +174,9 @@ pub(super) async fn deserialize<R: ClickHouseRead>(
 
     for (source_idx, logical_type) in flattened_types.iter().enumerate() {
         let source_rows = source_counts[source_idx];
-        let keep_mask = source_keep_mask.as_ref().and_then(|masks| masks[source_idx].as_deref());
+        let keep_mask = source_keep_mask
+            .as_ref()
+            .and_then(|masks| masks[source_idx].as_deref());
         let source_array = {
             let (child_data_type, child_builder) =
                 union_builder.child_parts_mut(source_idx, logical_type)?;
@@ -194,7 +201,11 @@ pub(super) async fn deserialize<R: ClickHouseRead>(
                             keep_mask.len()
                         )));
                     }
-                    let keep = keep_mask.iter().copied().map(Some).collect::<BooleanArray>();
+                    let keep = keep_mask
+                        .iter()
+                        .copied()
+                        .map(Some)
+                        .collect::<BooleanArray>();
                     filter(source_array.as_ref(), &keep)?
                 } else {
                     source_array
@@ -249,10 +260,13 @@ mod tests {
         let fields = fields.into_iter().collect::<Vec<_>>();
         #[expect(clippy::cast_possible_truncation)]
         DataType::Union(
-            UnionFields::new(
+            UnionFields::try_new(
                 (0..fields.len()).map(|i| i as i8),
-                fields.into_iter().map(|(name, data_type)| Field::new(name, data_type, false)),
-            ),
+                fields
+                    .into_iter()
+                    .map(|(name, data_type)| Field::new(name, data_type, false)),
+            )
+            .unwrap(),
             UnionMode::Dense,
         )
     }
@@ -261,7 +275,9 @@ mod tests {
         TypedBuilder::try_new(&Type::Dynamic { max_types: 8 }, data_type).unwrap()
     }
 
-    fn ctx(row_buffer: &mut Vec<u8>) -> ArrowFieldCtx<'_> { ArrowFieldCtx::new(row_buffer) }
+    fn ctx(row_buffer: &mut Vec<u8>) -> ArrowFieldCtx<'_> {
+        ArrowFieldCtx::new(row_buffer)
+    }
 
     fn dynamic_ctx(
         row_buffer: &mut Vec<u8>,
@@ -322,19 +338,37 @@ mod tests {
             &data_type,
             5,
             &[],
-            &mut dynamic_ctx(&mut row_buffer, 3, vec![Type::Int32, Type::String, Type::Nothing]),
+            &mut dynamic_ctx(
+                &mut row_buffer,
+                3,
+                vec![Type::Int32, Type::String, Type::Nothing],
+            ),
         )
         .await
         .unwrap();
 
         let union = result.as_any().downcast_ref::<UnionArray>().unwrap();
-        assert_eq!((0..5).map(|i| union.type_id(i)).collect::<Vec<_>>(), vec![0, 1, 2, 1, 0]);
-        assert_eq!((0..5).map(|i| union.value_offset(i)).collect::<Vec<_>>(), vec![0, 0, 0, 1, 1]);
+        assert_eq!(
+            (0..5).map(|i| union.type_id(i)).collect::<Vec<_>>(),
+            vec![0, 1, 2, 1, 0]
+        );
+        assert_eq!(
+            (0..5).map(|i| union.value_offset(i)).collect::<Vec<_>>(),
+            vec![0, 0, 0, 1, 1]
+        );
 
-        let ints = union.child(0).as_any().downcast_ref::<Int32Array>().unwrap();
+        let ints = union
+            .child(0)
+            .as_any()
+            .downcast_ref::<Int32Array>()
+            .unwrap();
         assert_eq!(ints, &Int32Array::from(vec![10, 20]));
 
-        let strings = union.child(1).as_any().downcast_ref::<StringArray>().unwrap();
+        let strings = union
+            .child(1)
+            .as_any()
+            .downcast_ref::<StringArray>()
+            .unwrap();
         assert_eq!(strings, &StringArray::from(vec!["a", "b"]));
 
         let nulls = union.child(2).as_any().downcast_ref::<NullArray>().unwrap();
@@ -370,14 +404,28 @@ mod tests {
         .unwrap();
 
         let union = result.as_any().downcast_ref::<UnionArray>().unwrap();
-        assert_eq!((0..3).map(|i| union.type_id(i)).collect::<Vec<_>>(), vec![0, 1, 0]);
-        assert_eq!((0..3).map(|i| union.value_offset(i)).collect::<Vec<_>>(), vec![0, 0, 1]);
+        assert_eq!(
+            (0..3).map(|i| union.type_id(i)).collect::<Vec<_>>(),
+            vec![0, 1, 0]
+        );
+        assert_eq!(
+            (0..3).map(|i| union.value_offset(i)).collect::<Vec<_>>(),
+            vec![0, 0, 1]
+        );
 
         // Nulls were prepended into child 0; filtered non-null value remains after them.
-        let ints = union.child(0).as_any().downcast_ref::<Int32Array>().unwrap();
+        let ints = union
+            .child(0)
+            .as_any()
+            .downcast_ref::<Int32Array>()
+            .unwrap();
         assert_eq!(ints, &Int32Array::from(vec![None, Some(22)]));
 
-        let strings = union.child(1).as_any().downcast_ref::<StringArray>().unwrap();
+        let strings = union
+            .child(1)
+            .as_any()
+            .downcast_ref::<StringArray>()
+            .unwrap();
         assert_eq!(strings, &StringArray::from(vec!["x"]));
     }
 
@@ -408,13 +456,27 @@ mod tests {
         .unwrap();
 
         let union = result.as_any().downcast_ref::<UnionArray>().unwrap();
-        assert_eq!((0..3).map(|i| union.type_id(i)).collect::<Vec<_>>(), vec![0, 1, 0]);
-        assert_eq!((0..3).map(|i| union.value_offset(i)).collect::<Vec<_>>(), vec![0, 0, 1]);
+        assert_eq!(
+            (0..3).map(|i| union.type_id(i)).collect::<Vec<_>>(),
+            vec![0, 1, 0]
+        );
+        assert_eq!(
+            (0..3).map(|i| union.value_offset(i)).collect::<Vec<_>>(),
+            vec![0, 0, 1]
+        );
 
-        let ints = union.child(0).as_any().downcast_ref::<Int32Array>().unwrap();
+        let ints = union
+            .child(0)
+            .as_any()
+            .downcast_ref::<Int32Array>()
+            .unwrap();
         assert_eq!(ints, &Int32Array::from(vec![None, Some(22)]));
 
-        let strings = union.child(1).as_any().downcast_ref::<StringArray>().unwrap();
+        let strings = union
+            .child(1)
+            .as_any()
+            .downcast_ref::<StringArray>()
+            .unwrap();
         assert_eq!(strings, &StringArray::from(vec!["x"]));
     }
 
@@ -484,7 +546,10 @@ mod tests {
         .await
         .unwrap_err();
 
-        assert!(err.to_string().contains("only supports flattened serialization version 3"));
+        assert!(
+            err.to_string()
+                .contains("only supports flattened serialization version 3")
+        );
     }
 
     #[tokio::test]

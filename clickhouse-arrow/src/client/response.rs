@@ -40,20 +40,26 @@ pub(crate) fn handle_insert_response<T: ClientFormat>(
 #[pin_project::pin_project]
 pub struct ClickHouseResponse<T> {
     #[pin]
-    stream:           Pin<Box<dyn Stream<Item = Result<T>> + Send + 'static>>,
+    stream: Pin<Box<dyn Stream<Item = Result<T>> + Send + 'static>>,
     explain_receiver: Option<oneshot::Receiver<Result<ExplainResult>>>,
 }
 
 impl<T> ClickHouseResponse<T> {
     pub fn new(stream: Pin<Box<dyn Stream<Item = Result<T>> + Send + 'static>>) -> Self {
-        Self { stream, explain_receiver: None }
+        Self {
+            stream,
+            explain_receiver: None,
+        }
     }
 
     pub fn with_explain(
         stream: Pin<Box<dyn Stream<Item = Result<T>> + Send + 'static>>,
         explain_receiver: oneshot::Receiver<Result<ExplainResult>>,
     ) -> Self {
-        Self { stream, explain_receiver: Some(explain_receiver) }
+        Self {
+            stream,
+            explain_receiver: Some(explain_receiver),
+        }
     }
 
     pub fn from_stream<S>(stream: S) -> Self
@@ -74,7 +80,9 @@ impl<T> ClickHouseResponse<T> {
     }
 
     #[must_use]
-    pub fn has_explain(&self) -> bool { self.explain_receiver.is_some() }
+    pub fn has_explain(&self) -> bool {
+        self.explain_receiver.is_some()
+    }
 
     pub async fn explain(&mut self) -> Option<Result<ExplainResult>> {
         let receiver = self.explain_receiver.take()?;
@@ -115,7 +123,10 @@ mod tests {
 
         let (tx_data, rx_data) = mpsc::channel(4);
         tx_data.send(Ok(Block::default())).await.unwrap();
-        tx_data.send(Err(Error::Protocol("boom".into()))).await.unwrap();
+        tx_data
+            .send(Err(Error::Protocol("boom".into())))
+            .await
+            .unwrap();
         drop(tx_data);
 
         let mut data_stream = Box::pin(create_response_stream::<NativeFormat>(rx_data, qid, 7));
@@ -128,7 +139,10 @@ mod tests {
 
         let (tx_insert, rx_insert) = mpsc::channel(4);
         tx_insert.send(Ok(Block::default())).await.unwrap();
-        tx_insert.send(Err(Error::Protocol("insert-err".into()))).await.unwrap();
+        tx_insert
+            .send(Err(Error::Protocol("insert-err".into())))
+            .await
+            .unwrap();
         drop(tx_insert);
 
         let mut insert_stream = Box::pin(handle_insert_response::<NativeFormat>(rx_insert, qid, 8));
@@ -140,7 +154,9 @@ mod tests {
     #[tokio::test]
     async fn clickhouse_response_explain_roundtrip_and_channel_closed() {
         let (tx_explain, rx_explain) = oneshot::channel();
-        tx_explain.send(Ok(ExplainResult::Text("plan".to_string()))).expect("oneshot send");
+        tx_explain
+            .send(Ok(ExplainResult::Text("plan".to_string())))
+            .expect("oneshot send");
 
         let mut response = ClickHouseResponse::from_stream_with_explain(
             futures_util::stream::iter(vec![Ok(1)]),
@@ -148,7 +164,11 @@ mod tests {
         );
 
         assert!(response.has_explain());
-        let explain = response.explain().await.expect("explain should exist").unwrap();
+        let explain = response
+            .explain()
+            .await
+            .expect("explain should exist")
+            .unwrap();
         assert_eq!(explain.as_text(), Some("plan"));
         assert!(!response.has_explain());
         assert!(response.explain().await.is_none());
@@ -161,7 +181,11 @@ mod tests {
             futures_util::stream::empty(),
             rx_dropped,
         );
-        let err = dropped.explain().await.expect("expected channel close error").unwrap_err();
+        let err = dropped
+            .explain()
+            .await
+            .expect("expected channel close error")
+            .unwrap_err();
         assert!(matches!(err, Error::ChannelClosed));
     }
 

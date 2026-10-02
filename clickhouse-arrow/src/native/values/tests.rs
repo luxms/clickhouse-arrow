@@ -47,8 +47,14 @@ fn roundtrip_u128() {
 
 #[test]
 fn roundtrip_u256() {
-    assert_eq!(u256::from((0u128, 0u128)), roundtrip(u256::from((0u128, 0u128)), &Type::UInt256));
-    assert_eq!(u256::from((5u128, 0u128)), roundtrip(u256::from((5u128, 0u128)), &Type::UInt256));
+    assert_eq!(
+        u256::from((0u128, 0u128)),
+        roundtrip(u256::from((0u128, 0u128)), &Type::UInt256)
+    );
+    assert_eq!(
+        u256::from((5u128, 0u128)),
+        roundtrip(u256::from((5u128, 0u128)), &Type::UInt256)
+    );
 }
 
 #[test]
@@ -88,8 +94,14 @@ fn roundtrip_i128() {
 
 #[test]
 fn roundtrip_i256() {
-    assert_eq!(i256::from((0u128, 0u128)), roundtrip(i256::from((0u128, 0u128)), &Type::Int256));
-    assert_eq!(i256::from((5u128, 0u128)), roundtrip(i256::from((5u128, 0u128)), &Type::Int256));
+    assert_eq!(
+        i256::from((0u128, 0u128)),
+        roundtrip(i256::from((0u128, 0u128)), &Type::Int256)
+    );
+    assert_eq!(
+        i256::from((5u128, 0u128)),
+        roundtrip(i256::from((5u128, 0u128)), &Type::Int256)
+    );
 }
 
 #[test]
@@ -106,8 +118,11 @@ fn roundtrip_f32() {
         f32::NEG_INFINITY,
     ];
 
-    const FIXED_POINTS: &[FixedPoint32<3>] =
-        &[FixedPoint32::<3>(0), FixedPoint32::<3>(5), FixedPoint32::<3>(-5)];
+    const FIXED_POINTS: &[FixedPoint32<3>] = &[
+        FixedPoint32::<3>(0),
+        FixedPoint32::<3>(5),
+        FixedPoint32::<3>(-5),
+    ];
 
     for float in FLOATS {
         assert_eq!(float.to_bits(), roundtrip(*float, &Type::Float32).to_bits());
@@ -135,8 +150,11 @@ fn roundtrip_f64() {
         f64::NEG_INFINITY,
     ];
 
-    const FIXED_POINTS: &[FixedPoint64<3>] =
-        &[FixedPoint64::<3>(0), FixedPoint64::<3>(5), FixedPoint64::<3>(-5)];
+    const FIXED_POINTS: &[FixedPoint64<3>] = &[
+        FixedPoint64::<3>(0),
+        FixedPoint64::<3>(5),
+        FixedPoint64::<3>(-5),
+    ];
 
     for float in FLOATS {
         assert_eq!(float.to_bits(), roundtrip(*float, &Type::Float64).to_bits());
@@ -152,23 +170,50 @@ fn roundtrip_f64() {
 
 #[test]
 fn roundtrip_d32() {
-    assert_eq!(FixedPoint32::<3>(0), roundtrip(FixedPoint32::<3>(0), &Type::Decimal32(3)));
-    assert_eq!(FixedPoint32::<3>(5), roundtrip(FixedPoint32::<3>(5), &Type::Decimal32(3)));
-    assert_eq!(FixedPoint32::<3>(-5), roundtrip(FixedPoint32::<3>(-5), &Type::Decimal32(3)));
+    assert_eq!(
+        FixedPoint32::<3>(0),
+        roundtrip(FixedPoint32::<3>(0), &Type::Decimal32(3))
+    );
+    assert_eq!(
+        FixedPoint32::<3>(5),
+        roundtrip(FixedPoint32::<3>(5), &Type::Decimal32(3))
+    );
+    assert_eq!(
+        FixedPoint32::<3>(-5),
+        roundtrip(FixedPoint32::<3>(-5), &Type::Decimal32(3))
+    );
 }
 
 #[test]
 fn roundtrip_d64() {
-    assert_eq!(FixedPoint64::<3>(0), roundtrip(FixedPoint64::<3>(0), &Type::Decimal64(3)));
-    assert_eq!(FixedPoint64::<3>(5), roundtrip(FixedPoint64::<3>(5), &Type::Decimal64(3)));
-    assert_eq!(FixedPoint64::<3>(-5), roundtrip(FixedPoint64::<3>(-5), &Type::Decimal64(3)));
+    assert_eq!(
+        FixedPoint64::<3>(0),
+        roundtrip(FixedPoint64::<3>(0), &Type::Decimal64(3))
+    );
+    assert_eq!(
+        FixedPoint64::<3>(5),
+        roundtrip(FixedPoint64::<3>(5), &Type::Decimal64(3))
+    );
+    assert_eq!(
+        FixedPoint64::<3>(-5),
+        roundtrip(FixedPoint64::<3>(-5), &Type::Decimal64(3))
+    );
 }
 
 #[test]
 fn roundtrip_d128() {
-    assert_eq!(FixedPoint128::<3>(0), roundtrip(FixedPoint128::<3>(0), &Type::Decimal128(3)));
-    assert_eq!(FixedPoint128::<3>(5), roundtrip(FixedPoint128::<3>(5), &Type::Decimal128(3)));
-    assert_eq!(FixedPoint128::<3>(-5), roundtrip(FixedPoint128::<3>(-5), &Type::Decimal128(3)));
+    assert_eq!(
+        FixedPoint128::<3>(0),
+        roundtrip(FixedPoint128::<3>(0), &Type::Decimal128(3))
+    );
+    assert_eq!(
+        FixedPoint128::<3>(5),
+        roundtrip(FixedPoint128::<3>(5), &Type::Decimal128(3))
+    );
+    assert_eq!(
+        FixedPoint128::<3>(-5),
+        roundtrip(FixedPoint128::<3>(-5), &Type::Decimal128(3))
+    );
 }
 
 #[test]
@@ -212,11 +257,20 @@ fn roundtrip_fixed_string() {
 #[test]
 fn roundtrip_string_null() {
     let fixed = Some("test".to_string());
-    assert_eq!(fixed, roundtrip(fixed.clone(), &Type::Nullable(Box::new(Type::String))));
+    assert_eq!(
+        fixed,
+        roundtrip(fixed.clone(), &Type::Nullable(Box::new(Type::String)))
+    );
     let fixed = Some(String::new());
-    assert_eq!(fixed, roundtrip(fixed.clone(), &Type::Nullable(Box::new(Type::String))));
+    assert_eq!(
+        fixed,
+        roundtrip(fixed.clone(), &Type::Nullable(Box::new(Type::String)))
+    );
     let fixed = None::<String>;
-    assert_eq!(fixed, roundtrip(fixed.clone(), &Type::Nullable(Box::new(Type::String))));
+    assert_eq!(
+        fixed,
+        roundtrip(fixed.clone(), &Type::Nullable(Box::new(Type::String)))
+    );
 }
 
 #[test]
@@ -248,7 +302,10 @@ fn roundtrip_bytes() {
 #[test]
 fn roundtrip_bytes2() {
     let fixed = Bytes(b"hello".to_vec());
-    assert_eq!(fixed, roundtrip(fixed.clone(), &Type::Array(Box::new(Type::UInt8))));
+    assert_eq!(
+        fixed,
+        roundtrip(fixed.clone(), &Type::Array(Box::new(Type::UInt8)))
+    );
 }
 
 #[test]
@@ -291,42 +348,70 @@ fn roundtrip_json() {
 #[test]
 fn roundtrip_array() {
     let fixed = vec![5u32, 3, 2, 7];
-    assert_eq!(fixed, roundtrip(fixed.clone(), &Type::Array(Box::new(Type::UInt32))));
+    assert_eq!(
+        fixed,
+        roundtrip(fixed.clone(), &Type::Array(Box::new(Type::UInt32)))
+    );
     let fixed: Vec<u32> = vec![];
-    assert_eq!(fixed, roundtrip(fixed.clone(), &Type::Array(Box::new(Type::UInt32))));
+    assert_eq!(
+        fixed,
+        roundtrip(fixed.clone(), &Type::Array(Box::new(Type::UInt32)))
+    );
 }
 
 #[test]
 fn roundtrip_2array() {
-    let fixed =
-        vec![vec![5u32, 3, 2, 7], vec![5u32, 3, 2, 7], vec![5u32, 3, 2, 7], vec![5u32, 3, 2, 7]];
+    let fixed = vec![
+        vec![5u32, 3, 2, 7],
+        vec![5u32, 3, 2, 7],
+        vec![5u32, 3, 2, 7],
+        vec![5u32, 3, 2, 7],
+    ];
     assert_eq!(
         fixed,
-        roundtrip(fixed.clone(), &Type::Array(Box::new(Type::Array(Box::new(Type::UInt32)))))
+        roundtrip(
+            fixed.clone(),
+            &Type::Array(Box::new(Type::Array(Box::new(Type::UInt32))))
+        )
     );
     let fixed: Vec<Vec<u32>> = vec![];
     assert_eq!(
         fixed,
-        roundtrip(fixed.clone(), &Type::Array(Box::new(Type::Array(Box::new(Type::UInt32)))))
+        roundtrip(
+            fixed.clone(),
+            &Type::Array(Box::new(Type::Array(Box::new(Type::UInt32))))
+        )
     );
     let fixed: Vec<Vec<u32>> = vec![vec![]];
     assert_eq!(
         fixed,
-        roundtrip(fixed.clone(), &Type::Array(Box::new(Type::Array(Box::new(Type::UInt32)))))
+        roundtrip(
+            fixed.clone(),
+            &Type::Array(Box::new(Type::Array(Box::new(Type::UInt32))))
+        )
     );
     let fixed: Vec<Vec<u32>> = vec![vec![], vec![5u32, 3, 2, 7]];
     assert_eq!(
         fixed,
-        roundtrip(fixed.clone(), &Type::Array(Box::new(Type::Array(Box::new(Type::UInt32)))))
+        roundtrip(
+            fixed.clone(),
+            &Type::Array(Box::new(Type::Array(Box::new(Type::UInt32))))
+        )
     );
 }
 
 #[test]
 fn roundtrip_tuple() {
     let fixed = (5u32, 7u16);
-    assert_eq!(fixed, roundtrip(fixed, &Type::tuple_anon(vec![Type::UInt32, Type::UInt16])));
+    assert_eq!(
+        fixed,
+        roundtrip(fixed, &Type::tuple_anon(vec![Type::UInt32, Type::UInt16]))
+    );
     let fixed = (1_231_123_u32, 7123u16);
-    assert_eq!(fixed, roundtrip(fixed, &Type::tuple_anon(vec![Type::UInt32, Type::UInt16])));
+    assert_eq!(
+        fixed,
+        roundtrip(fixed, &Type::tuple_anon(vec![Type::UInt32, Type::UInt16]))
+    );
 }
 
 #[test]
@@ -425,12 +510,18 @@ fn roundtrip_array_nulls() {
     let fixed = vec![Some(5u32), None, Some(3), Some(2), None];
     assert_eq!(
         fixed,
-        roundtrip(fixed.clone(), &Type::Array(Box::new(Type::Nullable(Box::new(Type::UInt32)))))
+        roundtrip(
+            fixed.clone(),
+            &Type::Array(Box::new(Type::Nullable(Box::new(Type::UInt32))))
+        )
     );
     let fixed: Vec<Option<u32>> = vec![None];
     assert_eq!(
         fixed,
-        roundtrip(fixed.clone(), &Type::Array(Box::new(Type::Nullable(Box::new(Type::UInt32)))))
+        roundtrip(
+            fixed.clone(),
+            &Type::Array(Box::new(Type::Nullable(Box::new(Type::UInt32))))
+        )
     );
 }
 
@@ -439,17 +530,26 @@ fn roundtrip_map() {
     let mut fixed: IndexMap<String, String> = IndexMap::new();
     assert_eq!(
         fixed,
-        roundtrip(fixed.clone(), &Type::Map(Box::new(Type::String), Box::new(Type::String)))
+        roundtrip(
+            fixed.clone(),
+            &Type::Map(Box::new(Type::String), Box::new(Type::String))
+        )
     );
     drop(fixed.insert("test".to_string(), "value".to_string()));
     assert_eq!(
         fixed,
-        roundtrip(fixed.clone(), &Type::Map(Box::new(Type::String), Box::new(Type::String)))
+        roundtrip(
+            fixed.clone(),
+            &Type::Map(Box::new(Type::String), Box::new(Type::String))
+        )
     );
     drop(fixed.insert("t2est".to_string(), "v2alue".to_string()));
     assert_eq!(
         fixed,
-        roundtrip(fixed.clone(), &Type::Map(Box::new(Type::String), Box::new(Type::String)))
+        roundtrip(
+            fixed.clone(),
+            &Type::Map(Box::new(Type::String), Box::new(Type::String))
+        )
     );
 }
 
@@ -460,7 +560,10 @@ fn test_escape() {
     assert_eq!(Value::string("te\\nst").to_string(), "'te\\\\nst'");
     assert_eq!(Value::string("te\\xst").to_string(), "'te\\\\xst'");
     assert_eq!(Value::string("te'st").to_string(), "'te\\'st'");
-    assert_eq!(Value::string("te\u{1F60A}st").to_string(), "'te\\xF0\\x9F\\x98\\x8Ast'");
+    assert_eq!(
+        Value::string("te\u{1F60A}st").to_string(),
+        "'te\\xF0\\x9F\\x98\\x8Ast'"
+    );
 }
 
 #[tokio::test]
@@ -475,22 +578,33 @@ async fn roundtrip_geo() {
     let polygon = Polygon(vec![ring.clone(), Ring(vec![Point([5.0, 6.0])])]);
     assert_eq!(&polygon, &roundtrip(polygon.clone(), &Type::Polygon));
     // Multipolygon
-    let multipolygon =
-        MultiPolygon(vec![polygon.clone(), Polygon(vec![ring.clone(), Ring(vec![point])])]);
-    assert_eq!(&multipolygon, &roundtrip(multipolygon.clone(), &Type::MultiPolygon));
+    let multipolygon = MultiPolygon(vec![
+        polygon.clone(),
+        Polygon(vec![ring.clone(), Ring(vec![point])]),
+    ]);
+    assert_eq!(
+        &multipolygon,
+        &roundtrip(multipolygon.clone(), &Type::MultiPolygon)
+    );
 }
 
 #[test]
 fn test_value_methods() {
     let inner = Value::String(b"hello".to_vec());
     let val = Value::Array(vec![inner.clone()]);
-    assert_eq!(val.unwrap_array_ref().unwrap(), std::slice::from_ref(&inner) as &[_]);
+    assert_eq!(
+        val.unwrap_array_ref().unwrap(),
+        std::slice::from_ref(&inner) as &[_]
+    );
     assert_eq!(val.clone().unwrap_array().unwrap(), vec![inner.clone()]);
     assert_eq!(val.unarray().unwrap(), vec![inner.clone()]);
     assert!(Value::Int8(0).unwrap_array_ref().is_err());
     assert!(Value::Int8(0).unwrap_array().is_err());
     assert_eq!(Value::Int8(0).unarray(), None);
-    assert_eq!(Value::from_value::<String>("hello".to_string()).unwrap(), inner.clone());
+    assert_eq!(
+        Value::from_value::<String>("hello".to_string()).unwrap(),
+        inner.clone()
+    );
 
     let val = Value::Tuple(vec![inner.clone()]);
     assert_eq!(val.unwrap_tuple().unwrap(), vec![inner]);
@@ -552,7 +666,10 @@ fn test_value_partial_eq_same_types() {
 
     // Test special float values
     assert_eq!(Value::Float32(f32::INFINITY), Value::Float32(f32::INFINITY));
-    assert_eq!(Value::Float64(f64::NEG_INFINITY), Value::Float64(f64::NEG_INFINITY));
+    assert_eq!(
+        Value::Float64(f64::NEG_INFINITY),
+        Value::Float64(f64::NEG_INFINITY)
+    );
 
     // Test Decimal equality
     assert_eq!(Value::Decimal32(2, 123), Value::Decimal32(2, 123));
@@ -560,9 +677,18 @@ fn test_value_partial_eq_same_types() {
     assert_ne!(Value::Decimal32(2, 123), Value::Decimal32(2, 124)); // Different value
 
     // Test Enum equality
-    assert_eq!(Value::Enum8("test".to_string(), 42), Value::Enum8("test".to_string(), 42));
-    assert_ne!(Value::Enum8("test".to_string(), 42), Value::Enum8("other".to_string(), 42));
-    assert_ne!(Value::Enum8("test".to_string(), 42), Value::Enum8("test".to_string(), 24));
+    assert_eq!(
+        Value::Enum8("test".to_string(), 42),
+        Value::Enum8("test".to_string(), 42)
+    );
+    assert_ne!(
+        Value::Enum8("test".to_string(), 42),
+        Value::Enum8("other".to_string(), 42)
+    );
+    assert_ne!(
+        Value::Enum8("test".to_string(), 42),
+        Value::Enum8("test".to_string(), 24)
+    );
 
     // Test Map equality
     let map1 = Value::Map(vec![Value::String(b"key".to_vec())], vec![Value::Int32(42)]);
@@ -578,7 +704,10 @@ fn test_value_partial_eq_cross_types() {
     assert_ne!(Value::Int8(42), Value::Int16(42));
     assert_ne!(Value::Int32(42), Value::UInt32(42));
     assert_ne!(Value::Float32(1.0), Value::Float64(1.0));
-    assert_ne!(Value::String(b"test".to_vec()), Value::Object(b"test".to_vec()));
+    assert_ne!(
+        Value::String(b"test".to_vec()),
+        Value::Object(b"test".to_vec())
+    );
 
     // Test Null equality
     assert_eq!(Value::Null, Value::Null);
@@ -649,10 +778,22 @@ fn test_value_display_formatting() {
 
     // Test string escaping
     assert_eq!(Value::String(b"hello".to_vec()).to_string(), "'hello'");
-    assert_eq!(Value::String(b"hello\nworld".to_vec()).to_string(), "'hello\\nworld'");
-    assert_eq!(Value::String(b"hello\tworld".to_vec()).to_string(), "'hello\\tworld'");
-    assert_eq!(Value::String(b"hello'world".to_vec()).to_string(), "'hello\\'world'");
-    assert_eq!(Value::String(b"hello\\world".to_vec()).to_string(), "'hello\\\\world'");
+    assert_eq!(
+        Value::String(b"hello\nworld".to_vec()).to_string(),
+        "'hello\\nworld'"
+    );
+    assert_eq!(
+        Value::String(b"hello\tworld".to_vec()).to_string(),
+        "'hello\\tworld'"
+    );
+    assert_eq!(
+        Value::String(b"hello'world".to_vec()).to_string(),
+        "'hello\\'world'"
+    );
+    assert_eq!(
+        Value::String(b"hello\\world".to_vec()).to_string(),
+        "'hello\\\\world'"
+    );
 
     // Test UUID display
     let uuid = Uuid::from_u128(0x12345678_9abc_def0_1234_567890abcdef);
@@ -672,11 +813,13 @@ fn test_value_display_formatting() {
     assert_eq!(Value::Null.to_string(), "NULL");
 
     // Test Map display
-    let map =
-        Value::Map(vec![Value::String(b"key1".to_vec()), Value::String(b"key2".to_vec())], vec![
-            Value::Int32(1),
-            Value::Int32(2),
-        ]);
+    let map = Value::Map(
+        vec![
+            Value::String(b"key1".to_vec()),
+            Value::String(b"key2".to_vec()),
+        ],
+        vec![Value::Int32(1), Value::Int32(2)],
+    );
     assert_eq!(map.to_string(), "{'key1':1,'key2':2}");
     assert_eq!(Value::Map(vec![], vec![]).to_string(), "{}");
 
@@ -757,7 +900,10 @@ fn test_value_guess_type_comprehensive() {
     assert_eq!(Value::UInt64(42).guess_type(), Type::UInt64);
     assert_eq!(Value::Float32(1.0).guess_type(), Type::Float32);
     assert_eq!(Value::String(b"test".to_vec()).guess_type(), Type::String);
-    assert_eq!(Value::Null.guess_type(), Type::Nullable(Box::new(Type::String)));
+    assert_eq!(
+        Value::Null.guess_type(),
+        Type::Nullable(Box::new(Type::String))
+    );
 
     // Test decimal types preserve precision
     assert_eq!(Value::Decimal32(3, 123).guess_type(), Type::Decimal32(3));
@@ -783,19 +929,31 @@ fn test_value_guess_type_comprehensive() {
 
     // Test empty array defaults to String
     let empty_array = Value::Array(vec![]);
-    assert_eq!(empty_array.guess_type(), Type::Array(Box::new(Type::String)));
+    assert_eq!(
+        empty_array.guess_type(),
+        Type::Array(Box::new(Type::String))
+    );
 
     // Test tuple type inference
     let tuple = Value::Tuple(vec![Value::Int32(1), Value::String(b"test".to_vec())]);
-    assert_eq!(tuple.guess_type(), Type::tuple_anon(vec![Type::Int32, Type::String]));
+    assert_eq!(
+        tuple.guess_type(),
+        Type::tuple_anon(vec![Type::Int32, Type::String])
+    );
 
     // Test map type inference
     let map = Value::Map(vec![Value::String(b"key".to_vec())], vec![Value::Int32(42)]);
-    assert_eq!(map.guess_type(), Type::Map(Box::new(Type::String), Box::new(Type::Int32)));
+    assert_eq!(
+        map.guess_type(),
+        Type::Map(Box::new(Type::String), Box::new(Type::Int32))
+    );
 
     // Test empty map defaults to String->String
     let empty_map = Value::Map(vec![], vec![]);
-    assert_eq!(empty_map.guess_type(), Type::Map(Box::new(Type::String), Box::new(Type::String)));
+    assert_eq!(
+        empty_map.guess_type(),
+        Type::Map(Box::new(Type::String), Box::new(Type::String))
+    );
 }
 
 #[test]
@@ -823,10 +981,16 @@ fn test_escape_string_comprehensive() {
     assert_eq!(Value::String(vec![0x80, 0x81]).to_string(), "'\\x80\\x81'");
 
     // Test mixed content
-    assert_eq!(Value::String(b"hello\nworld\t!".to_vec()).to_string(), "'hello\\nworld\\t!'");
+    assert_eq!(
+        Value::String(b"hello\nworld\t!".to_vec()).to_string(),
+        "'hello\\nworld\\t!'"
+    );
 
     // Test unicode emoji (should be escaped as bytes)
-    assert_eq!(Value::String("🎉".as_bytes().to_vec()).to_string(), "'\\xF0\\x9F\\x8E\\x89'");
+    assert_eq!(
+        Value::String("🎉".as_bytes().to_vec()).to_string(),
+        "'\\xF0\\x9F\\x8E\\x89'"
+    );
 }
 
 #[test]

@@ -13,11 +13,17 @@ pub(crate) trait ArraySerializerGeneric {
 
 pub(crate) struct ArraySerializer;
 impl ArraySerializerGeneric for ArraySerializer {
-    fn value_len(value: &Value) -> Result<usize> { value.unwrap_array_ref().map(<[Value]>::len) }
+    fn value_len(value: &Value) -> Result<usize> {
+        value.unwrap_array_ref().map(<[Value]>::len)
+    }
 
-    fn inner_type(type_: &Type) -> Result<&Type> { type_.unwrap_array() }
+    fn inner_type(type_: &Type) -> Result<&Type> {
+        type_.unwrap_array()
+    }
 
-    fn values(value: Value) -> Result<Vec<Value>> { value.unwrap_array() }
+    fn values(value: Value) -> Result<Vec<Value>> {
+        value.unwrap_array()
+    }
 }
 
 impl<T: ArraySerializerGeneric + 'static> Serializer for T {
@@ -36,7 +42,9 @@ impl<T: ArraySerializerGeneric + 'static> Serializer for T {
         writer: &mut W,
         state: &mut SerializerState,
     ) -> Result<()> {
-        T::inner_type(type_)?.serialize_prefix_async(writer, state).await
+        T::inner_type(type_)?
+            .serialize_prefix_async(writer, state)
+            .await
     }
 
     async fn write<W: ClickHouseWrite>(

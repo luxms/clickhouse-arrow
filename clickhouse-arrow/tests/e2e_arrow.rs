@@ -11,11 +11,21 @@ const TRACING_DIRECTIVES: &[(&str, &str)] = &[
 
 // Test arrow e2e no compression
 #[cfg(feature = "test-utils")]
-e2e_test!(e2e_arrow_none, tests::arrow::test_round_trip_none, TRACING_DIRECTIVES, None);
+e2e_test!(
+    e2e_arrow_none,
+    tests::arrow::test_round_trip_none,
+    TRACING_DIRECTIVES,
+    None
+);
 
 // Test arrow e2e lz4
 #[cfg(feature = "test-utils")]
-e2e_test!(e2e_arrow_lz4, tests::arrow::test_round_trip_lz4, TRACING_DIRECTIVES, None);
+e2e_test!(
+    e2e_arrow_lz4,
+    tests::arrow::test_round_trip_lz4,
+    TRACING_DIRECTIVES,
+    None
+);
 
 // Test arrow e2e zstd
 #[cfg(feature = "test-utils")]
@@ -46,15 +56,30 @@ e2e_test!(
 
 // Test arrow e2e zstd
 #[cfg(feature = "test-utils")]
-e2e_test!(e2e_arrow_zstd, tests::arrow::test_round_trip_zstd, TRACING_DIRECTIVES, None);
+e2e_test!(
+    e2e_arrow_zstd,
+    tests::arrow::test_round_trip_zstd,
+    TRACING_DIRECTIVES,
+    None
+);
 
 // Test arrow schema utils
 #[cfg(feature = "test-utils")]
-e2e_test!(e2e_arrow_schema, tests::arrow::test_schema_utils, TRACING_DIRECTIVES, None);
+e2e_test!(
+    e2e_arrow_schema,
+    tests::arrow::test_schema_utils,
+    TRACING_DIRECTIVES,
+    None
+);
 
 // Test arrow execute scalar/settings
 #[cfg(feature = "test-utils")]
-e2e_test!(e2e_arrow_execute, tests::arrow::test_execute_queries, TRACING_DIRECTIVES, None);
+e2e_test!(
+    e2e_arrow_execute,
+    tests::arrow::test_execute_queries,
+    TRACING_DIRECTIVES,
+    None
+);
 
 // Test ClickHouse nullable array support
 #[cfg(feature = "test-utils")]
@@ -76,7 +101,12 @@ e2e_test!(
 
 // Test named tuple field parsing (issue #85)
 #[cfg(feature = "test-utils")]
-e2e_test!(e2e_arrow_named_tuple, tests::arrow::test_named_tuple_schema, TRACING_DIRECTIVES, None);
+e2e_test!(
+    e2e_arrow_named_tuple,
+    tests::arrow::test_named_tuple_schema,
+    TRACING_DIRECTIVES,
+    None
+);
 
 // Test Dynamic/Variant extended roundtrip paths
 #[cfg(all(feature = "test-utils", feature = "extended-types"))]

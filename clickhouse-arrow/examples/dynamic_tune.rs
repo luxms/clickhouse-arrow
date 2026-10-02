@@ -32,19 +32,19 @@ const CONV_THRESHOLD: f64 = 0.05; // 5% improvement threshold for convergence
 // Configuration to test
 #[derive(Debug, Clone, Copy, PartialEq)]
 struct Config {
-    workers:    usize,
+    workers: usize,
     batch_size: usize,
 }
 
 // Benchmark result for a configuration
 #[derive(Debug, Clone)]
 struct BenchmarkResult {
-    config:          Config,
+    config: Config,
     #[allow(dead_code)]
-    durations:       Vec<f64>, // All iteration times (seconds) - kept for debugging
-    avg_throughput:  f64, // Average rows/sec
+    durations: Vec<f64>, // All iteration times (seconds) - kept for debugging
+    avg_throughput: f64,  // Average rows/sec
     best_throughput: f64, // Best rows/sec
-    variance:        f64, // Coefficient of variation
+    variance: f64,        // Coefficient of variation
 }
 
 impl BenchmarkResult {
@@ -59,22 +59,37 @@ impl BenchmarkResult {
 struct Optimizer {
     #[allow(dead_code)]
     total_rows: usize, // Kept for future heuristics
-    history:    Vec<BenchmarkResult>,
-    iteration:  usize,
+    history: Vec<BenchmarkResult>,
+    iteration: usize,
 }
 
 impl Optimizer {
-    fn new(total_rows: usize) -> Self { Self { total_rows, history: Vec::new(), iteration: 0 } }
+    fn new(total_rows: usize) -> Self {
+        Self {
+            total_rows,
+            history: Vec::new(),
+            iteration: 0,
+        }
+    }
 
     /// Initial guesses using heuristics
     fn initial_guesses(&self) -> Vec<Config> {
         vec![
             // Conservative: low workers, small batches
-            Config { workers: 4, batch_size: 2_000 },
+            Config {
+                workers: 4,
+                batch_size: 2_000,
+            },
             // Balanced: medium everything
-            Config { workers: 8, batch_size: 4_000 },
+            Config {
+                workers: 8,
+                batch_size: 4_000,
+            },
             // Aggressive: high workers, large batches
-            Config { workers: 16, batch_size: 8_000 },
+            Config {
+                workers: 16,
+                batch_size: 8_000,
+            },
         ]
     }
 
@@ -85,8 +100,11 @@ impl Optimizer {
         }
 
         // Find best config so far
-        let best =
-            self.history.iter().max_by(|a, b| a.score().partial_cmp(&b.score()).unwrap()).unwrap();
+        let best = self
+            .history
+            .iter()
+            .max_by(|a, b| a.score().partial_cmp(&b.score()).unwrap())
+            .unwrap();
 
         eprintln!(
             "  Current best: {:?} ({:.2}M rows/sec, variance: {:.1}%)",
@@ -108,7 +126,10 @@ impl Optimizer {
             for b_mult in [0.5, 1.0, 2.0] {
                 let batch_size = ((base_b as f64 * b_mult) as usize).clamp(1_000, 32_000);
 
-                let config = Config { workers, batch_size };
+                let config = Config {
+                    workers,
+                    batch_size,
+                };
 
                 // Don't re-test configs we've already tested
                 if !self.history.iter().any(|r| r.config == config) {
@@ -124,11 +145,26 @@ impl Optimizer {
         if candidates.is_empty() {
             eprintln!("  No new candidates near best - expanding search space");
             candidates = vec![
-                Config { workers: 4, batch_size: 16_000 },
-                Config { workers: 8, batch_size: 16_000 },
-                Config { workers: 12, batch_size: 8_000 },
-                Config { workers: 16, batch_size: 16_000 },
-                Config { workers: 16, batch_size: 32_000 },
+                Config {
+                    workers: 4,
+                    batch_size: 16_000,
+                },
+                Config {
+                    workers: 8,
+                    batch_size: 16_000,
+                },
+                Config {
+                    workers: 12,
+                    batch_size: 8_000,
+                },
+                Config {
+                    workers: 16,
+                    batch_size: 16_000,
+                },
+                Config {
+                    workers: 16,
+                    batch_size: 32_000,
+                },
             ]
             .into_iter()
             .filter(|c| !self.history.iter().any(|r| r.config == *c))
@@ -140,7 +176,9 @@ impl Optimizer {
         candidates
     }
 
-    fn add_result(&mut self, result: BenchmarkResult) { self.history.push(result); }
+    fn add_result(&mut self, result: BenchmarkResult) {
+        self.history.push(result);
+    }
 
     fn has_converged(&self, min_iterations: usize) -> bool {
         if self.iteration < min_iterations {
@@ -153,9 +191,14 @@ impl Optimizer {
         }
 
         let recent: Vec<_> = self.history.iter().rev().take(6).collect();
-        let best_recent = recent[0..3].iter().map(|r| r.score()).fold(f64::NEG_INFINITY, f64::max);
-        let best_previous =
-            recent[3..6].iter().map(|r| r.score()).fold(f64::NEG_INFINITY, f64::max);
+        let best_recent = recent[0..3]
+            .iter()
+            .map(|r| r.score())
+            .fold(f64::NEG_INFINITY, f64::max);
+        let best_previous = recent[3..6]
+            .iter()
+            .map(|r| r.score())
+            .fold(f64::NEG_INFINITY, f64::max);
 
         // Converged if improvement < 5%
         (best_recent - best_previous) / best_previous < CONV_THRESHOLD
@@ -172,7 +215,10 @@ impl Optimizer {
     fn print_summary(&self, bytes_per_row: f64, config: &arrow_tests::BatchConfig) {
         eprintln!();
         common::print_banner(
-            &format!("Tuning Summary - {} configurations tested", self.history.len()),
+            &format!(
+                "Tuning Summary - {} configurations tested",
+                self.history.len()
+            ),
             Some(72),
         );
 
@@ -255,8 +301,10 @@ async fn run(ch: &'static ClickHouseContainer) -> Result<()> {
         .parse()
         .unwrap_or(10_000_000);
 
-    let max_steps: usize =
-        std::env::var("STEPS").unwrap_or_else(|_| "5".to_string()).parse().unwrap_or(5);
+    let max_steps: usize = std::env::var("STEPS")
+        .unwrap_or_else(|_| "5".to_string())
+        .parse()
+        .unwrap_or(5);
 
     let runs_per_config: usize = std::env::var("ITERS")
         .or_else(|_| std::env::var("RUNS"))
@@ -267,11 +315,17 @@ async fn run(ch: &'static ClickHouseContainer) -> Result<()> {
     // Get schema configuration
     let batch_config = arrow_tests::BatchConfig::from_env();
 
-    print_params_table("Dynamic Performance Tuner", &[
-        ("Total Rows", format!("{}", total_rows)),
-        ("Max Steps", format!("{} (optimizer iterations)", max_steps)),
-        ("Iters per config", format!("{} (runs to average)", runs_per_config)),
-    ]);
+    print_params_table(
+        "Dynamic Performance Tuner",
+        &[
+            ("Total Rows", format!("{}", total_rows)),
+            ("Max Steps", format!("{} (optimizer iterations)", max_steps)),
+            (
+                "Iters per config",
+                format!("{} (runs to average)", runs_per_config),
+            ),
+        ],
+    );
     eprintln!();
 
     // Display schema configuration
@@ -294,13 +348,20 @@ async fn run(ch: &'static ClickHouseContainer) -> Result<()> {
 
         eprintln!();
         common::print_banner(
-            &format!("Step {}/{} - Testing new configurations", step + 1, max_steps),
+            &format!(
+                "Step {}/{} - Testing new configurations",
+                step + 1,
+                max_steps
+            ),
             Some(72),
         );
         eprintln!();
 
-        let configs =
-            if step == 0 { optimizer.initial_guesses() } else { optimizer.next_guesses() };
+        let configs = if step == 0 {
+            optimizer.initial_guesses()
+        } else {
+            optimizer.next_guesses()
+        };
 
         if configs.is_empty() {
             eprintln!("No new configurations to test - converged!");
@@ -309,7 +370,12 @@ async fn run(ch: &'static ClickHouseContainer) -> Result<()> {
 
         eprintln!("Testing {} configurations:", configs.len());
         for (i, config) in configs.iter().enumerate() {
-            eprintln!("  {}. {} workers, {} batch size", i + 1, config.workers, config.batch_size);
+            eprintln!(
+                "  {}. {} workers, {} batch size",
+                i + 1,
+                config.workers,
+                config.batch_size
+            );
         }
         eprintln!();
 
@@ -420,7 +486,19 @@ async fn benchmark_config(
     };
 
     // Cleanup
-    drop(client.query(format!("DROP TABLE {table}"), None).await?.collect::<Vec<_>>().await);
+    drop(
+        client
+            .query(format!("DROP TABLE {table}"), None)
+            .await?
+            .collect::<Vec<_>>()
+            .await,
+    );
 
-    Ok(BenchmarkResult { config, durations, avg_throughput, best_throughput, variance })
+    Ok(BenchmarkResult {
+        config,
+        durations,
+        avg_throughput,
+        best_throughput,
+        variance,
+    })
 }

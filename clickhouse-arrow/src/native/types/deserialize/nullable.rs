@@ -33,7 +33,10 @@ impl Deserializer for NullableDeserializer {
         let mut mask = vec![0u8; rows];
         let _ = reader.read_exact(&mut mask).await?;
 
-        let mut out = type_.strip_null().deserialize_column(reader, rows, state).await?;
+        let mut out = type_
+            .strip_null()
+            .deserialize_column(reader, rows, state)
+            .await?;
 
         for (i, mask) in mask.iter().enumerate() {
             if *mask != 0 {

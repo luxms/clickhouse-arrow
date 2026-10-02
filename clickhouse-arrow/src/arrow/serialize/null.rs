@@ -73,7 +73,9 @@ pub(super) async fn serialize_nulls_async<W: ClickHouseWrite>(
         let mut remaining = len;
         while remaining > 0 {
             let chunk_len = remaining.min(STACK_NULL_MASK_CAPACITY);
-            writer.write_all(&STACK_NULL_MASK_ZEROES[..chunk_len]).await?;
+            writer
+                .write_all(&STACK_NULL_MASK_ZEROES[..chunk_len])
+                .await?;
             remaining -= chunk_len;
         }
     }
@@ -132,7 +134,9 @@ mod tests {
     async fn test_write_nullability_with_nulls() {
         let array = Arc::new(Int32Array::from(vec![Some(1), None, Some(3)])) as ArrayRef;
         let mut writer = MockWriter::new();
-        serialize_nulls_async(&Type::Int32, &mut writer, &array).await.unwrap();
+        serialize_nulls_async(&Type::Int32, &mut writer, &array)
+            .await
+            .unwrap();
         assert_eq!(writer, vec![0, 1, 0]); // 1 for null, 0 for non-null
     }
 
@@ -140,7 +144,9 @@ mod tests {
     async fn test_write_nullability_without_nulls() {
         let array = Arc::new(Int32Array::from(vec![1, 2, 3])) as ArrayRef;
         let mut writer = MockWriter::new();
-        serialize_nulls_async(&Type::Int32, &mut writer, &array).await.unwrap();
+        serialize_nulls_async(&Type::Int32, &mut writer, &array)
+            .await
+            .unwrap();
         assert_eq!(writer, vec![0, 0, 0]); // All 0 for non-null
     }
 
@@ -148,7 +154,9 @@ mod tests {
     async fn test_write_nullability_empty() {
         let array = Arc::new(Int32Array::from(Vec::<i32>::new())) as ArrayRef;
         let mut writer = MockWriter::new();
-        serialize_nulls_async(&Type::Int32, &mut writer, &array).await.unwrap();
+        serialize_nulls_async(&Type::Int32, &mut writer, &array)
+            .await
+            .unwrap();
         assert!(writer.is_empty());
     }
 
@@ -156,7 +164,9 @@ mod tests {
     async fn test_write_nullability_nullable_string() {
         let array = Arc::new(StringArray::from(vec![Some("a"), None, Some("c")])) as ArrayRef;
         let mut writer = MockWriter::new();
-        serialize_nulls_async(&Type::String, &mut writer, &array).await.unwrap();
+        serialize_nulls_async(&Type::String, &mut writer, &array)
+            .await
+            .unwrap();
         assert_eq!(writer, vec![0, 1, 0]); // 1 for null, 0 for non-null
     }
 

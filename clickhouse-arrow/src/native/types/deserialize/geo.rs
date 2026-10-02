@@ -24,10 +24,15 @@ impl Deserializer for PointDeserializer {
     ) -> Result<Vec<Value>> {
         let mut points = vec![Value::Point(Point::default()); rows];
         for col in 0..2 {
-            for (row, value) in
-                Type::Float64.deserialize_column(reader, rows, state).await?.into_iter().enumerate()
+            for (row, value) in Type::Float64
+                .deserialize_column(reader, rows, state)
+                .await?
+                .into_iter()
+                .enumerate()
             {
-                let Value::Float64(value) = value else { unreachable!() };
+                let Value::Float64(value) = value else {
+                    unreachable!()
+                };
                 match &mut points[row] {
                     Value::Point(point) => point.0[col] = value,
                     _ => {

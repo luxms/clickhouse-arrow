@@ -61,8 +61,11 @@ async fn cloud_service_wakeup(
         .and_then(|t| t.parse::<u64>().ok())
         .or(timeout)
         .unwrap_or(CLOUD_WAKEUP_TIMEOUT);
-    let wakeup_timeout =
-        if wakeup_timeout == 0 { None } else { Some(Duration::from_secs(wakeup_timeout)) };
+    let wakeup_timeout = if wakeup_timeout == 0 {
+        None
+    } else {
+        Some(Duration::from_secs(wakeup_timeout))
+    };
     SpawnedTask::spawn_blocking(move || {
         tracing::trace!("pinging cloud instance @ {endpoint}");
         ureq::get(&endpoint)

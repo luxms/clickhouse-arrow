@@ -62,7 +62,9 @@ fn main() {
     }
 
     let mut table = Table::new();
-    table.load_preset(UTF8_FULL).set_header(vec!["Rows", "Total bytes", "Bytes/row"]);
+    table
+        .load_preset(UTF8_FULL)
+        .set_header(vec!["Rows", "Total bytes", "Bytes/row"]);
 
     let mut bytes_per_row_samples = Vec::new();
 
@@ -72,13 +74,21 @@ fn main() {
         let bytes_per_row = size as f64 / rows as f64;
         bytes_per_row_samples.push(bytes_per_row);
 
-        table.add_row(vec![rows.to_string(), size.to_string(), format!("{:.2}", bytes_per_row)]);
+        table.add_row(vec![
+            rows.to_string(),
+            size.to_string(),
+            format!("{:.2}", bytes_per_row),
+        ]);
     }
 
     // Calculate average bytes/row
     let avg_bytes_per_row =
         bytes_per_row_samples.iter().sum::<f64>() / bytes_per_row_samples.len() as f64;
-    table.add_row(vec!["Average".to_string(), "".to_string(), format!("{:.2}", avg_bytes_per_row)]);
+    table.add_row(vec![
+        "Average".to_string(),
+        "".to_string(),
+        format!("{:.2}", avg_bytes_per_row),
+    ]);
 
     println!("{}", table);
     println!();

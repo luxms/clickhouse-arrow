@@ -57,7 +57,7 @@ tmpfs-size = ["test-utils"]
 # DEPENDENCIES
 
 [dependencies]
-arrow = { version = "57", features = [
+arrow = { version = "59", features = [
     "prettyprint",
     "ipc_compression",
     "chrono-tz",
@@ -140,6 +140,10 @@ required-features = ["test-utils"]
 
 [[test]]
 name = "e2e_params"
+required-features = ["test-utils", "derive"]
+
+[[test]]
+name = "e2e_cross_client"
 required-features = ["test-utils", "derive"]
 
 # EXAMPLES

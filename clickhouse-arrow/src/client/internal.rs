@@ -35,19 +35,27 @@ pub(crate) enum Message<Data: Send + Sync> {
 #[derive(AsRefStr, IntoStaticStr)]
 pub(crate) enum Operation<Data: Send + Sync> {
     #[strum(serialize = "Ping")]
-    Ping { response: oneshot::Sender<Result<()>> },
+    Ping {
+        response: oneshot::Sender<Result<()>>,
+    },
     #[strum(serialize = "Query")]
     Query {
-        query:    String,
+        query: String,
         settings: Option<Arc<Settings>>,
-        params:   Option<QueryParams>,
+        params: Option<QueryParams>,
         response: oneshot::Sender<Result<ResponseReceiver<Data>>>,
-        header:   Option<oneshot::Sender<Vec<(String, Type)>>>,
+        header: Option<oneshot::Sender<Vec<(String, Type)>>>,
     },
     #[strum(serialize = "Insert")]
-    Insert { data: Data, response: oneshot::Sender<Result<()>> },
+    Insert {
+        data: Data,
+        response: oneshot::Sender<Result<()>>,
+    },
     #[strum(serialize = "InsertMany")]
-    InsertMany { data: Vec<Data>, response: oneshot::Sender<Result<()>> },
+    InsertMany {
+        data: Vec<Data>,
+        response: oneshot::Sender<Result<()>>,
+    },
 }
 
 // Track operation tasks
@@ -59,7 +67,9 @@ enum OperationTask {
 }
 
 impl Default for OperationTask {
-    fn default() -> Self { Self::Chunk(ChunkBoundary::default()) }
+    fn default() -> Self {
+        Self::Chunk(ChunkBoundary::default())
+    }
 }
 
 /// Track chunk boundaries. NOTE: Only relevant with chunked protocol for writing
@@ -87,30 +97,30 @@ pub(super) enum InsertState<T> {
 }
 
 pub(super) struct ExecutingQuery<T: Send + Sync> {
-    qid:             Qid,
-    state:           QueryState,
-    header:          Option<Vec<(String, Type)>>,
+    qid: Qid,
+    state: QueryState,
+    header: Option<Vec<(String, Type)>>,
     header_response: Option<oneshot::Sender<Vec<(String, Type)>>>,
-    response:        ResponseSender<T>,
+    response: ResponseSender<T>,
 }
 
 pub(super) struct PendingQuery<T: Send + Sync> {
-    qid:      Qid,
-    query:    String,
+    qid: Qid,
+    query: String,
     settings: Option<Arc<Settings>>,
-    params:   Option<QueryParams>,
+    params: Option<QueryParams>,
     response: oneshot::Sender<Result<ResponseReceiver<T>>>,
-    header:   Option<oneshot::Sender<Vec<(String, Type)>>>,
+    header: Option<oneshot::Sender<Vec<(String, Type)>>>,
 }
 
 pub(super) struct InternalConn<T: ClientFormat> {
-    cid:          &'static str,
+    cid: &'static str,
     server_hello: Arc<ServerHello>,
-    pending:      VecDeque<PendingQuery<T::Data>>,
-    executing:    Option<ExecutingQuery<T::Data>>,
-    events:       Arc<broadcast::Sender<Event>>,
-    metadata:     ClientMetadata,
-    state:        DeserializerState<T::Deser>,
+    pending: VecDeque<PendingQuery<T::Data>>,
+    executing: Option<ExecutingQuery<T::Data>>,
+    events: Arc<broadcast::Sender<Event>>,
+    metadata: ClientMetadata,
+    state: DeserializerState<T::Deser>,
 }
 
 impl<T: ClientFormat> InternalConn<T> {
@@ -151,7 +161,10 @@ impl<T: ClientFormat> InternalConn<T> {
         mut operations: mpsc::Receiver<Message<T::Data>>,
     ) -> Result<()> {
         loop {
-            match self.run_inner(&mut reader, &mut writer, &mut operations).await? {
+            match self
+                .run_inner(&mut reader, &mut writer, &mut operations)
+                .await?
+            {
                 OperationTask::Shutdown => return Ok(()),
                 OperationTask::Ping(response) => {
                     let cid = self.cid;
@@ -179,7 +192,10 @@ impl<T: ClientFormat> InternalConn<T> {
         mut operations: mpsc::Receiver<Message<T::Data>>,
     ) -> Result<()> {
         loop {
-            match self.run_inner(&mut reader, &mut writer, &mut operations).await? {
+            match self
+                .run_inner(&mut reader, &mut writer, &mut operations)
+                .await?
+            {
                 OperationTask::Ping(response) => {
                     // Be sure to flush the Ping
                     writer.finish_chunk().await?;
@@ -270,8 +286,21 @@ impl<T: ClientFormat> InternalConn<T> {
                 return Ok(OperationTask::default());
             }
             // Query - NOTE: May be any type of query, ie DDL, DML, Settings, etc.
-            Operation::Query { query, settings, params, response, header } => {
-                let pending = PendingQuery { qid, query, settings, params, response, header };
+            Operation::Query {
+                query,
+                settings,
+                params,
+                response,
+                header,
+            } => {
+                let pending = PendingQuery {
+                    qid,
+                    query,
+                    settings,
+                    params,
+                    response,
+                    header,
+                };
                 if self.pending.is_empty() && self.executing.is_none() {
                     self.send_query(writer, pending).await?;
                     return Ok(OperationTask::Chunk(ChunkBoundary::Flush));
@@ -298,7 +327,11 @@ impl<T: ClientFormat> InternalConn<T> {
         if let Err(error) = result {
             error!(?error, { ATT_CON } = self.cid, { ATT_QID } = %qid, "Insert failed");
             if let Some(exec) = self.executing.as_ref() {
-                let _ = exec.response.send(Err(Error::Client(error.to_string()))).await.ok();
+                let _ = exec
+                    .response
+                    .send(Err(Error::Client(error.to_string())))
+                    .await
+                    .ok();
             }
             return Err(error);
         }
@@ -361,11 +394,25 @@ impl<T: ClientFormat> InternalConn<T> {
             }
             ServerPacket::ProfileEvents(info) => {
                 let event = ClickHouseEvent::Profile(info);
-                let _ = self.events.send(Event { event, qid, client_id }).ok();
+                let _ = self
+                    .events
+                    .send(Event {
+                        event,
+                        qid,
+                        client_id,
+                    })
+                    .ok();
             }
             ServerPacket::Progress(progress) => {
                 let event = ClickHouseEvent::Progress(progress);
-                let _ = self.events.send(Event { event, qid, client_id }).ok();
+                let _ = self
+                    .events
+                    .send(Event {
+                        event,
+                        qid,
+                        client_id,
+                    })
+                    .ok();
             }
             ServerPacket::Exception(exception) => {
                 let error = exception.emit();
@@ -426,7 +473,14 @@ impl<T: ClientFormat> InternalConn<T> {
         writer: &mut W,
         query: PendingQuery<T::Data>,
     ) -> Result<()> {
-        let PendingQuery { qid, query, settings, params, response, header } = query;
+        let PendingQuery {
+            qid,
+            query,
+            settings,
+            params,
+            response,
+            header,
+        } = query;
         debug!({ ATT_CON } = self.cid, { ATT_QID } = %qid, query, "sending query");
 
         // Send initial query
@@ -510,7 +564,11 @@ impl<T: ClientFormat> InternalConn<T> {
     async fn send_delimiter<W: ClickHouseWrite>(&self, writer: &mut W, qid: Qid) -> Result<()> {
         Writer::send_data::<NativeFormat>(
             writer,
-            Block { info: BlockInfo::default(), rows: 0, ..Default::default() },
+            Block {
+                info: BlockInfo::default(),
+                rows: 0,
+                ..Default::default()
+            },
             qid,
             None,
             self.server_hello.revision_version,
@@ -533,11 +591,17 @@ impl<Data: Send + Sync + 'static> Operation<Data> {
     }
 
     // Helper functions to account for full weight across common operations
-    pub(crate) fn weight_query() -> u8 { 1 }
+    pub(crate) fn weight_query() -> u8 {
+        1
+    }
 
-    pub(crate) fn weight_insert() -> u8 { 5 }
+    pub(crate) fn weight_insert() -> u8 {
+        5
+    }
 
-    pub(crate) fn weight_insert_many() -> u8 { 6 }
+    pub(crate) fn weight_insert_many() -> u8 {
+        6
+    }
 }
 
 impl<Data: Send + Sync + 'static> std::fmt::Debug for Message<Data> {
@@ -556,12 +620,20 @@ impl<T: Send + Sync + 'static> std::fmt::Debug for ExecutingQuery<T> {
             "ExecutingQuery(qid={}, header={:?}, header_response={:?}, response={})",
             self.qid,
             self.header,
-            if self.header_response.as_ref().is_some_and(|h| !h.is_closed()) {
+            if self
+                .header_response
+                .as_ref()
+                .is_some_and(|h| !h.is_closed())
+            {
                 &"CHANNEL_OPEN"
             } else {
                 &"CHANNEL_CLOSED"
             },
-            if self.response.is_closed() { &"CHANNEL_CLOSED" } else { &"CHANNEL_OPEN" },
+            if self.response.is_closed() {
+                &"CHANNEL_CLOSED"
+            } else {
+                &"CHANNEL_OPEN"
+            },
         )
     }
 }
@@ -573,12 +645,20 @@ impl<T: Send + Sync + 'static> std::fmt::Display for ExecutingQuery<T> {
             "ExecutingQuery(qid={}, columns={}, header_response={:?}, response={})",
             self.qid,
             self.header.as_ref().map(Vec::len).unwrap_or_default(),
-            if self.header_response.as_ref().is_some_and(|h| !h.is_closed()) {
+            if self
+                .header_response
+                .as_ref()
+                .is_some_and(|h| !h.is_closed())
+            {
                 &"OPEN"
             } else {
                 &"CLOSED"
             },
-            if self.response.is_closed() { &"CLOSED" } else { &"OPEN" },
+            if self.response.is_closed() {
+                &"CLOSED"
+            } else {
+                &"OPEN"
+            },
         )
     }
 }
@@ -598,7 +678,11 @@ impl<T: Send + Sync + 'static> std::fmt::Display for PendingQuery<T> {
             self.query,
             self.settings,
             self.params,
-            if self.response.is_closed() { &"CLOSED" } else { &"OPEN" },
+            if self.response.is_closed() {
+                &"CLOSED"
+            } else {
+                &"OPEN"
+            },
         )
     }
 }

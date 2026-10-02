@@ -149,8 +149,10 @@ pub async fn get_or_create_benchmark_container(conf: Option<&str>) -> &'static C
             builder = builder.with_tmpfs();
         }
 
-        let ch =
-            builder.build().await.expect("Failed to initialize ClickHouse benchmark container");
+        let ch = builder
+            .build()
+            .await
+            .expect("Failed to initialize ClickHouse benchmark container");
         BENCHMARK_CONTAINER.get_or_init(|| Arc::new(ch))
     }
 }
@@ -158,12 +160,17 @@ pub async fn get_or_create_benchmark_container(conf: Option<&str>) -> &'static C
 /// Builder for `ClickHouseContainer` with configurable options
 pub struct ClickHouseContainerBuilder {
     config: Option<String>,
-    tmpfs:  bool,
+    tmpfs: bool,
 }
 
 impl ClickHouseContainerBuilder {
     /// Create a new builder with default settings
-    pub fn new() -> Self { Self { config: None, tmpfs: false } }
+    pub fn new() -> Self {
+        Self {
+            config: None,
+            tmpfs: false,
+        }
+    }
 
     /// Use a custom `ClickHouse` config file
     #[must_use]
@@ -215,22 +222,26 @@ impl ClickHouseContainerBuilder {
 }
 
 impl Default for ClickHouseContainerBuilder {
-    fn default() -> Self { Self::new() }
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 pub struct ClickHouseContainer {
-    pub endpoint:    String,
+    pub endpoint: String,
     pub native_port: u16,
-    pub http_port:   u16,
-    pub url:         String,
-    pub user:        String,
-    pub password:    String,
-    container:       RwLock<Option<ContainerAsync<GenericImage>>>,
+    pub http_port: u16,
+    pub url: String,
+    pub user: String,
+    pub password: String,
+    container: RwLock<Option<ContainerAsync<GenericImage>>>,
 }
 
 impl ClickHouseContainer {
     /// Create a builder for configuring the container
-    pub fn builder() -> ClickHouseContainerBuilder { ClickHouseContainerBuilder::new() }
+    pub fn builder() -> ClickHouseContainerBuilder {
+        ClickHouseContainerBuilder::new()
+    }
 
     /// Create a new `ClickHouse` container with default settings
     ///
@@ -255,7 +266,9 @@ impl ClickHouseContainer {
             .and_then(|p| p.parse::<u16>().ok())
             .unwrap_or(CLICKHOUSE_HTTP_PORT);
         let user = env::var(USER_ENV).ok().unwrap_or(CLICKHOUSE_USER.into());
-        let password = env::var(PASSWORD_ENV).ok().unwrap_or(CLICKHOUSE_PASSWORD.into());
+        let password = env::var(PASSWORD_ENV)
+            .ok()
+            .unwrap_or(CLICKHOUSE_PASSWORD.into());
         let pull_latest =
             env::var(PULL_LATEST_ENV).map_or(true, |v| v.eq_ignore_ascii_case("true") || v == "1");
         let pull_timeout = env::var(PULL_TIMEOUT_SECS_ENV)
@@ -347,16 +360,32 @@ impl ClickHouseContainer {
         sleep(Duration::from_secs(2)).await;
 
         let container = RwLock::new(Some(container));
-        Ok(ClickHouseContainer { endpoint, native_port, http_port, url, user, password, container })
+        Ok(ClickHouseContainer {
+            endpoint,
+            native_port,
+            http_port,
+            url,
+            user,
+            password,
+            container,
+        })
     }
 
-    pub fn get_native_url(&self) -> &str { &self.url }
+    pub fn get_native_url(&self) -> &str {
+        &self.url
+    }
 
-    pub fn get_native_port(&self) -> u16 { self.native_port }
+    pub fn get_native_port(&self) -> u16 {
+        self.native_port
+    }
 
-    pub fn get_http_url(&self) -> String { format!("http://{}:{}", self.endpoint, self.http_port) }
+    pub fn get_http_url(&self) -> String {
+        format!("http://{}:{}", self.endpoint, self.http_port)
+    }
 
-    pub fn get_http_port(&self) -> u16 { self.http_port }
+    pub fn get_http_port(&self) -> u16 {
+        self.http_port
+    }
 
     /// # Errors
     pub async fn shutdown(&self) -> Result<(), TestcontainersError> {
@@ -436,18 +465,32 @@ pub mod arrow_tests {
         let table_qid = Qid::new();
         let table_name = format!("test_table_{table_qid}");
         client
-            .create_table(Some(db), &table_name, schema, &create_options, Some(table_qid))
+            .create_table(
+                Some(db),
+                &table_name,
+                schema,
+                &create_options,
+                Some(table_qid),
+            )
             .await?;
         Ok(format!("{db}.{table_name}"))
     }
 
     pub fn create_test_schema(strings_as_strings: bool) -> SchemaRef {
-        let string_type = if strings_as_strings { DataType::Utf8 } else { DataType::Binary };
+        let string_type = if strings_as_strings {
+            DataType::Utf8
+        } else {
+            DataType::Binary
+        };
         Arc::new(Schema::new(vec![
             Field::new("id", string_type.clone(), false),
             Field::new("name", string_type, false),
             Field::new("value", DataType::Float64, false),
-            Field::new("ts", DataType::Timestamp(TimeUnit::Millisecond, Some("UTC".into())), false),
+            Field::new(
+                "ts",
+                DataType::Timestamp(TimeUnit::Millisecond, Some("UTC".into())),
+                false,
+            ),
         ]))
     }
 
@@ -458,30 +501,40 @@ pub mod arrow_tests {
         let schema = create_test_schema(strings_as_strings);
         let id_row = if strings_as_strings {
             Arc::new(StringArray::from(
-                (0..rows).map(|_| Uuid::new_v4().to_string()).collect::<Vec<_>>(),
+                (0..rows)
+                    .map(|_| Uuid::new_v4().to_string())
+                    .collect::<Vec<_>>(),
             )) as ArrayRef
         } else {
-            Arc::new(BinaryArray::from_iter_values((0..rows).map(|_| Uuid::new_v4().to_string())))
-                as ArrayRef
+            Arc::new(BinaryArray::from_iter_values(
+                (0..rows).map(|_| Uuid::new_v4().to_string()),
+            )) as ArrayRef
         };
         let name_row = if strings_as_strings {
-            Arc::new(StringArray::from((0..rows).map(|i| format!("name{i}")).collect::<Vec<_>>()))
-                as ArrayRef
+            Arc::new(StringArray::from(
+                (0..rows).map(|i| format!("name{i}")).collect::<Vec<_>>(),
+            )) as ArrayRef
         } else {
-            Arc::new(BinaryArray::from_iter_values((0..rows).map(|i| format!("name{i}"))))
-                as ArrayRef
+            Arc::new(BinaryArray::from_iter_values(
+                (0..rows).map(|i| format!("name{i}")),
+            )) as ArrayRef
         };
-        RecordBatch::try_new(schema, vec![
-            id_row,
-            name_row,
-            Arc::new(Float64Array::from((0..rows).map(|i| i as f64).collect::<Vec<_>>())),
-            Arc::new(
-                TimestampMillisecondArray::from(
-                    (0..rows).map(|i| i as i64 * 1000).collect::<Vec<_>>(),
-                )
-                .with_timezone(Arc::from("UTC")),
-            ),
-        ])
+        RecordBatch::try_new(
+            schema,
+            vec![
+                id_row,
+                name_row,
+                Arc::new(Float64Array::from(
+                    (0..rows).map(|i| i as f64).collect::<Vec<_>>(),
+                )),
+                Arc::new(
+                    TimestampMillisecondArray::from(
+                        (0..rows).map(|i| i as i64 * 1000).collect::<Vec<_>>(),
+                    )
+                    .with_timezone(Arc::from("UTC")),
+                ),
+            ],
+        )
         .unwrap()
     }
 
@@ -490,7 +543,11 @@ pub mod arrow_tests {
             Field::new("id", DataType::Int32, false),
             Field::new("int", DataType::Int32, false),
             Field::new("value", DataType::Float64, false),
-            Field::new("ts", DataType::Timestamp(TimeUnit::Millisecond, Some("UTC".into())), false),
+            Field::new(
+                "ts",
+                DataType::Timestamp(TimeUnit::Millisecond, Some("UTC".into())),
+                false,
+            ),
         ]))
     }
 
@@ -503,13 +560,15 @@ pub mod arrow_tests {
     )]
     pub fn create_test_batch_fixed_types(rows: usize) -> RecordBatch {
         let schema = create_test_schema_fixed_types();
-        let id_row =
-            Arc::new(Int32Array::from((0..rows).map(|i| i as i32).collect::<Vec<_>>())) as ArrayRef;
-        let int_row =
-            Arc::new(Int32Array::from((0..rows).map(|i| i as i32).collect::<Vec<_>>())) as ArrayRef;
-        let float_row =
-            Arc::new(Float64Array::from((0..rows).map(|i| i as f64).collect::<Vec<_>>()))
-                as ArrayRef;
+        let id_row = Arc::new(Int32Array::from(
+            (0..rows).map(|i| i as i32).collect::<Vec<_>>(),
+        )) as ArrayRef;
+        let int_row = Arc::new(Int32Array::from(
+            (0..rows).map(|i| i as i32).collect::<Vec<_>>(),
+        )) as ArrayRef;
+        let float_row = Arc::new(Float64Array::from(
+            (0..rows).map(|i| i as f64).collect::<Vec<_>>(),
+        )) as ArrayRef;
         let ts_row = Arc::new(
             TimestampMillisecondArray::from((0..rows).map(|i| i as i64 * 1000).collect::<Vec<_>>())
                 .with_timezone(Arc::from("UTC")),
@@ -521,25 +580,25 @@ pub mod arrow_tests {
     /// Configuration for creating test batches with specific column types
     #[derive(Debug, Clone, Copy, Default)]
     pub struct BatchConfig {
-        pub int8:       usize,
-        pub int16:      usize,
-        pub int32:      usize,
-        pub int64:      usize,
-        pub uint8:      usize,
-        pub uint16:     usize,
-        pub uint32:     usize,
-        pub uint64:     usize,
-        pub float32:    usize,
-        pub float64:    usize,
-        pub bool:       usize,
-        pub utf8:       usize,
-        pub utf8_len:   usize,
-        pub binary:     usize,
+        pub int8: usize,
+        pub int16: usize,
+        pub int32: usize,
+        pub int64: usize,
+        pub uint8: usize,
+        pub uint16: usize,
+        pub uint32: usize,
+        pub uint64: usize,
+        pub float32: usize,
+        pub float64: usize,
+        pub bool: usize,
+        pub utf8: usize,
+        pub utf8_len: usize,
+        pub binary: usize,
         pub binary_len: usize,
-        pub timestamp:  usize,
-        pub rand:       bool,
+        pub timestamp: usize,
+        pub rand: bool,
         pub include_id: bool,
-        pub unique_id:  bool,
+        pub unique_id: bool,
     }
 
     impl BatchConfig {
@@ -565,29 +624,32 @@ pub mod arrow_tests {
             };
 
             let parse_bool_env = |key: &str, default: bool| -> bool {
-                env::var(key).ok().and_then(|s| s.parse().ok()).unwrap_or(default)
+                env::var(key)
+                    .ok()
+                    .and_then(|s| s.parse().ok())
+                    .unwrap_or(default)
             };
 
             let mut config = Self {
-                int8:       parse_env("INT8"),
-                int16:      parse_env("INT16"),
-                int32:      parse_env("INT32"),
-                int64:      parse_env("INT64"),
-                uint8:      parse_env("UINT8"),
-                uint16:     parse_env("UINT16"),
-                uint32:     parse_env("UINT32"),
-                uint64:     parse_env("UINT64"),
-                float32:    parse_env("FLOAT32"),
-                float64:    parse_env("FLOAT64"),
-                bool:       parse_env("BOOL"),
-                utf8:       parse_env("UTF8"),
-                utf8_len:   parse_env("UTF8_LEN"),
-                binary:     parse_env("BINARY"),
+                int8: parse_env("INT8"),
+                int16: parse_env("INT16"),
+                int32: parse_env("INT32"),
+                int64: parse_env("INT64"),
+                uint8: parse_env("UINT8"),
+                uint16: parse_env("UINT16"),
+                uint32: parse_env("UINT32"),
+                uint64: parse_env("UINT64"),
+                float32: parse_env("FLOAT32"),
+                float64: parse_env("FLOAT64"),
+                bool: parse_env("BOOL"),
+                utf8: parse_env("UTF8"),
+                utf8_len: parse_env("UTF8_LEN"),
+                binary: parse_env("BINARY"),
                 binary_len: parse_env("BINARY_LEN"),
-                timestamp:  parse_env("TIMESTAMP"),
-                rand:       parse_bool_env("RAND", true),
+                timestamp: parse_env("TIMESTAMP"),
+                rand: parse_bool_env("RAND", true),
                 include_id: parse_bool_env("INCLUDE_ID", true),
-                unique_id:  parse_bool_env("UNIQUE_ID", true),
+                unique_id: parse_bool_env("UNIQUE_ID", true),
             };
 
             // Apply defaults
@@ -714,19 +776,35 @@ pub mod arrow_tests {
             Int8Array,
             |i: usize| gen_val(i) as i8
         );
-        add_primitive_columns!(config.int16, "int16", DataType::Int16, Int16Array, |i: usize| {
-            gen_val(i) as i16
-        });
-        add_primitive_columns!(config.int32, "int32", DataType::Int32, Int32Array, |i: usize| {
-            gen_val(i) as i32
-        });
-        add_primitive_columns!(config.int64, "int64", DataType::Int64, Int64Array, |i: usize| {
-            gen_val(i) as i64
-        });
+        add_primitive_columns!(
+            config.int16,
+            "int16",
+            DataType::Int16,
+            Int16Array,
+            |i: usize| { gen_val(i) as i16 }
+        );
+        add_primitive_columns!(
+            config.int32,
+            "int32",
+            DataType::Int32,
+            Int32Array,
+            |i: usize| { gen_val(i) as i32 }
+        );
+        add_primitive_columns!(
+            config.int64,
+            "int64",
+            DataType::Int64,
+            Int64Array,
+            |i: usize| { gen_val(i) as i64 }
+        );
 
-        add_primitive_columns!(config.uint8, "uint8", DataType::UInt8, UInt8Array, |i: usize| {
-            gen_val(i) as u8
-        });
+        add_primitive_columns!(
+            config.uint8,
+            "uint8",
+            DataType::UInt8,
+            UInt8Array,
+            |i: usize| { gen_val(i) as u8 }
+        );
         add_primitive_columns!(
             config.uint16,
             "uint16",
@@ -767,7 +845,11 @@ pub mod arrow_tests {
 
         // Add boolean columns
         for _ in 0..config.bool {
-            fields.push(Field::new(format!("bool_{col_idx}"), DataType::Boolean, false));
+            fields.push(Field::new(
+                format!("bool_{col_idx}"),
+                DataType::Boolean,
+                false,
+            ));
             let array: BooleanArray = (0..rows).map(|i| Some(gen_val(i) % 2 == 0)).collect();
             columns.push(Arc::new(array) as ArrayRef);
             col_idx += 1;
@@ -791,11 +873,20 @@ pub mod arrow_tests {
 
         // Add Binary columns
         for _ in 0..config.binary {
-            fields.push(Field::new(format!("binary_{col_idx}"), DataType::Binary, false));
+            fields.push(Field::new(
+                format!("binary_{col_idx}"),
+                DataType::Binary,
+                false,
+            ));
             let values: Vec<Vec<u8>> = (0..rows)
                 .map(|i| {
                     let val = gen_val(i) as u64;
-                    val.to_le_bytes().iter().cycle().take(config.binary_len).copied().collect()
+                    val.to_le_bytes()
+                        .iter()
+                        .cycle()
+                        .take(config.binary_len)
+                        .copied()
+                        .collect()
                 })
                 .collect();
             let array = BinaryArray::from(values.iter().map(Vec::as_slice).collect::<Vec<_>>());
@@ -811,7 +902,9 @@ pub mod arrow_tests {
                 false,
             ));
             let array = TimestampMillisecondArray::from(
-                (0..rows).map(|i| (gen_val(i) as i64).wrapping_mul(1000)).collect::<Vec<_>>(),
+                (0..rows)
+                    .map(|i| (gen_val(i) as i64).wrapping_mul(1000))
+                    .collect::<Vec<_>>(),
             )
             .with_timezone(Arc::from("UTC"));
             columns.push(Arc::new(array) as ArrayRef);
@@ -855,8 +948,12 @@ pub mod arrow_tests {
 
         #[test]
         fn test_create_batch_with_id() {
-            let config =
-                BatchConfig { int32: 2, float64: 1, include_id: true, ..Default::default() };
+            let config = BatchConfig {
+                int32: 2,
+                float64: 1,
+                include_id: true,
+                ..Default::default()
+            };
 
             let batch = create_test_batch_with_config(100, &config);
 
@@ -865,13 +962,20 @@ pub mod arrow_tests {
 
             // First column should be 'id'
             assert_eq!(batch.schema().field(0).name(), "id");
-            assert!(matches!(batch.schema().field(0).data_type(), DataType::Int64));
+            assert!(matches!(
+                batch.schema().field(0).data_type(),
+                DataType::Int64
+            ));
         }
 
         #[test]
         fn test_create_batch_without_id() {
-            let config =
-                BatchConfig { int32: 2, float64: 1, include_id: false, ..Default::default() };
+            let config = BatchConfig {
+                int32: 2,
+                float64: 1,
+                include_id: false,
+                ..Default::default()
+            };
 
             let batch = create_test_batch_with_config(100, &config);
 
@@ -885,17 +989,31 @@ pub mod arrow_tests {
         #[test]
         #[allow(clippy::cast_possible_truncation, clippy::cast_possible_wrap)]
         fn test_random_vs_sequential() {
-            let random_config = BatchConfig { int32: 1, rand: true, ..Default::default() };
+            let random_config = BatchConfig {
+                int32: 1,
+                rand: true,
+                ..Default::default()
+            };
 
-            let sequential_config = BatchConfig { int32: 1, rand: false, ..Default::default() };
+            let sequential_config = BatchConfig {
+                int32: 1,
+                rand: false,
+                ..Default::default()
+            };
 
             let random_batch = create_test_batch_with_config(10, &random_config);
             let sequential_batch = create_test_batch_with_config(10, &sequential_config);
 
-            let random_array =
-                random_batch.column(0).as_any().downcast_ref::<Int32Array>().unwrap();
-            let sequential_array =
-                sequential_batch.column(0).as_any().downcast_ref::<Int32Array>().unwrap();
+            let random_array = random_batch
+                .column(0)
+                .as_any()
+                .downcast_ref::<Int32Array>()
+                .unwrap();
+            let sequential_array = sequential_batch
+                .column(0)
+                .as_any()
+                .downcast_ref::<Int32Array>()
+                .unwrap();
 
             // Sequential should be 0, 1, 2, ...
             assert_eq!(sequential_array.value(0), 0);
@@ -909,7 +1027,12 @@ pub mod arrow_tests {
 
         #[test]
         fn test_utf8_columns() {
-            let config = BatchConfig { utf8: 2, utf8_len: 10, rand: true, ..Default::default() };
+            let config = BatchConfig {
+                utf8: 2,
+                utf8_len: 10,
+                rand: true,
+                ..Default::default()
+            };
 
             let batch = create_test_batch_with_config(100, &config);
 
@@ -917,9 +1040,16 @@ pub mod arrow_tests {
 
             // Check both columns are UTF8
             for i in 0..2 {
-                assert!(matches!(batch.schema().field(i).data_type(), DataType::Utf8));
+                assert!(matches!(
+                    batch.schema().field(i).data_type(),
+                    DataType::Utf8
+                ));
 
-                let array = batch.column(i).as_any().downcast_ref::<StringArray>().unwrap();
+                let array = batch
+                    .column(i)
+                    .as_any()
+                    .downcast_ref::<StringArray>()
+                    .unwrap();
 
                 // Check string length
                 assert_eq!(array.value(0).len(), 10);
@@ -984,7 +1114,10 @@ pub mod arrow_tests {
         #[test]
         fn test_empty_config_creates_default() {
             // Note: Empty config with no columns would fail, so we test minimal config
-            let config = BatchConfig { int32: 1, ..Default::default() };
+            let config = BatchConfig {
+                int32: 1,
+                ..Default::default()
+            };
             let batch = create_test_batch_with_config(100, &config);
 
             assert_eq!(batch.num_rows(), 100);
@@ -993,8 +1126,12 @@ pub mod arrow_tests {
 
         #[test]
         fn test_column_naming() {
-            let config =
-                BatchConfig { int32: 3, float64: 2, include_id: false, ..Default::default() };
+            let config = BatchConfig {
+                int32: 3,
+                float64: 2,
+                include_id: false,
+                ..Default::default()
+            };
 
             let batch = create_test_batch_with_config(10, &config);
 
@@ -1008,14 +1145,25 @@ pub mod arrow_tests {
 
         #[test]
         fn test_binary_columns() {
-            let config = BatchConfig { binary: 1, binary_len: 16, ..Default::default() };
+            let config = BatchConfig {
+                binary: 1,
+                binary_len: 16,
+                ..Default::default()
+            };
 
             let batch = create_test_batch_with_config(100, &config);
 
             assert_eq!(batch.num_columns(), 1);
-            assert!(matches!(batch.schema().field(0).data_type(), DataType::Binary));
+            assert!(matches!(
+                batch.schema().field(0).data_type(),
+                DataType::Binary
+            ));
 
-            let array = batch.column(0).as_any().downcast_ref::<BinaryArray>().unwrap();
+            let array = batch
+                .column(0)
+                .as_any()
+                .downcast_ref::<BinaryArray>()
+                .unwrap();
 
             // Check binary length
             assert_eq!(array.value(0).len(), 16);
@@ -1045,7 +1193,11 @@ pub mod arrow_tests {
                 let batch = create_test_batch_with_config_offset(batch_size, &config, Some(offset));
 
                 // Extract IDs from this batch
-                let id_array = batch.column(0).as_any().downcast_ref::<Int64Array>().unwrap();
+                let id_array = batch
+                    .column(0)
+                    .as_any()
+                    .downcast_ref::<Int64Array>()
+                    .unwrap();
 
                 for i in 0..batch_size {
                     all_ids.push(id_array.value(i));
@@ -1057,14 +1209,21 @@ pub mod arrow_tests {
 
             // Verify uniqueness: convert to HashSet and check size
             let unique_ids: std::collections::HashSet<_> = all_ids.iter().copied().collect();
-            assert_eq!(unique_ids.len(), total_rows, "All IDs should be unique (no duplicates)");
+            assert_eq!(
+                unique_ids.len(),
+                total_rows,
+                "All IDs should be unique (no duplicates)"
+            );
 
             // Verify no gaps: sort and check sequential
             let mut sorted_ids = all_ids.clone();
             sorted_ids.sort_unstable();
 
             for (idx, &id) in sorted_ids.iter().enumerate() {
-                assert_eq!(id, idx as i64, "ID at position {idx} should be {idx}, but found {id}");
+                assert_eq!(
+                    id, idx as i64,
+                    "ID at position {idx} should be {idx}, but found {id}"
+                );
             }
 
             // Verify range: min should be 0, max should be total_rows-1
@@ -1077,8 +1236,11 @@ pub mod arrow_tests {
 
             // Verify IDs in first batch
             let first_batch = create_test_batch_with_config_offset(batch_size, &config, Some(0));
-            let first_id_array =
-                first_batch.column(0).as_any().downcast_ref::<Int64Array>().unwrap();
+            let first_id_array = first_batch
+                .column(0)
+                .as_any()
+                .downcast_ref::<Int64Array>()
+                .unwrap();
             assert_eq!(first_id_array.value(0), 0, "First batch should start at 0");
             assert_eq!(
                 first_id_array.value(batch_size - 1),
@@ -1090,7 +1252,11 @@ pub mod arrow_tests {
             let last_offset = (num_batches - 1) * batch_size;
             let last_batch =
                 create_test_batch_with_config_offset(batch_size, &config, Some(last_offset));
-            let last_id_array = last_batch.column(0).as_any().downcast_ref::<Int64Array>().unwrap();
+            let last_id_array = last_batch
+                .column(0)
+                .as_any()
+                .downcast_ref::<Int64Array>()
+                .unwrap();
             assert_eq!(
                 last_id_array.value(0),
                 last_offset as i64,
@@ -1121,8 +1287,16 @@ pub mod arrow_tests {
             let batch2 =
                 create_test_batch_with_config_offset(batch_size, &config, Some(batch_size));
 
-            let id_array1 = batch1.column(0).as_any().downcast_ref::<Int64Array>().unwrap();
-            let id_array2 = batch2.column(0).as_any().downcast_ref::<Int64Array>().unwrap();
+            let id_array1 = batch1
+                .column(0)
+                .as_any()
+                .downcast_ref::<Int64Array>()
+                .unwrap();
+            let id_array2 = batch2
+                .column(0)
+                .as_any()
+                .downcast_ref::<Int64Array>()
+                .unwrap();
 
             // Both batches should have IDs starting from 0 (overlapping)
             // because unique_id=false ignores the offset parameter
@@ -1156,7 +1330,11 @@ pub mod arrow_tests {
 
                 let batch =
                     create_test_batch_with_config_offset(this_batch_size, &config, Some(offset));
-                let id_array = batch.column(0).as_any().downcast_ref::<Int64Array>().unwrap();
+                let id_array = batch
+                    .column(0)
+                    .as_any()
+                    .downcast_ref::<Int64Array>()
+                    .unwrap();
 
                 for i in 0..this_batch_size {
                     all_ids.push(id_array.value(i));
@@ -1217,7 +1395,11 @@ pub mod arrow_tests {
             assert_eq!(batch_offset.num_rows(), 50);
 
             // Verify IDs start at offset
-            let id_array = batch_offset.column(0).as_any().downcast_ref::<Int64Array>().unwrap();
+            let id_array = batch_offset
+                .column(0)
+                .as_any()
+                .downcast_ref::<Int64Array>()
+                .unwrap();
             assert_eq!(id_array.value(0), 100);
             assert_eq!(id_array.value(49), 149);
         }
@@ -1303,8 +1485,12 @@ pub mod arrow_tests {
 
         #[test]
         fn test_batch_config_binary_types() {
-            let config =
-                BatchConfig { binary: 2, binary_len: 32, include_id: false, ..Default::default() };
+            let config = BatchConfig {
+                binary: 2,
+                binary_len: 32,
+                include_id: false,
+                ..Default::default()
+            };
 
             let batch = create_test_batch_with_config(25, &config);
             assert_eq!(batch.num_rows(), 25);
@@ -1347,14 +1533,18 @@ mod container_tests {
 
     #[test]
     fn test_builder_chaining() {
-        let builder = ClickHouseContainerBuilder::new().with_config("test.xml").with_tmpfs();
+        let builder = ClickHouseContainerBuilder::new()
+            .with_config("test.xml")
+            .with_tmpfs();
         assert_eq!(builder.config, Some("test.xml".to_string()));
         assert!(builder.tmpfs);
     }
 
     #[test]
     fn test_builder_chaining_reverse() {
-        let builder = ClickHouseContainerBuilder::new().with_tmpfs().with_config("test.xml");
+        let builder = ClickHouseContainerBuilder::new()
+            .with_tmpfs()
+            .with_config("test.xml");
         assert_eq!(builder.config, Some("test.xml".to_string()));
         assert!(builder.tmpfs);
     }

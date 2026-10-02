@@ -151,9 +151,14 @@ pub(super) async fn deserialize<R: ClickHouseRead>(
         arrays.push(values);
     }
 
-    let null_buffer = (!nulls.is_empty())
-        .then_some(NullBuffer::from(nulls.iter().map(|value| *value == 0).collect::<Vec<_>>()));
-    Ok(Arc::new(StructArray::new(arrow_fields.clone(), arrays, null_buffer)))
+    let null_buffer = (!nulls.is_empty()).then_some(NullBuffer::from(
+        nulls.iter().map(|value| *value == 0).collect::<Vec<_>>(),
+    ));
+    Ok(Arc::new(StructArray::new(
+        arrow_fields.clone(),
+        arrays,
+        null_buffer,
+    )))
 }
 
 #[cfg(test)]
@@ -167,7 +172,10 @@ mod tests {
     use super::*;
 
     fn nested_type_fields() -> Vec<(String, Type)> {
-        vec![("name".to_string(), Type::String), ("score".to_string(), Type::Int32)]
+        vec![
+            ("name".to_string(), Type::String),
+            ("score".to_string(), Type::Int32),
+        ]
     }
 
     fn nested_data_type() -> DataType {
@@ -218,14 +226,36 @@ mod tests {
         .unwrap();
 
         let struct_array = array.as_any().downcast_ref::<StructArray>().unwrap();
-        let name_list = struct_array.column(0).as_any().downcast_ref::<ListArray>().unwrap();
-        let score_list = struct_array.column(1).as_any().downcast_ref::<ListArray>().unwrap();
+        let name_list = struct_array
+            .column(0)
+            .as_any()
+            .downcast_ref::<ListArray>()
+            .unwrap();
+        let score_list = struct_array
+            .column(1)
+            .as_any()
+            .downcast_ref::<ListArray>()
+            .unwrap();
 
-        assert_eq!(name_list.offsets().iter().copied().collect::<Vec<_>>(), vec![0, 2, 2, 3]);
-        assert_eq!(score_list.offsets().iter().copied().collect::<Vec<_>>(), vec![0, 2, 2, 3]);
+        assert_eq!(
+            name_list.offsets().iter().copied().collect::<Vec<_>>(),
+            vec![0, 2, 2, 3]
+        );
+        assert_eq!(
+            score_list.offsets().iter().copied().collect::<Vec<_>>(),
+            vec![0, 2, 2, 3]
+        );
 
-        let names = name_list.values().as_any().downcast_ref::<StringArray>().unwrap();
-        let scores = score_list.values().as_any().downcast_ref::<Int32Array>().unwrap();
+        let names = name_list
+            .values()
+            .as_any()
+            .downcast_ref::<StringArray>()
+            .unwrap();
+        let scores = score_list
+            .values()
+            .as_any()
+            .downcast_ref::<Int32Array>()
+            .unwrap();
         assert_eq!(names, &StringArray::from(vec!["alice", "bob", "carol"]));
         assert_eq!(scores, &Int32Array::from(vec![10, 20, 30]));
     }
@@ -258,7 +288,10 @@ mod tests {
         .unwrap();
 
         let struct_array = array.as_any().downcast_ref::<StructArray>().unwrap();
-        assert_eq!(struct_array.nulls().unwrap().iter().collect::<Vec<_>>(), vec![true, false]);
+        assert_eq!(
+            struct_array.nulls().unwrap().iter().collect::<Vec<_>>(),
+            vec![true, false]
+        );
     }
 
     #[tokio::test]
@@ -359,14 +392,22 @@ mod tests {
 
     #[tokio::test]
     async fn test_deserialize_nested_rejects_name_mismatch() {
-        let fields =
-            vec![("bad_name".to_string(), Type::String), ("score".to_string(), Type::Int32)];
+        let fields = vec![
+            ("bad_name".to_string(), Type::String),
+            ("score".to_string(), Type::Int32),
+        ];
         let type_fields = nested_type_fields();
         let data_type = nested_data_type();
         let mut builder =
             TypedBuilder::try_new(&Type::Nested(type_fields.clone()), &data_type).unwrap();
-        let mut reader =
-            Cursor::new([0_u64.to_le_bytes(), 0_u64.to_le_bytes(), 0_u64.to_le_bytes()].concat());
+        let mut reader = Cursor::new(
+            [
+                0_u64.to_le_bytes(),
+                0_u64.to_le_bytes(),
+                0_u64.to_le_bytes(),
+            ]
+            .concat(),
+        );
         let mut row_buffer = Vec::new();
         let error = deserialize(
             &fields,
@@ -416,7 +457,11 @@ mod tests {
         .await
         .unwrap_err();
 
-        assert!(error.to_string().contains("expected List/LargeList datatype"));
+        assert!(
+            error
+                .to_string()
+                .contains("expected List/LargeList datatype")
+        );
     }
 
     #[tokio::test]
@@ -466,6 +511,12 @@ mod tests {
         .unwrap();
 
         let struct_array = array.as_any().downcast_ref::<StructArray>().unwrap();
-        assert!(struct_array.column(0).as_any().downcast_ref::<LargeListArray>().is_some());
+        assert!(
+            struct_array
+                .column(0)
+                .as_any()
+                .downcast_ref::<LargeListArray>()
+                .is_some()
+        );
     }
 }

@@ -58,14 +58,18 @@ pub(crate) async fn fetch_all_tables(
     while let Some(batch) = stream.next().await.transpose()? {
         // 'database' as Utf8
         let database_col = cast(batch.column(0), &DataType::Utf8)?;
-        let database_col = database_col.as_string_opt::<i32>().ok_or(Error::ArrowDeserialize(
-            "Could not deserialize table column for schema".into(),
-        ))?;
+        let database_col = database_col
+            .as_string_opt::<i32>()
+            .ok_or(Error::ArrowDeserialize(
+                "Could not deserialize table column for schema".into(),
+            ))?;
         // 'name' as Utf8
         let name_col = cast(batch.column(1), &DataType::Utf8)?;
-        let name_col = name_col.as_string_opt::<i32>().ok_or(Error::ArrowDeserialize(
-            "Could not deserialize name column for schema".into(),
-        ))?;
+        let name_col = name_col
+            .as_string_opt::<i32>()
+            .ok_or(Error::ArrowDeserialize(
+                "Could not deserialize name column for schema".into(),
+            ))?;
         for i in 0..batch.num_rows() {
             tables
                 .entry(database_col.value(i).to_string())
@@ -128,22 +132,31 @@ pub(crate) async fn fetch_schema(
     while let Some(batch) = stream.next().await.transpose()? {
         // 'table' as Utf8
         let table_col = cast(batch.column(0), &DataType::Utf8)?;
-        let table_col = table_col.as_string_opt::<i32>().ok_or(Error::ArrowDeserialize(
-            "Could not deserialize table column for schema".into(),
-        ))?;
+        let table_col = table_col
+            .as_string_opt::<i32>()
+            .ok_or(Error::ArrowDeserialize(
+                "Could not deserialize table column for schema".into(),
+            ))?;
         // 'name' as Utf8
         let name_col = cast(batch.column(1), &DataType::Utf8)?;
-        let name_col = name_col.as_string_opt::<i32>().ok_or(Error::ArrowDeserialize(
-            "Could not deserialize name column for schema".into(),
-        ))?;
+        let name_col = name_col
+            .as_string_opt::<i32>()
+            .ok_or(Error::ArrowDeserialize(
+                "Could not deserialize name column for schema".into(),
+            ))?;
         // 'type' as Utf8
         let type_col = cast(batch.column(2), &DataType::Utf8)?;
-        let type_col = type_col.as_string_opt::<i32>().ok_or(Error::ArrowDeserialize(
-            "Could not deserialize type column for schema".into(),
-        ))?;
+        let type_col = type_col
+            .as_string_opt::<i32>()
+            .ok_or(Error::ArrowDeserialize(
+                "Could not deserialize type column for schema".into(),
+            ))?;
 
         for i in 0..batch.num_rows() {
-            let key = (table_col.value(i).to_string(), name_col.value(i).to_string());
+            let key = (
+                table_col.value(i).to_string(),
+                name_col.value(i).to_string(),
+            );
             let type_str = type_col.value(i).to_string();
             let ch_type = Type::from_str(&type_str)?;
             let (arrow_type, is_nullable) = super::types::ch_to_arrow_type(

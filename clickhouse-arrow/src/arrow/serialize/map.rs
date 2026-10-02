@@ -46,12 +46,16 @@ pub(super) async fn serialize_async<W: ClickHouseWrite>(
 
     // Validate the data type is Map
     let DataType::Map(struct_field, _ordered) = data_type else {
-        return Err(Error::ArrowSerialize("Expected Map data type for MapArray".into()));
+        return Err(Error::ArrowSerialize(
+            "Expected Map data type for MapArray".into(),
+        ));
     };
 
     // Validate the inner struct has exactly two fields (key, value)
     let DataType::Struct(fields) = struct_field.data_type() else {
-        return Err(Error::ArrowSerialize("MapArray field must be a Struct".into()));
+        return Err(Error::ArrowSerialize(
+            "MapArray field must be a Struct".into(),
+        ));
     };
 
     if fields.len() != 2 {
@@ -73,8 +77,12 @@ pub(super) async fn serialize_async<W: ClickHouseWrite>(
     // Serialize keys and values
     let keys = map_array.keys();
     let values = map_array.values();
-    key_type.serialize_async(writer, keys, fields[0].data_type(), state).await?;
-    value_type.serialize_async(writer, values, fields[1].data_type(), state).await?;
+    key_type
+        .serialize_async(writer, keys, fields[0].data_type(), state)
+        .await?;
+    value_type
+        .serialize_async(writer, values, fields[1].data_type(), state)
+        .await?;
 
     Ok(())
 }
@@ -96,12 +104,16 @@ pub(super) fn serialize<W: ClickHouseBytesWrite>(
 
     // Validate the data type is Map
     let DataType::Map(struct_field, _ordered) = data_type else {
-        return Err(Error::ArrowSerialize("Expected Map data type for MapArray".into()));
+        return Err(Error::ArrowSerialize(
+            "Expected Map data type for MapArray".into(),
+        ));
     };
 
     // Validate the inner struct has exactly two fields (key, value)
     let DataType::Struct(fields) = struct_field.data_type() else {
-        return Err(Error::ArrowSerialize("MapArray field must be a Struct".into()));
+        return Err(Error::ArrowSerialize(
+            "MapArray field must be a Struct".into(),
+        ));
     };
 
     if fields.len() != 2 {
@@ -160,7 +172,11 @@ mod tests {
         let columns = vec![keys, values];
 
         let entries = StructArray::new(fields.clone(), columns, None);
-        let field = Arc::new(Field::new(MAP_FIELD_NAME, DataType::Struct(fields.clone()), false));
+        let field = Arc::new(Field::new(
+            MAP_FIELD_NAME,
+            DataType::Struct(fields.clone()),
+            false,
+        ));
 
         let offsets = OffsetBuffer::new(vec![0, 2, 2, 3].into()); // [{1:"a", 2:"b"}, {}, {3:"c"}]
 
@@ -201,7 +217,11 @@ mod tests {
         let columns = vec![keys, values];
 
         let entries = StructArray::new(fields.clone(), columns, None);
-        let field = Arc::new(Field::new(MAP_FIELD_NAME, DataType::Struct(fields.clone()), false));
+        let field = Arc::new(Field::new(
+            MAP_FIELD_NAME,
+            DataType::Struct(fields.clone()),
+            false,
+        ));
 
         let offsets = OffsetBuffer::new(vec![0, 0].into()); // [{}]
 
@@ -236,7 +256,11 @@ mod tests {
         let columns = vec![keys, values];
 
         let entries = StructArray::new(fields.clone(), columns, None);
-        let field = Arc::new(Field::new(MAP_FIELD_NAME, DataType::Struct(fields.clone()), false));
+        let field = Arc::new(Field::new(
+            MAP_FIELD_NAME,
+            DataType::Struct(fields.clone()),
+            false,
+        ));
 
         let offsets = OffsetBuffer::new(vec![0, 2, 2, 3].into()); // [{1:"a", 2:null}, {}, {3:"c"}]
 
@@ -279,14 +303,23 @@ mod tests {
         let inner_columns = vec![inner_keys, inner_values];
 
         let inner_entries = StructArray::new(inner_fields.clone(), inner_columns, None);
-        let inner_field =
-            Arc::new(Field::new(MAP_FIELD_NAME, DataType::Struct(inner_fields.clone()), false));
+        let inner_field = Arc::new(Field::new(
+            MAP_FIELD_NAME,
+            DataType::Struct(inner_fields.clone()),
+            false,
+        ));
 
         let inner_offsets = OffsetBuffer::new(vec![0, 1, 2].into()); // [{"x":10}, {"y":20}]
 
         let inner_map_array = Arc::new(
-            MapArray::try_new(inner_field.clone(), inner_offsets, inner_entries, None, false)
-                .unwrap(),
+            MapArray::try_new(
+                inner_field.clone(),
+                inner_offsets,
+                inner_entries,
+                None,
+                false,
+            )
+            .unwrap(),
         ) as ArrayRef;
 
         // Outer Map(Int32, Map(String, Int32))
@@ -303,21 +336,33 @@ mod tests {
         let outer_columns = vec![outer_keys, outer_values];
 
         let outer_entries = StructArray::new(outer_fields.clone(), outer_columns, None);
-        let outer_field =
-            Arc::new(Field::new(MAP_FIELD_NAME, DataType::Struct(outer_fields.clone()), false));
+        let outer_field = Arc::new(Field::new(
+            MAP_FIELD_NAME,
+            DataType::Struct(outer_fields.clone()),
+            false,
+        ));
 
         let outer_offsets = OffsetBuffer::new(vec![0, 1, 2].into()); // [{1:{"x":10}}, {2:{"y":20}}]
 
         let map_array = Arc::new(
-            MapArray::try_new(outer_field.clone(), outer_offsets, outer_entries, None, false)
-                .unwrap(),
+            MapArray::try_new(
+                outer_field.clone(),
+                outer_offsets,
+                outer_entries,
+                None,
+                false,
+            )
+            .unwrap(),
         ) as ArrayRef;
 
         let mut writer = MockWriter::new();
         let mut state = SerializerState::default();
 
         serialize_async(
-            &wrap_map_type(Type::Int32, Type::Map(Box::new(Type::String), Box::new(Type::Int32))),
+            &wrap_map_type(
+                Type::Int32,
+                Type::Map(Box::new(Type::String), Box::new(Type::Int32)),
+            ),
             &mut writer,
             &map_array,
             map_array.data_type(),
@@ -349,7 +394,11 @@ mod tests {
         let columns = vec![keys, values];
 
         let entries = StructArray::new(fields.clone(), columns, None);
-        let field = Arc::new(Field::new(MAP_FIELD_NAME, DataType::Struct(fields.clone()), false));
+        let field = Arc::new(Field::new(
+            MAP_FIELD_NAME,
+            DataType::Struct(fields.clone()),
+            false,
+        ));
 
         let offsets = OffsetBuffer::new(vec![0, 1].into()); // [{1.5:100}]
 
@@ -410,7 +459,11 @@ mod tests {
         let columns = vec![keys, values];
 
         let entries = StructArray::new(fields.clone(), columns, None);
-        let field = Arc::new(Field::new(MAP_FIELD_NAME, DataType::Struct(fields.clone()), false));
+        let field = Arc::new(Field::new(
+            MAP_FIELD_NAME,
+            DataType::Struct(fields.clone()),
+            false,
+        ));
 
         let offsets = OffsetBuffer::new(vec![0, 1].into()); // [{1:"a"}]
 
@@ -447,7 +500,11 @@ mod tests {
         let columns = vec![keys, values];
 
         let entries = StructArray::new(fields.clone(), columns, None);
-        let field = Arc::new(Field::new(MAP_FIELD_NAME, DataType::Struct(fields.clone()), false));
+        let field = Arc::new(Field::new(
+            MAP_FIELD_NAME,
+            DataType::Struct(fields.clone()),
+            false,
+        ));
 
         let offsets = OffsetBuffer::new(vec![0, 2, 2, 3].into());
         let map_array =
@@ -503,7 +560,11 @@ mod tests {
         let columns = vec![keys, values];
 
         let entries = StructArray::new(fields.clone(), columns, None);
-        let field = Arc::new(Field::new(MAP_FIELD_NAME, DataType::Struct(fields.clone()), false));
+        let field = Arc::new(Field::new(
+            MAP_FIELD_NAME,
+            DataType::Struct(fields.clone()),
+            false,
+        ));
 
         let offsets = OffsetBuffer::new(vec![0, 1].into());
         let map_array =

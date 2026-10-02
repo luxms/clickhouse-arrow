@@ -24,7 +24,9 @@ enum DecimalNarrow {
 /// used in `Value::Decimal*` variants. Negative scales are clamped to 0
 /// — they're unrepresentable in our `Value` shape and CH rejects them
 /// at table-creation time, so the clamp is conservative defence.
-fn arrow_scale_to_usize(scale: i8) -> usize { usize::try_from(scale).unwrap_or(0) }
+fn arrow_scale_to_usize(scale: i8) -> usize {
+    usize::try_from(scale).unwrap_or(0)
+}
 
 /// Splits a `RecordBatch` into multiple `RecordBatch`es, each containing at most `max` rows.
 ///
@@ -114,14 +116,17 @@ pub fn batch_to_rows(
         .enumerate()
         .map(|(i, column)| {
             let name = schema.field(i).name();
-            let type_hint =
-                type_hints.as_ref().and_then(|hints| hints.iter().find(|(n, _)| n == name));
+            let type_hint = type_hints
+                .as_ref()
+                .and_then(|hints| hints.iter().find(|(n, _)| n == name));
             array_to_values(column, column.data_type(), type_hint.map(|(_, t)| t))
         })
         .collect::<Result<Vec<_>>>()?;
 
     let row_iter = (0..row_len).map(move |i| {
-        let row = (0..col_len).map(|j| values[j][i].clone()).collect::<Vec<_>>();
+        let row = (0..col_len)
+            .map(|j| values[j][i].clone())
+            .collect::<Vec<_>>();
         Ok(row)
     });
 
@@ -143,7 +148,8 @@ pub fn array_to_values(
         iter: impl Iterator<Item = Option<T>>,
         conv: impl Fn(T) -> Value,
     ) -> Vec<Value> {
-        iter.map(|v| v.map_or(Value::Null, &conv)).collect::<Vec<Value>>()
+        iter.map(|v| v.map_or(Value::Null, &conv))
+            .collect::<Vec<Value>>()
     }
 
     Ok(match data_type {
@@ -320,7 +326,13 @@ pub fn array_to_values(
                 },
             };
             map_or_null(
-                (0..arr.len()).map(|i| if arr.is_null(i) { None } else { Some(arr.value(i)) }),
+                (0..arr.len()).map(|i| {
+                    if arr.is_null(i) {
+                        None
+                    } else {
+                        Some(arr.value(i))
+                    }
+                }),
                 move |v| match narrow {
                     DecimalNarrow::D32 =>
                     {
@@ -346,8 +358,13 @@ pub fn array_to_values(
                 _ => arrow_scale_to_usize(*scale),
             };
             map_or_null(
-                (0..arr.len())
-                    .map(|i| if arr.is_null(i) { None } else { Some((s, arr.value(i).into())) }),
+                (0..arr.len()).map(|i| {
+                    if arr.is_null(i) {
+                        None
+                    } else {
+                        Some((s, arr.value(i).into()))
+                    }
+                }),
                 |(s, v)| Value::Decimal256(s, v),
             )
         }
@@ -362,9 +379,9 @@ pub fn array_to_values(
         DataType::Date32 if matches!(type_hint, Some(Type::Date32)) => {
             map_or_null(array_to_i32_iter(column)?, |d| Value::Date32(Date32(d)))
         }
-        DataType::Date32 => {
-            map_or_null(array_to_i32_iter(column)?, |d| Value::Date(Date::from_days(d)))
-        }
+        DataType::Date32 => map_or_null(array_to_i32_iter(column)?, |d| {
+            Value::Date(Date::from_days(d))
+        }),
         DataType::Date64 => {
             let tz = type_hint.and_then(|t| match t {
                 Type::DateTime64(_, tz) => Some(Arc::from(tz.clone().to_string().as_str())),
@@ -417,9 +434,12 @@ pub fn array_to_values(
 
         // Struct type (map to Tuple)
         DataType::Struct(fields) => {
-            let struct_array = column.as_any().downcast_ref::<StructArray>().ok_or_else(|| {
-                Error::ArrowDeserialize("Could not downcast struct array".to_string())
-            })?;
+            let struct_array = column
+                .as_any()
+                .downcast_ref::<StructArray>()
+                .ok_or_else(|| {
+                    Error::ArrowDeserialize("Could not downcast struct array".to_string())
+                })?;
             (0..struct_array.len())
                 .map(|i| {
                     if struct_array.is_null(i) {
@@ -532,21 +552,30 @@ pub fn array_to_list_vec<T>(
             Ok(array.iter().map(caster).collect::<Result<Vec<_>>>()?)
         }
         DataType::LargeList(_) => {
-            let array = array.as_any().downcast_ref::<LargeListArray>().ok_or_else(|| {
-                Error::ArrowDeserialize("Failed to downcast to LargeListArray".to_string())
-            })?;
+            let array = array
+                .as_any()
+                .downcast_ref::<LargeListArray>()
+                .ok_or_else(|| {
+                    Error::ArrowDeserialize("Failed to downcast to LargeListArray".to_string())
+                })?;
             Ok(array.iter().map(caster).collect::<Result<Vec<_>>>()?)
         }
         DataType::ListView(_) => {
-            let array = array.as_any().downcast_ref::<ListViewArray>().ok_or_else(|| {
-                Error::ArrowDeserialize("Failed to downcast to ListView".to_string())
-            })?;
+            let array = array
+                .as_any()
+                .downcast_ref::<ListViewArray>()
+                .ok_or_else(|| {
+                    Error::ArrowDeserialize("Failed to downcast to ListView".to_string())
+                })?;
             Ok(array.iter().map(caster).collect::<Result<Vec<_>>>()?)
         }
         DataType::FixedSizeList(..) => {
-            let array = array.as_any().downcast_ref::<FixedSizeListArray>().ok_or_else(|| {
-                Error::ArrowDeserialize("Failed to downcast to FixedSizeListArray".to_string())
-            })?;
+            let array = array
+                .as_any()
+                .downcast_ref::<FixedSizeListArray>()
+                .ok_or_else(|| {
+                    Error::ArrowDeserialize("Failed to downcast to FixedSizeListArray".to_string())
+                })?;
             Ok(array.iter().map(caster).collect::<Result<Vec<_>>>()?)
         }
         _ => Err(Error::ArrowUnsupportedType(format!(
@@ -579,7 +608,11 @@ pub fn array_to_string_iter(array: &dyn Array) -> Result<impl Iterator<Item = Op
 
     // Return an iterator that yields Option<String> for each element
     let iter = (0..string_array.len()).map(move |i| {
-        if string_array.is_null(i) { None } else { Some(string_array.value(i).to_string()) }
+        if string_array.is_null(i) {
+            None
+        } else {
+            Some(string_array.value(i).to_string())
+        }
     });
 
     Ok(iter)
@@ -602,7 +635,11 @@ pub fn array_to_binary_iter(array: &dyn Array) -> Result<impl Iterator<Item = Op
 
     // Return an iterator that yields Option<String> for each element
     let iter = (0..binary_array.len()).map(move |i| {
-        if binary_array.is_null(i) { None } else { Some(binary_array.value(i).to_vec()) }
+        if binary_array.is_null(i) {
+            None
+        } else {
+            Some(binary_array.value(i).to_vec())
+        }
     });
 
     Ok(iter)
@@ -624,8 +661,13 @@ pub fn array_to_bool_iter(array: &dyn Array) -> Result<impl Iterator<Item = Opti
         .clone();
 
     // Return an iterator that yields Option<bool> for each element
-    let iter = (0..bool_array.len())
-        .map(move |i| if bool_array.is_null(i) { None } else { Some(bool_array.value(i)) });
+    let iter = (0..bool_array.len()).map(move |i| {
+        if bool_array.is_null(i) {
+            None
+        } else {
+            Some(bool_array.value(i))
+        }
+    });
 
     Ok(iter)
 }
@@ -651,7 +693,11 @@ where
         .clone();
 
     let iter = (0..primitive_array.len()).map(move |i| {
-        if primitive_array.is_null(i) { None } else { Some(primitive_array.value(i).into()) }
+        if primitive_array.is_null(i) {
+            None
+        } else {
+            Some(primitive_array.value(i).into())
+        }
     });
 
     Ok(iter)
@@ -770,45 +816,72 @@ mod tests {
     fn test_string_array() {
         let array = StringArray::from(vec![Some("hello"), None, Some("world")]);
         let result = collect_string_iter(array_to_string_iter(&array).unwrap());
-        assert_eq!(result, vec![Some("hello".to_string()), None, Some("world".to_string())]);
+        assert_eq!(
+            result,
+            vec![Some("hello".to_string()), None, Some("world".to_string())]
+        );
     }
 
     #[test]
     fn test_large_string_array() {
         let array = LargeStringArray::from(vec![Some("hello"), None, Some("world")]);
         let result = collect_string_iter(array_to_string_iter(&array).unwrap());
-        assert_eq!(result, vec![Some("hello".to_string()), None, Some("world".to_string())]);
+        assert_eq!(
+            result,
+            vec![Some("hello".to_string()), None, Some("world".to_string())]
+        );
     }
 
     #[test]
     fn test_string_view_array() {
         let array = StringViewArray::from(vec![Some("hello"), None, Some("world")]);
         let result = collect_string_iter(array_to_string_iter(&array).unwrap());
-        assert_eq!(result, vec![Some("hello".to_string()), None, Some("world".to_string())]);
+        assert_eq!(
+            result,
+            vec![Some("hello".to_string()), None, Some("world".to_string())]
+        );
     }
 
     #[test]
     fn test_binary_array() {
-        let array =
-            BinaryArray::from(vec![Some("hello".as_bytes()), None, Some("world".as_bytes())]);
+        let array = BinaryArray::from(vec![
+            Some("hello".as_bytes()),
+            None,
+            Some("world".as_bytes()),
+        ]);
         let result = collect_string_iter(array_to_string_iter(&array).unwrap());
-        assert_eq!(result, vec![Some("hello".to_string()), None, Some("world".to_string())]);
+        assert_eq!(
+            result,
+            vec![Some("hello".to_string()), None, Some("world".to_string())]
+        );
     }
 
     #[test]
     fn test_large_binary_array() {
-        let array =
-            LargeBinaryArray::from(vec![Some("hello".as_bytes()), None, Some("world".as_bytes())]);
+        let array = LargeBinaryArray::from(vec![
+            Some("hello".as_bytes()),
+            None,
+            Some("world".as_bytes()),
+        ]);
         let result = collect_string_iter(array_to_string_iter(&array).unwrap());
-        assert_eq!(result, vec![Some("hello".to_string()), None, Some("world".to_string())]);
+        assert_eq!(
+            result,
+            vec![Some("hello".to_string()), None, Some("world".to_string())]
+        );
     }
 
     #[test]
     fn test_binary_view_array() {
-        let array =
-            BinaryViewArray::from(vec![Some("hello".as_bytes()), None, Some("world".as_bytes())]);
+        let array = BinaryViewArray::from(vec![
+            Some("hello".as_bytes()),
+            None,
+            Some("world".as_bytes()),
+        ]);
         let result = collect_string_iter(array_to_string_iter(&array).unwrap());
-        assert_eq!(result, vec![Some("hello".to_string()), None, Some("world".to_string())]);
+        assert_eq!(
+            result,
+            vec![Some("hello".to_string()), None, Some("world".to_string())]
+        );
     }
 
     #[test]
@@ -819,7 +892,10 @@ mod tests {
         )
         .unwrap();
         let result = array_to_string_iter(&array).unwrap().collect::<Vec<_>>();
-        assert_eq!(result, vec![Some("hello".to_string()), Some("world".to_string())]);
+        assert_eq!(
+            result,
+            vec![Some("hello".to_string()), Some("world".to_string())]
+        );
     }
 
     #[test]
@@ -832,21 +908,30 @@ mod tests {
         let array = builder.finish();
 
         let result = collect_string_iter(array_to_string_iter(&array).unwrap());
-        assert_eq!(result, vec![Some("hello".to_string()), None, Some("world".to_string())]);
+        assert_eq!(
+            result,
+            vec![Some("hello".to_string()), None, Some("world".to_string())]
+        );
     }
 
     #[test]
     fn test_boolean_to_string() {
         let array = BooleanArray::from(vec![Some(true), None, Some(false)]);
         let result = collect_string_iter(array_to_string_iter(&array).unwrap());
-        assert_eq!(result, vec![Some("true".to_string()), None, Some("false".to_string())]);
+        assert_eq!(
+            result,
+            vec![Some("true".to_string()), None, Some("false".to_string())]
+        );
     }
 
     #[test]
     fn test_numeric_to_string() {
         let array = Int32Array::from(vec![Some(42), None, Some(-123)]);
         let result = collect_string_iter(array_to_string_iter(&array).unwrap());
-        assert_eq!(result, vec![Some("42".to_string()), None, Some("-123".to_string())]);
+        assert_eq!(
+            result,
+            vec![Some("42".to_string()), None, Some("-123".to_string())]
+        );
     }
 
     // Tests for the numeric conversion functions
@@ -924,43 +1009,58 @@ mod tests {
     fn test_int32_array() {
         let array = Int32Array::from(vec![Some(42), None, Some(-123)]);
         let result = array_to_values(&array, &DataType::Int32, None).unwrap();
-        assert_eq!(result, vec![Value::Int32(42), Value::Null, Value::Int32(-123)]);
+        assert_eq!(
+            result,
+            vec![Value::Int32(42), Value::Null, Value::Int32(-123)]
+        );
     }
 
     #[test]
     fn test_float64_array() {
         let array = Float64Array::from(vec![Some(3.15), None, Some(-2.719)]);
         let result = array_to_values(&array, &DataType::Float64, None).unwrap();
-        assert_eq!(result, vec![Value::Float64(3.15), Value::Null, Value::Float64(-2.719)]);
+        assert_eq!(
+            result,
+            vec![Value::Float64(3.15), Value::Null, Value::Float64(-2.719)]
+        );
     }
 
     #[test]
     fn test_utf8_array() {
         let array = StringArray::from(vec![Some("hello"), None, Some("world")]);
         let result = array_to_values(&array, &DataType::Utf8, None).unwrap();
-        assert_eq!(result, vec![
-            Value::String(b"hello".to_vec()),
-            Value::Null,
-            Value::String(b"world".to_vec()),
-        ]);
+        assert_eq!(
+            result,
+            vec![
+                Value::String(b"hello".to_vec()),
+                Value::Null,
+                Value::String(b"world".to_vec()),
+            ]
+        );
     }
 
     #[test]
     fn test_binary_array_values() {
         let array = BinaryArray::from(vec![Some(b"abc".as_ref()), None, Some(b"def".as_ref())]);
         let result = array_to_values(&array, &DataType::Binary, None).unwrap();
-        assert_eq!(result, vec![
-            Value::String(b"abc".to_vec()),
-            Value::Null,
-            Value::String(b"def".to_vec()),
-        ]);
+        assert_eq!(
+            result,
+            vec![
+                Value::String(b"abc".to_vec()),
+                Value::Null,
+                Value::String(b"def".to_vec()),
+            ]
+        );
     }
 
     #[test]
     fn test_binary_array_direct() {
         let array = BinaryArray::from(vec![Some(b"abc".as_ref()), None, Some(b"def".as_ref())]);
         let result = collect_binary_iter(array_to_binary_iter(&array).unwrap());
-        assert_eq!(result, vec![Some(b"abc".to_vec()), None, Some(b"def".to_vec()),]);
+        assert_eq!(
+            result,
+            vec![Some(b"abc".to_vec()), None, Some(b"def".to_vec()),]
+        );
     }
 
     #[test]
@@ -991,10 +1091,13 @@ mod tests {
             None,
         )
         .unwrap();
-        assert_eq!(result, vec![
-            Value::Array(vec![Value::Int32(1), Value::Int32(2)]),
-            Value::Array(vec![Value::Int32(3), Value::Int32(4)]),
-        ]);
+        assert_eq!(
+            result,
+            vec![
+                Value::Array(vec![Value::Int32(1), Value::Int32(2)]),
+                Value::Array(vec![Value::Int32(3), Value::Int32(4)]),
+            ]
+        );
     }
 
     #[test]
@@ -1015,10 +1118,13 @@ mod tests {
             None,
         )
         .unwrap();
-        assert_eq!(result, vec![
-            Value::Array(vec![Value::Int32(1), Value::Int32(2)]),
-            Value::Array(vec![Value::Int32(3), Value::Int32(4)]),
-        ]);
+        assert_eq!(
+            result,
+            vec![
+                Value::Array(vec![Value::Int32(1), Value::Int32(2)]),
+                Value::Array(vec![Value::Int32(3), Value::Int32(4)]),
+            ]
+        );
     }
 
     #[test]
@@ -1034,7 +1140,11 @@ mod tests {
         );
         let result = array_to_values(
             &list_array,
-            &DataType::List(Arc::new(Field::new(LIST_ITEM_FIELD_NAME, DataType::Int32, false))),
+            &DataType::List(Arc::new(Field::new(
+                LIST_ITEM_FIELD_NAME,
+                DataType::Int32,
+                false,
+            ))),
             None,
         )
         .unwrap();
@@ -1055,11 +1165,14 @@ mod tests {
             Some(&Type::Enum8(pairs.clone())),
         )
         .unwrap();
-        assert_eq!(result, vec![
-            Value::Enum8("a".to_string(), 1),
-            Value::Null,
-            Value::Enum8("b".to_string(), 2),
-        ]);
+        assert_eq!(
+            result,
+            vec![
+                Value::Enum8("a".to_string(), 1),
+                Value::Null,
+                Value::Enum8("b".to_string(), 2),
+            ]
+        );
     }
 
     #[test]
@@ -1076,11 +1189,14 @@ mod tests {
             Some(&Type::Enum16(pairs.clone())),
         )
         .unwrap();
-        assert_eq!(result, vec![
-            Value::Enum16("x".to_string(), 10),
-            Value::Null,
-            Value::Enum16("y".to_string(), 20),
-        ]);
+        assert_eq!(
+            result,
+            vec![
+                Value::Enum16("x".to_string(), 10),
+                Value::Null,
+                Value::Enum16("y".to_string(), 20),
+            ]
+        );
     }
 
     #[test]
@@ -1090,18 +1206,24 @@ mod tests {
             Arc::clone(&inner_field),
             Arc::new(Int32Array::from(vec![1, 2])) as ArrayRef,
         )]);
-        let outer_field =
-            Arc::new(Field::new("outer", inner_struct_array.data_type().clone(), false));
+        let outer_field = Arc::new(Field::new(
+            "outer",
+            inner_struct_array.data_type().clone(),
+            false,
+        ));
         let outer_struct_array = StructArray::from(vec![(
             Arc::clone(&outer_field),
             Arc::new(inner_struct_array) as ArrayRef,
         )]);
         let fields = Fields::from_iter(vec![outer_field]);
         let result = array_to_values(&outer_struct_array, &DataType::Struct(fields), None).unwrap();
-        assert_eq!(result, vec![
-            Value::Tuple(vec![Value::Tuple(vec![Value::Int32(1)])]),
-            Value::Tuple(vec![Value::Tuple(vec![Value::Int32(2)])]),
-        ]);
+        assert_eq!(
+            result,
+            vec![
+                Value::Tuple(vec![Value::Tuple(vec![Value::Int32(1)])]),
+                Value::Tuple(vec![Value::Tuple(vec![Value::Int32(2)])]),
+            ]
+        );
     }
 
     #[test]
@@ -1109,14 +1231,20 @@ mod tests {
         let tz: Arc<str> = Arc::from("America/New_York");
         let array =
             TimestampSecondArray::from(vec![Some(1_625_097_600), None, Some(1_625_184_000)]);
-        let result =
-            array_to_values(&array, &DataType::Timestamp(TimeUnit::Second, Some(tz)), None)
-                .unwrap();
-        assert_eq!(result, vec![
-            Value::DateTime(DateTime(Tz::America__New_York, 1_625_097_600)),
-            Value::Null,
-            Value::DateTime(DateTime(Tz::America__New_York, 1_625_184_000)),
-        ]);
+        let result = array_to_values(
+            &array,
+            &DataType::Timestamp(TimeUnit::Second, Some(tz)),
+            None,
+        )
+        .unwrap();
+        assert_eq!(
+            result,
+            vec![
+                Value::DateTime(DateTime(Tz::America__New_York, 1_625_097_600)),
+                Value::Null,
+                Value::DateTime(DateTime(Tz::America__New_York, 1_625_184_000)),
+            ]
+        );
     }
 
     // Cross-type conversion tests
@@ -1148,10 +1276,13 @@ mod tests {
         )
         .unwrap();
         let result = array_to_values(&array, &DataType::FixedSizeBinary(5), None).unwrap();
-        assert_eq!(result, vec![
-            Value::String(b"abcde".to_vec()),
-            Value::String(b"fghij".to_vec()),
-        ]);
+        assert_eq!(
+            result,
+            vec![
+                Value::String(b"abcde".to_vec()),
+                Value::String(b"fghij".to_vec()),
+            ]
+        );
     }
 
     #[test]
@@ -1224,9 +1355,12 @@ mod tests {
         let array = Decimal128Array::from_iter_values([12345, -67890])
             .with_precision_and_scale(10, 2)
             .unwrap();
-        let result =
-            array_to_values(&array, &DataType::Decimal128(10, 2), Some(&Type::Decimal32(2)))
-                .unwrap();
+        let result = array_to_values(
+            &array,
+            &DataType::Decimal128(10, 2),
+            Some(&Type::Decimal32(2)),
+        )
+        .unwrap();
         match &result[0] {
             Value::Decimal32(s, v) => {
                 assert_eq!(*s, 2);
@@ -1286,10 +1420,13 @@ mod tests {
             FixedSizeBinaryArray::try_from_iter([a.as_slice(), b.as_slice()].into_iter()).unwrap();
         let result =
             array_to_values(&array, &DataType::FixedSizeBinary(4), Some(&Type::Ipv4)).unwrap();
-        assert_eq!(result, vec![
-            Value::Ipv4(Ipv4(std::net::Ipv4Addr::LOCALHOST)),
-            Value::Ipv4(Ipv4(std::net::Ipv4Addr::new(192, 168, 1, 42))),
-        ]);
+        assert_eq!(
+            result,
+            vec![
+                Value::Ipv4(Ipv4(std::net::Ipv4Addr::LOCALHOST)),
+                Value::Ipv4(Ipv4(std::net::Ipv4Addr::new(192, 168, 1, 42))),
+            ]
+        );
     }
 
     #[test]
@@ -1310,11 +1447,14 @@ mod tests {
             FixedSizeBinaryArray::try_from_iter(bytes.iter().map(<[u8; 16]>::as_slice)).unwrap();
         let result =
             array_to_values(&array, &DataType::FixedSizeBinary(16), Some(&Type::Int128)).unwrap();
-        assert_eq!(result, vec![
-            Value::Int128(i128::MIN),
-            Value::Int128(0),
-            Value::Int128(i128::MAX),
-        ]);
+        assert_eq!(
+            result,
+            vec![
+                Value::Int128(i128::MIN),
+                Value::Int128(0),
+                Value::Int128(i128::MAX),
+            ]
+        );
     }
 
     #[test]
@@ -1370,36 +1510,48 @@ mod tests {
     fn test_date32_array() {
         let array = Date32Array::from(vec![Some(0), None, Some(1)]);
         let result = array_to_values(&array, &DataType::Date32, None).unwrap();
-        assert_eq!(result, vec![Value::Date(Date(0)), Value::Null, Value::Date(Date(1))]);
+        assert_eq!(
+            result,
+            vec![Value::Date(Date(0)), Value::Null, Value::Date(Date(1))]
+        );
     }
 
     #[test]
     fn test_date64_array() {
         let array = Date64Array::from(vec![Some(0), None, Some(1)]);
         let result = array_to_values(&array, &DataType::Date64, None).unwrap();
-        assert_eq!(result, vec![
-            Value::DateTime64(DynDateTime64(Tz::UTC, 0, 3)),
-            Value::Null,
-            Value::DateTime64(DynDateTime64(Tz::UTC, 1, 3)),
-        ]);
+        assert_eq!(
+            result,
+            vec![
+                Value::DateTime64(DynDateTime64(Tz::UTC, 0, 3)),
+                Value::Null,
+                Value::DateTime64(DynDateTime64(Tz::UTC, 1, 3)),
+            ]
+        );
 
         // With timezone
         let typ = Type::DateTime64(3, Tz::America__New_York);
         let result = array_to_values(&array, &DataType::Date64, Some(&typ)).unwrap();
-        assert_eq!(result, vec![
-            Value::DateTime64(DynDateTime64(Tz::America__New_York, 0, 3)),
-            Value::Null,
-            Value::DateTime64(DynDateTime64(Tz::America__New_York, 1, 3)),
-        ]);
+        assert_eq!(
+            result,
+            vec![
+                Value::DateTime64(DynDateTime64(Tz::America__New_York, 0, 3)),
+                Value::Null,
+                Value::DateTime64(DynDateTime64(Tz::America__New_York, 1, 3)),
+            ]
+        );
 
         // With timezone default
         let typ = Type::Date;
         let result = array_to_values(&array, &DataType::Date64, Some(&typ)).unwrap();
-        assert_eq!(result, vec![
-            Value::DateTime64(DynDateTime64(Tz::UTC, 0, 3)),
-            Value::Null,
-            Value::DateTime64(DynDateTime64(Tz::UTC, 1, 3)),
-        ]);
+        assert_eq!(
+            result,
+            vec![
+                Value::DateTime64(DynDateTime64(Tz::UTC, 0, 3)),
+                Value::Null,
+                Value::DateTime64(DynDateTime64(Tz::UTC, 1, 3)),
+            ]
+        );
     }
 
     #[test]
@@ -1408,11 +1560,14 @@ mod tests {
             TimestampSecondArray::from(vec![Some(1_625_097_600), None, Some(1_625_184_000)]);
         let result =
             array_to_values(&array, &DataType::Timestamp(TimeUnit::Second, None), None).unwrap();
-        assert_eq!(result, vec![
-            Value::DateTime(DateTime(chrono_tz::UTC, 1_625_097_600)),
-            Value::Null,
-            Value::DateTime(DateTime(chrono_tz::UTC, 1_625_184_000)),
-        ]);
+        assert_eq!(
+            result,
+            vec![
+                Value::DateTime(DateTime(chrono_tz::UTC, 1_625_097_600)),
+                Value::Null,
+                Value::DateTime(DateTime(chrono_tz::UTC, 1_625_184_000)),
+            ]
+        );
     }
 
     #[test]
@@ -1428,14 +1583,21 @@ mod tests {
         );
         let result = array_to_values(
             &list_array,
-            &DataType::List(Arc::new(Field::new(LIST_ITEM_FIELD_NAME, DataType::Int32, false))),
+            &DataType::List(Arc::new(Field::new(
+                LIST_ITEM_FIELD_NAME,
+                DataType::Int32,
+                false,
+            ))),
             None,
         )
         .unwrap();
-        assert_eq!(result, vec![
-            Value::Array(vec![Value::Int32(1), Value::Int32(2)]),
-            Value::Array(vec![Value::Int32(3), Value::Int32(4)]),
-        ]);
+        assert_eq!(
+            result,
+            vec![
+                Value::Array(vec![Value::Int32(1), Value::Int32(2)]),
+                Value::Array(vec![Value::Int32(3), Value::Int32(4)]),
+            ]
+        );
     }
 
     #[test]
@@ -1443,15 +1605,24 @@ mod tests {
         let int_field = Arc::new(Field::new("a", DataType::Int32, false));
         let str_field = Arc::new(Field::new("b", DataType::Utf8, false));
         let struct_array = StructArray::from(vec![
-            (Arc::clone(&int_field), Arc::new(Int32Array::from(vec![1, 2])) as ArrayRef),
-            (Arc::clone(&str_field), Arc::new(StringArray::from(vec!["x", "y"])) as ArrayRef),
+            (
+                Arc::clone(&int_field),
+                Arc::new(Int32Array::from(vec![1, 2])) as ArrayRef,
+            ),
+            (
+                Arc::clone(&str_field),
+                Arc::new(StringArray::from(vec!["x", "y"])) as ArrayRef,
+            ),
         ]);
         let fields = Fields::from_iter(vec![int_field, str_field]);
         let result = array_to_values(&struct_array, &DataType::Struct(fields), None).unwrap();
-        assert_eq!(result, vec![
-            Value::Tuple(vec![Value::Int32(1), Value::String(b"x".to_vec())]),
-            Value::Tuple(vec![Value::Int32(2), Value::String(b"y".to_vec())]),
-        ]);
+        assert_eq!(
+            result,
+            vec![
+                Value::Tuple(vec![Value::Int32(1), Value::String(b"x".to_vec())]),
+                Value::Tuple(vec![Value::Int32(2), Value::String(b"y".to_vec())]),
+            ]
+        );
     }
 
     #[test]
@@ -1459,7 +1630,10 @@ mod tests {
         let int_field = Arc::new(Field::new("a", DataType::Int32, false));
         let str_field = Arc::new(Field::new("b", DataType::Utf8, true));
         let struct_array = StructArray::from(vec![
-            (Arc::clone(&int_field), Arc::new(Int32Array::from(vec![1, 2])) as ArrayRef),
+            (
+                Arc::clone(&int_field),
+                Arc::new(Int32Array::from(vec![1, 2])) as ArrayRef,
+            ),
             (
                 Arc::clone(&str_field),
                 Arc::new(StringArray::from(vec![Some("x"), None])) as ArrayRef,
@@ -1467,10 +1641,13 @@ mod tests {
         ]);
         let fields = Fields::from_iter(vec![int_field, str_field]);
         let result = array_to_values(&struct_array, &DataType::Struct(fields), None).unwrap();
-        assert_eq!(result, vec![
-            Value::Tuple(vec![Value::Int32(1), Value::String(b"x".to_vec())]),
-            Value::Tuple(vec![Value::Int32(2), Value::Null]),
-        ]);
+        assert_eq!(
+            result,
+            vec![
+                Value::Tuple(vec![Value::Int32(1), Value::String(b"x".to_vec())]),
+                Value::Tuple(vec![Value::Int32(2), Value::Null]),
+            ]
+        );
     }
 
     #[test]
@@ -1492,11 +1669,21 @@ mod tests {
         let keys = Arc::new(StringArray::from(vec!["k1", "k2"])) as ArrayRef;
         let values = Arc::new(Int32Array::from(vec![10, 20])) as ArrayRef;
         let struct_array = StructArray::from(vec![
-            (Arc::new(Field::new(STRUCT_KEY_FIELD_NAME, DataType::Utf8, false)), keys),
-            (Arc::new(Field::new(STRUCT_VALUE_FIELD_NAME, DataType::Int32, false)), values),
+            (
+                Arc::new(Field::new(STRUCT_KEY_FIELD_NAME, DataType::Utf8, false)),
+                keys,
+            ),
+            (
+                Arc::new(Field::new(STRUCT_VALUE_FIELD_NAME, DataType::Int32, false)),
+                values,
+            ),
         ]);
         let map_array = MapArray::new(
-            Arc::new(Field::new(MAP_FIELD_NAME, struct_array.data_type().clone(), false)),
+            Arc::new(Field::new(
+                MAP_FIELD_NAME,
+                struct_array.data_type().clone(),
+                false,
+            )),
             OffsetBuffer::new(Buffer::from_vec(vec![0, 1, 2]).into()),
             struct_array,
             None,
@@ -1518,10 +1705,13 @@ mod tests {
             None,
         )
         .unwrap();
-        assert_eq!(result, vec![
-            Value::Map(vec![Value::String(b"k1".to_vec())], vec![Value::Int32(10)]),
-            Value::Map(vec![Value::String(b"k2".to_vec())], vec![Value::Int32(20)]),
-        ]);
+        assert_eq!(
+            result,
+            vec![
+                Value::Map(vec![Value::String(b"k1".to_vec())], vec![Value::Int32(10)]),
+                Value::Map(vec![Value::String(b"k2".to_vec())], vec![Value::Int32(20)]),
+            ]
+        );
     }
 
     #[test]
@@ -1538,11 +1728,14 @@ mod tests {
             None,
         )
         .unwrap();
-        assert_eq!(result, vec![
-            Value::String(b"hello".to_vec()),
-            Value::Null,
-            Value::String(b"world".to_vec()),
-        ]);
+        assert_eq!(
+            result,
+            vec![
+                Value::String(b"hello".to_vec()),
+                Value::Null,
+                Value::String(b"world".to_vec()),
+            ]
+        );
     }
 
     #[test]
@@ -1573,37 +1766,56 @@ mod tests {
             Field::new("v_8", DataType::Float32, false),
             Field::new("v_9", DataType::Float64, false),
             Field::new("v_10", DataType::Timestamp(TimeUnit::Second, None), false),
-            Field::new("v_11", DataType::Timestamp(TimeUnit::Millisecond, None), false),
-            Field::new("v_12", DataType::Timestamp(TimeUnit::Microsecond, None), false),
-            Field::new("v_13", DataType::Timestamp(TimeUnit::Nanosecond, None), false),
+            Field::new(
+                "v_11",
+                DataType::Timestamp(TimeUnit::Millisecond, None),
+                false,
+            ),
+            Field::new(
+                "v_12",
+                DataType::Timestamp(TimeUnit::Microsecond, None),
+                false,
+            ),
+            Field::new(
+                "v_13",
+                DataType::Timestamp(TimeUnit::Nanosecond, None),
+                false,
+            ),
             Field::new("v_14", DataType::Utf8, false),
         ]));
         let str_vals = vec!["a", "b", "c"];
-        let batch = RecordBatch::try_new(schema, vec![
-            Arc::new(Int8Array::from(vec![1, 2, 3])),
-            Arc::new(Int16Array::from(vec![1, 2, 3])),
-            Arc::new(Int32Array::from(vec![1, 2, 3])),
-            Arc::new(Int64Array::from(vec![1, 2, 3])),
-            Arc::new(UInt8Array::from(vec![1, 2, 3])),
-            Arc::new(UInt16Array::from(vec![1, 2, 3])),
-            Arc::new(UInt32Array::from(vec![1, 2, 3])),
-            Arc::new(UInt64Array::from(vec![1, 2, 3])),
-            Arc::new(Float32Array::from(vec![1.0_f32, 2.0, 3.0])),
-            Arc::new(Float64Array::from(vec![1.0_f64, 2.0, 3.0])),
-            Arc::new(TimestampSecondArray::from(vec![1, 2, 3])),
-            Arc::new(TimestampMillisecondArray::from(vec![1000, 2 * 1000, 3 * 1000])),
-            Arc::new(TimestampMicrosecondArray::from(vec![
-                1_000_000,
-                2 * 1_000_000,
-                3 * 1_000_000,
-            ])),
-            Arc::new(TimestampNanosecondArray::from(vec![
-                1_000_000_000,
-                2 * 1_000_000_000,
-                3 * 1_000_000_000,
-            ])),
-            Arc::new(StringArray::from(str_vals.clone())),
-        ])
+        let batch = RecordBatch::try_new(
+            schema,
+            vec![
+                Arc::new(Int8Array::from(vec![1, 2, 3])),
+                Arc::new(Int16Array::from(vec![1, 2, 3])),
+                Arc::new(Int32Array::from(vec![1, 2, 3])),
+                Arc::new(Int64Array::from(vec![1, 2, 3])),
+                Arc::new(UInt8Array::from(vec![1, 2, 3])),
+                Arc::new(UInt16Array::from(vec![1, 2, 3])),
+                Arc::new(UInt32Array::from(vec![1, 2, 3])),
+                Arc::new(UInt64Array::from(vec![1, 2, 3])),
+                Arc::new(Float32Array::from(vec![1.0_f32, 2.0, 3.0])),
+                Arc::new(Float64Array::from(vec![1.0_f64, 2.0, 3.0])),
+                Arc::new(TimestampSecondArray::from(vec![1, 2, 3])),
+                Arc::new(TimestampMillisecondArray::from(vec![
+                    1000,
+                    2 * 1000,
+                    3 * 1000,
+                ])),
+                Arc::new(TimestampMicrosecondArray::from(vec![
+                    1_000_000,
+                    2 * 1_000_000,
+                    3 * 1_000_000,
+                ])),
+                Arc::new(TimestampNanosecondArray::from(vec![
+                    1_000_000_000,
+                    2 * 1_000_000_000,
+                    3 * 1_000_000_000,
+                ])),
+                Arc::new(StringArray::from(str_vals.clone())),
+            ],
+        )
         .unwrap();
 
         let result = batch_to_rows(&batch, None).unwrap().collect::<Vec<_>>();
@@ -1615,23 +1827,26 @@ mod tests {
         for (i, row) in result.into_iter().enumerate() {
             let row = row.unwrap();
             let seed = i + 1;
-            assert_eq!(row, vec![
-                Value::Int8(seed as i8),
-                Value::Int16(seed as i16),
-                Value::Int32(seed as i32),
-                Value::Int64(seed as i64),
-                Value::UInt8(seed as u8),
-                Value::UInt16(seed as u16),
-                Value::UInt32(seed as u32),
-                Value::UInt64(seed as u64),
-                Value::Float32(seed as f32),
-                Value::Float64(seed as f64),
-                Value::DateTime(DateTime(Tz::UTC, seed as u32)),
-                Value::DateTime64(DynDateTime64(Tz::UTC, seed as u64 * 1000, 3)),
-                Value::DateTime64(DynDateTime64(Tz::UTC, seed as u64 * 1_000_000, 6)),
-                Value::DateTime64(DynDateTime64(Tz::UTC, seed as u64 * 1_000_000_000, 9)),
-                Value::String(str_vals[i].as_bytes().to_vec())
-            ]);
+            assert_eq!(
+                row,
+                vec![
+                    Value::Int8(seed as i8),
+                    Value::Int16(seed as i16),
+                    Value::Int32(seed as i32),
+                    Value::Int64(seed as i64),
+                    Value::UInt8(seed as u8),
+                    Value::UInt16(seed as u16),
+                    Value::UInt32(seed as u32),
+                    Value::UInt64(seed as u64),
+                    Value::Float32(seed as f32),
+                    Value::Float64(seed as f64),
+                    Value::DateTime(DateTime(Tz::UTC, seed as u32)),
+                    Value::DateTime64(DynDateTime64(Tz::UTC, seed as u64 * 1000, 3)),
+                    Value::DateTime64(DynDateTime64(Tz::UTC, seed as u64 * 1_000_000, 6)),
+                    Value::DateTime64(DynDateTime64(Tz::UTC, seed as u64 * 1_000_000_000, 9)),
+                    Value::String(str_vals[i].as_bytes().to_vec())
+                ]
+            );
         }
     }
 
@@ -1641,38 +1856,55 @@ mod tests {
             Field::new("id", DataType::Int32, true),
             Field::new("name", DataType::Utf8, true),
         ]));
-        let batch = RecordBatch::try_new(schema, vec![
-            Arc::new(Int32Array::from(vec![Some(1), None, Some(3)])),
-            Arc::new(StringArray::from(vec![Some("a"), Some("b"), None])),
-        ])
+        let batch = RecordBatch::try_new(
+            schema,
+            vec![
+                Arc::new(Int32Array::from(vec![Some(1), None, Some(3)])),
+                Arc::new(StringArray::from(vec![Some("a"), Some("b"), None])),
+            ],
+        )
         .unwrap();
 
         let mut result = batch_to_rows(&batch, None).unwrap().collect::<Vec<_>>();
         assert_eq!(result.len(), 3);
-        assert_eq!(result.pop().unwrap().unwrap(), vec![Value::Int32(3), Value::Null]);
-        assert_eq!(result.pop().unwrap().unwrap(), vec![Value::Null, Value::String(b"b".to_vec())]);
-        assert_eq!(result.pop().unwrap().unwrap(), vec![
-            Value::Int32(1),
-            Value::String(b"a".to_vec())
-        ]);
+        assert_eq!(
+            result.pop().unwrap().unwrap(),
+            vec![Value::Int32(3), Value::Null]
+        );
+        assert_eq!(
+            result.pop().unwrap().unwrap(),
+            vec![Value::Null, Value::String(b"b".to_vec())]
+        );
+        assert_eq!(
+            result.pop().unwrap().unwrap(),
+            vec![Value::Int32(1), Value::String(b"a".to_vec())]
+        );
     }
 
     #[test]
     fn test_batch_to_rows_with_type_hints() {
-        let schema =
-            Arc::new(Schema::new(vec![Field::new("uuid", DataType::FixedSizeBinary(16), false)]));
+        let schema = Arc::new(Schema::new(vec![Field::new(
+            "uuid",
+            DataType::FixedSizeBinary(16),
+            false,
+        )]));
         let uuid1 = uuid::Uuid::parse_str("550e8400-e29b-41d4-a716-446655440000").unwrap();
         let uuid2 = uuid::Uuid::parse_str("550e8400-e29b-41d4-a716-446655440001").unwrap();
-        let batch = RecordBatch::try_new(schema, vec![Arc::new(
-            FixedSizeBinaryArray::try_from_iter(
-                vec![uuid1.as_bytes(), uuid2.as_bytes()].into_iter(),
-            )
-            .unwrap(),
-        )])
+        let batch = RecordBatch::try_new(
+            schema,
+            vec![Arc::new(
+                FixedSizeBinaryArray::try_from_iter(
+                    vec![uuid1.as_bytes(), uuid2.as_bytes()].into_iter(),
+                )
+                .unwrap(),
+            )],
+        )
         .unwrap();
 
         let type_hints = vec![("uuid".to_string(), Type::Uuid)];
-        let mut result = batch_to_rows(&batch, Some(&type_hints)).unwrap().collect::<Vec<_>>();
+        let mut result = batch_to_rows(&batch, Some(&type_hints))
+            .unwrap()
+            .collect::<Vec<_>>();
         assert_eq!(result.len(), 2);
         assert_eq!(result.pop().unwrap().unwrap(), vec![Value::Uuid(uuid2)]);
         assert_eq!(result.pop().unwrap().unwrap(), vec![Value::Uuid(uuid1)]);

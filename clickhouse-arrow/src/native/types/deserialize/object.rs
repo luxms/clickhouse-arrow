@@ -46,9 +46,9 @@ impl Deserializer for ObjectDeserializer {
                 }
                 Ok(out)
             }
-            _ => {
-                Err(Error::Deserialize("ObjectDeserializer called with non-json type".to_string()))
-            }
+            _ => Err(Error::Deserialize(
+                "ObjectDeserializer called with non-json type".to_string(),
+            )),
         }
     }
 

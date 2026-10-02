@@ -7,7 +7,9 @@ static DEBUG_ARROW_ON: OnceLock<bool> = OnceLock::new();
 #[allow(dead_code)]
 pub(crate) fn debug_arrow() -> bool {
     *DEBUG_ARROW_ON.get_or_init(|| {
-        std::env::var(DEBUG_ARROW_ENV_VAR).ok().is_some_and(|v| v.eq_ignore_ascii_case("true"))
+        std::env::var(DEBUG_ARROW_ENV_VAR)
+            .ok()
+            .is_some_and(|v| v.eq_ignore_ascii_case("true"))
     })
 }
 

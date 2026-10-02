@@ -52,13 +52,17 @@ impl Serializer for MapSerializer {
                 )));
             };
             assert_eq!(keys.len(), values.len());
-            writer.write_u64_le((total_keys.len() + keys.len()) as u64).await?;
+            writer
+                .write_u64_le((total_keys.len() + keys.len()) as u64)
+                .await?;
             total_keys.extend(keys);
             total_values.extend(values);
         }
 
         key_type.serialize_column(total_keys, writer, state).await?;
-        value_type.serialize_column(total_values, writer, state).await?;
+        value_type
+            .serialize_column(total_values, writer, state)
+            .await?;
         Ok(())
     }
 

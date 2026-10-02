@@ -29,17 +29,20 @@ pub(crate) fn query_rs_scalar(
     group: &mut BenchmarkGroup<'_, WallTime>,
     rt: &Runtime,
 ) {
-    let _ = group.sample_size(10).measurement_time(Duration::from_mins(1)).bench_with_input(
-        BenchmarkId::new("clickhouse_rs", rows),
-        &(query, client),
-        |b, (query, client)| {
-            b.to_async(rt).iter(|| async move {
-                let result = client.query(query).fetch_all::<ChTestRow>().await.unwrap();
-                let len = result.len();
-                black_box((len, result))
-            });
-        },
-    );
+    let _ = group
+        .sample_size(10)
+        .measurement_time(Duration::from_mins(1))
+        .bench_with_input(
+            BenchmarkId::new("clickhouse_rs", rows),
+            &(query, client),
+            |b, (query, client)| {
+                b.to_async(rt).iter(|| async move {
+                    let result = client.query(query).fetch_all::<ChTestRow>().await.unwrap();
+                    let len = result.len();
+                    black_box((len, result))
+                });
+            },
+        );
 }
 
 fn query_arrow_native(
@@ -49,22 +52,25 @@ fn query_arrow_native(
     group: &mut BenchmarkGroup<'_, WallTime>,
     rt: &Runtime,
 ) {
-    let _ = group.sample_size(10).measurement_time(Duration::from_mins(1)).bench_with_input(
-        BenchmarkId::new("clickhouse_arrow", rows),
-        &(query, client),
-        |b, (query, client)| {
-            b.to_async(rt).iter(|| async move {
-                let mut stream = client
-                    .query(*query, None)
-                    .await
-                    .inspect_err(|e| print_msg(format!("Query error: {e:?}")))
-                    .unwrap();
-                while let Some(result) = stream.next().await {
-                    drop(result.unwrap());
-                }
-            });
-        },
-    );
+    let _ = group
+        .sample_size(10)
+        .measurement_time(Duration::from_mins(1))
+        .bench_with_input(
+            BenchmarkId::new("clickhouse_arrow", rows),
+            &(query, client),
+            |b, (query, client)| {
+                b.to_async(rt).iter(|| async move {
+                    let mut stream = client
+                        .query(*query, None)
+                        .await
+                        .inspect_err(|e| print_msg(format!("Query error: {e:?}")))
+                        .unwrap();
+                    while let Some(result) = stream.next().await {
+                        drop(result.unwrap());
+                    }
+                });
+            },
+        );
 }
 
 fn criterion_benchmark(c: &mut Criterion) {
@@ -83,7 +89,9 @@ fn criterion_benchmark(c: &mut Criterion) {
     let rows = 500_000_000;
     let query = format!("SELECT number FROM system.numbers_mt LIMIT {rows}");
 
-    print_msg(format!("Scalar query - default compression - test for {rows} rows"));
+    print_msg(format!(
+        "Scalar query - default compression - test for {rows} rows"
+    ));
 
     // Setup clients
     let arrow_client_builder =

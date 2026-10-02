@@ -239,16 +239,27 @@ pub mod assertions {
         let left = col.as_any().downcast_ref::<StructArray>().unwrap();
         let right = ins.as_any().downcast_ref::<StructArray>().unwrap();
 
-        assert_eq!(left.len(), right.len(), "Struct row count mismatch: col={i}");
-        assert_eq!(left.nulls(), right.nulls(), "Struct null bitmap mismatch: col={i}");
+        assert_eq!(
+            left.len(),
+            right.len(),
+            "Struct row count mismatch: col={i}"
+        );
+        assert_eq!(
+            left.nulls(),
+            right.nulls(),
+            "Struct null bitmap mismatch: col={i}"
+        );
         assert_eq!(
             left.columns().len(),
             right.columns().len(),
             "Struct child count mismatch: col={i}"
         );
 
-        for (child_idx, (left_child, right_child)) in
-            left.columns().iter().zip(right.columns().iter()).enumerate()
+        for (child_idx, (left_child, right_child)) in left
+            .columns()
+            .iter()
+            .zip(right.columns().iter())
+            .enumerate()
         {
             assert_eq!(
                 left_child, right_child,
@@ -261,8 +272,14 @@ pub mod assertions {
     /// # Panics
     pub fn assert_datetimes_utf_default(col: &ArrayRef, ins: &ArrayRef) {
         assert_eq!(
-            col.as_any().downcast_ref::<TimestampMillisecondArray>().unwrap().values(),
-            ins.as_any().downcast_ref::<TimestampMillisecondArray>().unwrap().values(),
+            col.as_any()
+                .downcast_ref::<TimestampMillisecondArray>()
+                .unwrap()
+                .values(),
+            ins.as_any()
+                .downcast_ref::<TimestampMillisecondArray>()
+                .unwrap()
+                .values(),
             "(values mismatch)",
         );
         assert_eq!(col.nulls(), ins.nulls(), "(nulls mismatch)");
@@ -298,7 +315,11 @@ pub fn test_schema() -> Arc<Schema> {
         // Datetimes
         Field::new("date_col", DataType::Date32, true),
         Field::new("date32_col", DataType::Date32, true),
-        Field::new("datetime_col", DataType::Timestamp(TimeUnit::Millisecond, None), true),
+        Field::new(
+            "datetime_col",
+            DataType::Timestamp(TimeUnit::Millisecond, None),
+            true,
+        ),
         Field::new(
             "datetime_utc_col",
             DataType::Timestamp(TimeUnit::Millisecond, Some("UTC".into())),
@@ -376,7 +397,11 @@ pub fn test_schema() -> Arc<Schema> {
             "tuple_int32_string_col",
             DataType::Struct(
                 vec![
-                    Field::new(format!("{TUPLE_FIELD_NAME_PREFIX}0"), DataType::Int32, false),
+                    Field::new(
+                        format!("{TUPLE_FIELD_NAME_PREFIX}0"),
+                        DataType::Int32,
+                        false,
+                    ),
                     Field::new(format!("{TUPLE_FIELD_NAME_PREFIX}1"), DataType::Utf8, false),
                 ]
                 .into(),
@@ -455,7 +480,11 @@ pub fn test_schema() -> Arc<Schema> {
                 "item",
                 DataType::Struct(
                     vec![
-                        Field::new(format!("{TUPLE_FIELD_NAME_PREFIX}0"), DataType::Int32, false),
+                        Field::new(
+                            format!("{TUPLE_FIELD_NAME_PREFIX}0"),
+                            DataType::Int32,
+                            false,
+                        ),
                         Field::new(format!("{TUPLE_FIELD_NAME_PREFIX}1"), DataType::Utf8, false),
                     ]
                     .into(),
@@ -474,9 +503,20 @@ pub fn test_schema() -> Arc<Schema> {
 pub fn test_record_batch() -> RecordBatch {
     // Primitives
     let id = Arc::new(Int32Array::from(vec![1, 2, 3, 4, 5]));
-    let int8_col = Arc::new(Int8Array::from(vec![Some(0), None, Some(-128), Some(127), Some(42)]));
-    let int16_col =
-        Arc::new(Int16Array::from(vec![Some(0), None, Some(-32768), Some(32767), Some(1000)]));
+    let int8_col = Arc::new(Int8Array::from(vec![
+        Some(0),
+        None,
+        Some(-128),
+        Some(127),
+        Some(42),
+    ]));
+    let int16_col = Arc::new(Int16Array::from(vec![
+        Some(0),
+        None,
+        Some(-32768),
+        Some(32767),
+        Some(1000),
+    ]));
     let int32_col = Arc::new(Int32Array::from(vec![
         Some(0),
         None,
@@ -491,11 +531,27 @@ pub fn test_record_batch() -> RecordBatch {
         Some(i64::MAX),
         Some(1_000_000_000),
     ]));
-    let uint8_col = Arc::new(UInt8Array::from(vec![Some(0), None, Some(0), Some(255), Some(128)]));
-    let uint16_col =
-        Arc::new(UInt16Array::from(vec![Some(0), None, Some(0), Some(65535), Some(50000)]));
-    let uint32_col =
-        Arc::new(UInt32Array::from(vec![Some(0), None, Some(0), Some(u32::MAX), Some(1_000_000)]));
+    let uint8_col = Arc::new(UInt8Array::from(vec![
+        Some(0),
+        None,
+        Some(0),
+        Some(255),
+        Some(128),
+    ]));
+    let uint16_col = Arc::new(UInt16Array::from(vec![
+        Some(0),
+        None,
+        Some(0),
+        Some(65535),
+        Some(50000),
+    ]));
+    let uint32_col = Arc::new(UInt32Array::from(vec![
+        Some(0),
+        None,
+        Some(0),
+        Some(u32::MAX),
+        Some(1_000_000),
+    ]));
     let uint64_col = Arc::new(UInt64Array::from(vec![
         Some(0),
         None,
@@ -612,8 +668,13 @@ pub fn test_record_batch() -> RecordBatch {
         .unwrap(),
     );
     // Datetimes
-    let date_col =
-        Arc::new(Date32Array::from(vec![Some(0), None, Some(17897), Some(18262), Some(730)]));
+    let date_col = Arc::new(Date32Array::from(vec![
+        Some(0),
+        None,
+        Some(17897),
+        Some(18262),
+        Some(730),
+    ]));
     let date32_col = Arc::new(Date32Array::from(vec![
         Some(-149_861), // Jan 3, 1563
         None,
@@ -679,8 +740,13 @@ pub fn test_record_batch() -> RecordBatch {
         .with_timezone_opt(Some("UTC")),
     );
     #[cfg(feature = "extended-types")]
-    let bfloat16_col =
-        Arc::new(Float32Array::from(vec![Some(0.0), None, Some(1.0), Some(-2.0), Some(42.5)]));
+    let bfloat16_col = Arc::new(Float32Array::from(vec![
+        Some(0.0),
+        None,
+        Some(1.0),
+        Some(-2.0),
+        Some(42.5),
+    ]));
     #[cfg(feature = "extended-types")]
     let qbit_values = Arc::new(Float32Array::from(vec![
         0.1, 0.2, 0.3, // row 1
@@ -703,7 +769,9 @@ pub fn test_record_batch() -> RecordBatch {
         ListArray::try_new(
             Arc::new(Field::new("item", DataType::Utf8, false)),
             nested_offsets.clone(),
-            Arc::new(StringArray::from(vec!["alice", "bob", "charlie", "diana", "eve", "frank"])),
+            Arc::new(StringArray::from(vec![
+                "alice", "bob", "charlie", "diana", "eve", "frank",
+            ])),
             None,
         )
         .unwrap(),
@@ -744,7 +812,11 @@ pub fn test_record_batch() -> RecordBatch {
     ]);
     let map_array = Arc::new(
         MapArray::try_new(
-            Arc::new(Field::new(MAP_FIELD_NAME, DataType::Struct(fields.clone()), false)),
+            Arc::new(Field::new(
+                MAP_FIELD_NAME,
+                DataType::Struct(fields.clone()),
+                false,
+            )),
             OffsetBuffer::new(vec![0, 2, 2, 3, 4, 5].into()), // [{1:"a", 2:"b"}, {}, {3:"c"}]
             StructArray::new(
                 fields,
@@ -762,11 +834,19 @@ pub fn test_record_batch() -> RecordBatch {
 
     let tuple_int32_string_col = Arc::new(StructArray::from(vec![
         (
-            Arc::new(Field::new(format!("{TUPLE_FIELD_NAME_PREFIX}0"), DataType::Int32, false)),
+            Arc::new(Field::new(
+                format!("{TUPLE_FIELD_NAME_PREFIX}0"),
+                DataType::Int32,
+                false,
+            )),
             Arc::new(Int32Array::from(vec![1, 2, 3, 4, 5])) as ArrayRef,
         ),
         (
-            Arc::new(Field::new(format!("{TUPLE_FIELD_NAME_PREFIX}1"), DataType::Utf8, false)),
+            Arc::new(Field::new(
+                format!("{TUPLE_FIELD_NAME_PREFIX}1"),
+                DataType::Utf8,
+                false,
+            )),
             Arc::new(StringArray::from(vec!["a", "b", "c", "d", "e"])) as ArrayRef,
         ),
     ])) as ArrayRef;
@@ -785,7 +865,9 @@ pub fn test_record_batch() -> RecordBatch {
                 None,
                 Some(vec![0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1]),
                 Some(vec![255; 16]),
-                Some(vec![0x20, 0x01, 0x0d, 0xb8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1]),
+                Some(vec![
+                    0x20, 0x01, 0x0d, 0xb8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1,
+                ]),
             ]
             .into_iter(),
             16,
@@ -814,8 +896,11 @@ pub fn test_record_batch() -> RecordBatch {
         None,
         Some(b"[]"),
         Some(
-            &format!("{{\"large\": \"{}\"}}", vec!['a'; 100].into_iter().collect::<String>())
-                .into_bytes(),
+            &format!(
+                "{{\"large\": \"{}\"}}",
+                vec!['a'; 100].into_iter().collect::<String>()
+            )
+            .into_bytes(),
         ),
         Some(b"{\"num\": 42}"),
     ]));
@@ -859,7 +944,9 @@ pub fn test_record_batch() -> RecordBatch {
     let low_cardinality_nullable_string_col = Arc::new(
         DictionaryArray::<Int32Type>::try_new(
             Int32Array::from(vec![Some(0), Some(3), Some(1), None, Some(2)]),
-            Arc::new(StringArray::from(vec!["active", "inactive", "pending", "absent"])),
+            Arc::new(StringArray::from(vec![
+                "active", "inactive", "pending", "absent",
+            ])),
         )
         .unwrap(),
     );
@@ -949,8 +1036,16 @@ pub fn test_record_batch() -> RecordBatch {
         let field = Arc::new(Field::new("item", DataType::Utf8, true));
         Arc::new(ListArray::try_new(field, offsets, values, None).unwrap())
     };
-    let f1 = Arc::new(Field::new(format!("{TUPLE_FIELD_NAME_PREFIX}0"), DataType::Int32, false));
-    let f2 = Arc::new(Field::new(format!("{TUPLE_FIELD_NAME_PREFIX}1"), DataType::Utf8, false));
+    let f1 = Arc::new(Field::new(
+        format!("{TUPLE_FIELD_NAME_PREFIX}0"),
+        DataType::Int32,
+        false,
+    ));
+    let f2 = Arc::new(Field::new(
+        format!("{TUPLE_FIELD_NAME_PREFIX}1"),
+        DataType::Utf8,
+        false,
+    ));
     let array_tuple_col = Arc::new(
         ListArray::try_new(
             Arc::new(Field::new(
@@ -960,79 +1055,88 @@ pub fn test_record_batch() -> RecordBatch {
             )),
             OffsetBuffer::new(vec![0, 2, 2, 3, 4, 5].into()),
             Arc::new(StructArray::from(vec![
-                (f1, Arc::new(Int32Array::from(vec![1, 2, 3, 4, 5])) as ArrayRef),
-                (f2, Arc::new(StringArray::from(vec!["a", "b", "c", "d", "e"])) as ArrayRef),
+                (
+                    f1,
+                    Arc::new(Int32Array::from(vec![1, 2, 3, 4, 5])) as ArrayRef,
+                ),
+                (
+                    f2,
+                    Arc::new(StringArray::from(vec!["a", "b", "c", "d", "e"])) as ArrayRef,
+                ),
             ])),
             None,
         )
         .unwrap(),
     );
 
-    RecordBatch::try_new(test_schema(), vec![
-        // Primitives
-        id as ArrayRef,
-        int8_col,
-        int16_col,
-        int32_col,
-        int64_col,
-        uint8_col,
-        uint16_col,
-        uint32_col,
-        uint64_col,
-        int128_col,
-        uint128_col, // 10
-        int256_col,
-        uint256_col,
-        float32_col,
-        float64_col,
-        // String
-        string_col,
-        fixed_string_col,
-        // Decimal
-        decimal32_col,
-        decimal64_col,
-        // Datetimes
-        date_col,
-        date32_col,
-        datetime_col,
-        datetime_utc_col,
-        datetime_est_col,
-        datetime64_3_ny_col,
-        datetime64_6_tokyo_col,
-        datetime64_9_utc_col,
-        #[cfg(feature = "extended-types")]
-        bfloat16_col,
-        #[cfg(feature = "extended-types")]
-        qbit_float32_col,
-        #[cfg(feature = "extended-types")]
-        nested_col,
-        // Map and Tuple
-        map_array,
-        tuple_int32_string_col,
-        // Special
-        ipv4_col,
-        ipv6_col,
-        uuid_col,
-        //
-        // TODO
-        // json_col,
-        // point_col,
-        //
-        // Enums
-        enum8_col,
-        enum8_int32_col,
-        enum16_col,
-        // LowCardinality
-        low_cardinality_string_col,
-        low_cardinality_nullable_string_col,
-        // Arrays
-        array_low_cardinality_string_col,
-        array_int32_col,
-        array_nullable_int32_col,
-        array_nullable_string_col,
-        large_list_int32_col,
-        array_tuple_col,
-    ])
+    RecordBatch::try_new(
+        test_schema(),
+        vec![
+            // Primitives
+            id as ArrayRef,
+            int8_col,
+            int16_col,
+            int32_col,
+            int64_col,
+            uint8_col,
+            uint16_col,
+            uint32_col,
+            uint64_col,
+            int128_col,
+            uint128_col, // 10
+            int256_col,
+            uint256_col,
+            float32_col,
+            float64_col,
+            // String
+            string_col,
+            fixed_string_col,
+            // Decimal
+            decimal32_col,
+            decimal64_col,
+            // Datetimes
+            date_col,
+            date32_col,
+            datetime_col,
+            datetime_utc_col,
+            datetime_est_col,
+            datetime64_3_ny_col,
+            datetime64_6_tokyo_col,
+            datetime64_9_utc_col,
+            #[cfg(feature = "extended-types")]
+            bfloat16_col,
+            #[cfg(feature = "extended-types")]
+            qbit_float32_col,
+            #[cfg(feature = "extended-types")]
+            nested_col,
+            // Map and Tuple
+            map_array,
+            tuple_int32_string_col,
+            // Special
+            ipv4_col,
+            ipv6_col,
+            uuid_col,
+            //
+            // TODO
+            // json_col,
+            // point_col,
+            //
+            // Enums
+            enum8_col,
+            enum8_int32_col,
+            enum16_col,
+            // LowCardinality
+            low_cardinality_string_col,
+            low_cardinality_nullable_string_col,
+            // Arrays
+            array_low_cardinality_string_col,
+            array_int32_col,
+            array_nullable_int32_col,
+            array_nullable_string_col,
+            large_list_int32_col,
+            array_tuple_col,
+        ],
+    )
     .expect("Failed to create RecordBatch")
 }
 
@@ -1074,14 +1178,17 @@ pub fn low_cardinality_nullable_record_batch() -> RecordBatch {
     let low_cardinality_nullable_string_col = Arc::new(
         DictionaryArray::<Int32Type>::try_new(
             Int32Array::from(vec![Some(0), Some(3), Some(1), None, Some(2)]),
-            Arc::new(StringArray::from(vec!["active", "inactive", "pending", "absent"])),
+            Arc::new(StringArray::from(vec![
+                "active", "inactive", "pending", "absent",
+            ])),
         )
         .unwrap(),
     );
 
-    RecordBatch::try_new(low_cardinality_nullable_schema(), vec![
-        low_cardinality_nullable_string_col,
-    ])
+    RecordBatch::try_new(
+        low_cardinality_nullable_schema(),
+        vec![low_cardinality_nullable_string_col],
+    )
     .expect("Failed to create RecordBatch")
 }
 
@@ -1100,31 +1207,34 @@ pub fn low_cardinality_array_schema() -> Arc<Schema> {
 
 /// # Panics
 pub fn low_cardinality_array_record_batch() -> RecordBatch {
-    RecordBatch::try_new(low_cardinality_array_schema(), vec![Arc::new(
-        ListArray::try_new(
-            Arc::new(Field::new(
-                "item",
-                DataType::Dictionary(Box::new(DataType::Int32), Box::new(DataType::Utf8)),
-                true,
-            )),
-            OffsetBuffer::new(vec![0, 2, 2, 3, 4, 6].into()),
-            Arc::new(
-                DictionaryArray::<Int32Type>::try_new(
-                    Int32Array::from(vec![
-                        Some(0),
-                        Some(1), // Row 1: ["low", "card"]
-                        Some(2), // Row 3: ["test"]
-                        None,    // Row 4: [null]
-                        Some(0),
-                        None, // Row 5: ["low", null]
-                    ]),
-                    Arc::new(StringArray::from(vec!["low", "card", "test"])),
-                )
-                .unwrap(),
-            ),
-            None,
-        )
-        .unwrap(),
-    )])
+    RecordBatch::try_new(
+        low_cardinality_array_schema(),
+        vec![Arc::new(
+            ListArray::try_new(
+                Arc::new(Field::new(
+                    "item",
+                    DataType::Dictionary(Box::new(DataType::Int32), Box::new(DataType::Utf8)),
+                    true,
+                )),
+                OffsetBuffer::new(vec![0, 2, 2, 3, 4, 6].into()),
+                Arc::new(
+                    DictionaryArray::<Int32Type>::try_new(
+                        Int32Array::from(vec![
+                            Some(0),
+                            Some(1), // Row 1: ["low", "card"]
+                            Some(2), // Row 3: ["test"]
+                            None,    // Row 4: [null]
+                            Some(0),
+                            None, // Row 5: ["low", null]
+                        ]),
+                        Arc::new(StringArray::from(vec!["low", "card", "test"])),
+                    )
+                    .unwrap(),
+                ),
+                None,
+            )
+            .unwrap(),
+        )],
+    )
     .expect("Failed to create RecordBatch")
 }

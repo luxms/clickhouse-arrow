@@ -51,7 +51,11 @@ async fn run(ch: &'static ClickHouseContainer) -> Result<()> {
 
             // Insert test data
             let mut stream = arrow_client
-                .insert_many(format!("INSERT INTO {table} FORMAT Native"), batches, Some(qid))
+                .insert_many(
+                    format!("INSERT INTO {table} FORMAT Native"),
+                    batches,
+                    Some(qid),
+                )
                 .await
                 .unwrap();
 

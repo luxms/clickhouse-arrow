@@ -30,5 +30,7 @@ fn to_compile_errors(errors: Vec<syn::Error>) -> proc_macro2::TokenStream {
 #[proc_macro_derive(Row, attributes(clickhouse_arrow))]
 pub fn derive_serialize(input: TokenStream) -> TokenStream {
     let mut input = parse_macro_input!(input as DeriveInput);
-    row::expand_derive_serialize(&mut input).unwrap_or_else(to_compile_errors).into()
+    row::expand_derive_serialize(&mut input)
+        .unwrap_or_else(to_compile_errors)
+        .into()
 }

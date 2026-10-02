@@ -25,24 +25,27 @@ fn insert_arrow(
 ) {
     // Benchmark native arrow insert
     let query = format!("INSERT INTO {table} FORMAT NATIVE");
-    let _ = group.sample_size(50).measurement_time(Duration::from_secs(10)).bench_with_input(
-        BenchmarkId::new(format!("clickhouse_arrow_{compression}"), rows),
-        &(&query, client),
-        |b, (query, client)| {
-            b.to_async(rt).iter_batched(
-                || batch.clone(),
-                |batch| async move {
-                    let stream = client
-                        .insert(query.as_str(), batch, None)
-                        .await
-                        .inspect_err(|e| print_msg(format!("Insert error\n{e:?}")))
-                        .unwrap();
-                    drop(stream);
-                },
-                criterion::BatchSize::SmallInput,
-            );
-        },
-    );
+    let _ = group
+        .sample_size(50)
+        .measurement_time(Duration::from_secs(10))
+        .bench_with_input(
+            BenchmarkId::new(format!("clickhouse_arrow_{compression}"), rows),
+            &(&query, client),
+            |b, (query, client)| {
+                b.to_async(rt).iter_batched(
+                    || batch.clone(),
+                    |batch| async move {
+                        let stream = client
+                            .insert(query.as_str(), batch, None)
+                            .await
+                            .inspect_err(|e| print_msg(format!("Insert error\n{e:?}")))
+                            .unwrap();
+                        drop(stream);
+                    },
+                    criterion::BatchSize::SmallInput,
+                );
+            },
+        );
 }
 
 fn query_arrow(
@@ -72,6 +75,7 @@ fn query_arrow(
     );
 }
 
+#[expect(clippy::too_many_lines, reason = "Compression benchmark case matrix")]
 fn criterion_benchmark(c: &mut Criterion) {
     let rt = Runtime::new().unwrap();
 
@@ -97,25 +101,41 @@ fn criterion_benchmark(c: &mut Criterion) {
             arrow_tests::setup_test_arrow_client(ch.get_native_url(), &ch.user, &ch.password)
                 .with_ipv4_only(true);
 
-        let builder = client_builder.clone().with_compression(CompressionMethod::None);
-        let arrow_client_none =
-            rt.block_on(builder.build::<ArrowFormat>()).expect("clickhouse native arrow setup");
+        let builder = client_builder
+            .clone()
+            .with_compression(CompressionMethod::None);
+        let arrow_client_none = rt
+            .block_on(builder.build::<ArrowFormat>())
+            .expect("clickhouse native arrow setup");
 
-        let builder = client_builder.clone().with_compression(CompressionMethod::LZ4); // Default
-        let arrow_client_lz4 =
-            rt.block_on(builder.build::<ArrowFormat>()).expect("clickhouse native arrow setup");
+        let builder = client_builder
+            .clone()
+            .with_compression(CompressionMethod::LZ4); // Default
+        let arrow_client_lz4 = rt
+            .block_on(builder.build::<ArrowFormat>())
+            .expect("clickhouse native arrow setup");
 
-        let builder = client_builder.clone().with_compression(CompressionMethod::ZSTD);
-        let arrow_client_zstd =
-            rt.block_on(builder.build::<ArrowFormat>()).expect("clickhouse native arrow setup");
+        let builder = client_builder
+            .clone()
+            .with_compression(CompressionMethod::ZSTD);
+        let arrow_client_zstd = rt
+            .block_on(builder.build::<ArrowFormat>())
+            .expect("clickhouse native arrow setup");
 
         // Setup database
-        rt.block_on(arrow_tests::setup_database(common::TEST_DB_NAME, &arrow_client_lz4))
-            .expect("setup database");
+        rt.block_on(arrow_tests::setup_database(
+            common::TEST_DB_NAME,
+            &arrow_client_lz4,
+        ))
+        .expect("setup database");
 
         // Setup tables
         let arrow_table_ref = rt
-            .block_on(arrow_tests::setup_table(&arrow_client_lz4, common::TEST_DB_NAME, &schema))
+            .block_on(arrow_tests::setup_table(
+                &arrow_client_lz4,
+                common::TEST_DB_NAME,
+                &schema,
+            ))
             .expect("clickhouse table");
 
         // Benchmark native arrow inserts

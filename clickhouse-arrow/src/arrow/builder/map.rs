@@ -4,16 +4,25 @@ use crate::{Error, Result};
 
 pub(crate) fn get_map_fields(data_type: &DataType) -> Result<(&FieldRef, &FieldRef)> {
     let DataType::Map(map_field, _) = data_type else {
-        return Err(Error::ArrowDeserialize(format!("Expected Map got {data_type:?}")));
+        return Err(Error::ArrowDeserialize(format!(
+            "Expected Map got {data_type:?}"
+        )));
     };
     let DataType::Struct(inner) = map_field.data_type() else {
-        return Err(Error::ArrowDeserialize("Expected key type Struct got".into()));
+        return Err(Error::ArrowDeserialize(
+            "Expected key type Struct got".into(),
+        ));
     };
     let (key_field, value_field) = if inner.len() >= 2 {
         (&inner[0], &inner[1])
     } else {
         return Err(Error::ArrowDeserialize("Map inner fields malformed".into()));
     };
+    if key_field.is_nullable() {
+        return Err(Error::ArrowDeserialize(
+            "Map keys field cannot be nullable".into(),
+        ));
+    }
     Ok((key_field, value_field))
 }
 
@@ -103,8 +112,8 @@ mod tests {
     }
 
     #[test]
-    fn test_get_map_fields_nullable_fields() {
-        let key_field = Arc::new(Field::new("key", DataType::Utf8, true));
+    fn test_get_map_fields_nullable_value() {
+        let key_field = Arc::new(Field::new("key", DataType::Utf8, false));
         let value_field = Arc::new(Field::new("value", DataType::Int64, true));
         let inner_fields = vec![Arc::clone(&key_field), Arc::clone(&value_field)];
         let struct_type = DataType::Struct(inner_fields.into());
@@ -114,8 +123,30 @@ mod tests {
         let result = get_map_fields(&map_type).unwrap();
         assert_eq!(result.0.name(), "key");
         assert_eq!(result.1.name(), "value");
-        assert!(result.0.is_nullable());
+        assert!(!result.0.is_nullable());
         assert!(result.1.is_nullable());
+    }
+
+    #[test]
+    fn test_get_map_fields_rejects_nullable_key() {
+        let fields = vec![
+            Field::new("key", DataType::Utf8, true),
+            Field::new("value", DataType::Int64, true),
+        ];
+        let map_type = DataType::Map(
+            Arc::new(Field::new(
+                "entries",
+                DataType::Struct(fields.into()),
+                false,
+            )),
+            false,
+        );
+        let error = get_map_fields(&map_type).unwrap_err();
+        assert!(
+            error
+                .to_string()
+                .contains("Map keys field cannot be nullable")
+        );
     }
 
     #[test]
@@ -123,7 +154,11 @@ mod tests {
         let key_field = Arc::new(Field::new("key", DataType::Utf8, false));
         let value_field = Arc::new(Field::new("value", DataType::Float64, false));
         let extra_field = Arc::new(Field::new("extra", DataType::Boolean, false));
-        let inner_fields = vec![Arc::clone(&key_field), Arc::clone(&value_field), extra_field];
+        let inner_fields = vec![
+            Arc::clone(&key_field),
+            Arc::clone(&value_field),
+            extra_field,
+        ];
         let struct_type = DataType::Struct(inner_fields.into());
         let entries_field = Arc::new(Field::new("entries", struct_type, false));
         let map_type = DataType::Map(entries_field, false);

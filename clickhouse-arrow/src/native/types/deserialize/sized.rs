@@ -79,18 +79,24 @@ impl Deserializer for SizedDeserializer {
                 }
                 Type::Enum8(pairs) => {
                     let idx = reader.read_i8().await?;
-                    let value = pairs
-                        .iter()
-                        .find(|(_, i)| *i == idx)
-                        .ok_or(crate::Error::Deserialize(format!("Invalid enum8 index: {idx}")))?;
+                    let value =
+                        pairs
+                            .iter()
+                            .find(|(_, i)| *i == idx)
+                            .ok_or(crate::Error::Deserialize(format!(
+                                "Invalid enum8 index: {idx}"
+                            )))?;
                     Value::Enum8(value.0.clone(), idx)
                 }
                 Type::Enum16(pairs) => {
                     let idx = reader.read_i16_le().await?;
-                    let value = pairs
-                        .iter()
-                        .find(|(_, i)| *i == idx)
-                        .ok_or(crate::Error::Deserialize(format!("Invalid enum8 index: {idx}")))?;
+                    let value =
+                        pairs
+                            .iter()
+                            .find(|(_, i)| *i == idx)
+                            .ok_or(crate::Error::Deserialize(format!(
+                                "Invalid enum8 index: {idx}"
+                            )))?;
                     Value::Enum16(value.0.clone(), idx)
                 }
                 #[cfg(feature = "extended-types")]

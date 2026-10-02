@@ -48,9 +48,9 @@ impl<R: ClickHouseRead + 'static> Reader<R> {
                     error!(?error, { ATT_CID } = cid, "Failed to receive hello");
                 }),
             ServerPacketId::Exception => Err(Self::read_exception(reader).await?.emit().into()),
-            packet => {
-                Err(Error::Protocol(format!("Unexpected packet {packet:?}, expected server hello")))
-            }
+            packet => Err(Error::Protocol(format!(
+                "Unexpected packet {packet:?}, expected server hello"
+            ))),
         }
     }
 
@@ -70,27 +70,28 @@ impl<R: ClickHouseRead + 'static> Reader<R> {
                 .map(ServerPacket::Header),
             // NOTE: For DDL queries and some other cases, the server will not send a header but
             // will send a progress packet or table columns instead.
-            ServerPacketId::Progress => {
-                Self::read_progress(reader, revision).await.map(ServerPacket::Progress)
-            }
-            ServerPacketId::TableColumns => {
-                Self::read_table_columns(reader).await.map(ServerPacket::TableColumns)
-            }
+            ServerPacketId::Progress => Self::read_progress(reader, revision)
+                .await
+                .map(ServerPacket::Progress),
+            ServerPacketId::TableColumns => Self::read_table_columns(reader)
+                .await
+                .map(ServerPacket::TableColumns),
             ServerPacketId::EndOfStream => Ok(ServerPacket::EndOfStream),
             // When query parameters are used, ClickHouse may send ProfileEvents before the header
             ServerPacketId::ProfileEvents => Self::read_profile_events(reader, revision, metadata)
                 .await
                 .map(ServerPacket::ProfileEvents),
             // Errors
-            ServerPacketId::Exception => {
-                Self::read_exception(reader).await.map(ServerPacket::Exception)
-            }
-            ServerPacketId::Hello => {
-                Err(Error::Protocol("Unexpected hello received from server".to_string()))
-            }
-            packet => {
-                Err(Error::Protocol(format!("expected header packet, got: {}", packet.as_ref())))
-            }
+            ServerPacketId::Exception => Self::read_exception(reader)
+                .await
+                .map(ServerPacket::Exception),
+            ServerPacketId::Hello => Err(Error::Protocol(
+                "Unexpected hello received from server".to_string(),
+            )),
+            packet => Err(Error::Protocol(format!(
+                "expected header packet, got: {}",
+                packet.as_ref()
+            ))),
         }
     }
 
@@ -108,38 +109,47 @@ impl<R: ClickHouseRead + 'static> Reader<R> {
             ServerPacketId::Pong => Ok(ServerPacket::Pong),
             ServerPacketId::Data => Ok(Self::read_data::<T>(reader, revision, metadata, state)
                 .await?
-                .map_or(ServerPacket::Ignore(ServerPacketId::Data), ServerPacket::Data)),
-            ServerPacketId::Exception => {
-                Self::read_exception(reader).await.map(ServerPacket::Exception)
-            }
-            ServerPacketId::Progress => {
-                Self::read_progress(reader, revision).await.map(ServerPacket::Progress)
-            }
+                .map_or(
+                    ServerPacket::Ignore(ServerPacketId::Data),
+                    ServerPacket::Data,
+                )),
+            ServerPacketId::Exception => Self::read_exception(reader)
+                .await
+                .map(ServerPacket::Exception),
+            ServerPacketId::Progress => Self::read_progress(reader, revision)
+                .await
+                .map(ServerPacket::Progress),
             ServerPacketId::EndOfStream => Ok(ServerPacket::EndOfStream),
-            ServerPacketId::ProfileInfo => {
-                Self::read_profile_info(reader, revision).await.map(ServerPacket::ProfileInfo)
-            }
+            ServerPacketId::ProfileInfo => Self::read_profile_info(reader, revision)
+                .await
+                .map(ServerPacket::ProfileInfo),
             ServerPacketId::Totals => Ok(Self::read_data::<T>(reader, revision, metadata, state)
                 .await?
-                .map_or(ServerPacket::Ignore(ServerPacketId::Totals), ServerPacket::Totals)),
+                .map_or(
+                    ServerPacket::Ignore(ServerPacketId::Totals),
+                    ServerPacket::Totals,
+                )),
             ServerPacketId::Extremes => Ok(Self::read_data::<T>(reader, revision, metadata, state)
                 .await?
-                .map_or(ServerPacket::Ignore(ServerPacketId::Extremes), ServerPacket::Extremes)),
+                .map_or(
+                    ServerPacket::Ignore(ServerPacketId::Extremes),
+                    ServerPacket::Extremes,
+                )),
             ServerPacketId::TablesStatusResponse => Self::read_table_status_response(reader)
                 .await
                 .map(ServerPacket::TablesStatusResponse),
-            ServerPacketId::Log => {
-                Self::read_log_data(reader, revision, metadata).await.map(ServerPacket::Log)
-            }
-            ServerPacketId::TableColumns => {
-                Self::read_table_columns(reader).await.map(ServerPacket::TableColumns)
-            }
-            ServerPacketId::PartUUIDs => {
-                Self::read_part_uuids(reader).await.map(ServerPacket::PartUUIDs)
-            }
-            ServerPacketId::ReadTaskRequest => {
-                Self::read_task_request(reader).await.map(ServerPacket::ReadTaskRequest)
-            }
+            ServerPacketId::Log => Self::read_log_data(reader, revision, metadata)
+                .await
+                .map(ServerPacket::Log),
+            ServerPacketId::TableColumns => Self::read_table_columns(reader)
+                .await
+                .map(ServerPacket::TableColumns),
+            ServerPacketId::PartUUIDs => Self::read_part_uuids(reader)
+                .await
+                .map(ServerPacket::PartUUIDs),
+            ServerPacketId::ReadTaskRequest => Self::read_task_request(reader)
+                .await
+                .map(ServerPacket::ReadTaskRequest),
             ServerPacketId::ProfileEvents => Self::read_profile_events(reader, revision, metadata)
                 .await
                 .map(ServerPacket::ProfileEvents),
@@ -150,9 +160,9 @@ impl<R: ClickHouseRead + 'static> Reader<R> {
             ServerPacketId::MergeTreeReadTaskRequest => Ok(ServerPacket::MergeTreeReadTaskRequest),
             ServerPacketId::TimezoneUpdate => Ok(ServerPacket::TimezoneUpdate),
             ServerPacketId::SSHChallenge => Ok(ServerPacket::SSHChallenge),
-            ServerPacketId::Hello => {
-                Err(Error::Protocol("Uexpected hello received from server".to_string()))
-            }
+            ServerPacketId::Hello => Err(Error::Protocol(
+                "Uexpected hello received from server".to_string(),
+            )),
         }
     }
 
@@ -163,9 +173,19 @@ impl<R: ClickHouseRead + 'static> Reader<R> {
         let stack_trace = reader.read_utf8_string().await?;
         let has_nested = reader.read_u8().await? != 0;
 
-        Ok(ServerException { code, name, message, stack_trace, has_nested })
+        Ok(ServerException {
+            code,
+            name,
+            message,
+            stack_trace,
+            has_nested,
+        })
     }
 
+    #[expect(
+        clippy::too_many_lines,
+        reason = "Keep the revision-dependent handshake decoder together"
+    )]
     async fn read_hello(
         reader: &mut R,
         client_revision: u64,
@@ -226,7 +246,10 @@ impl<R: ClickHouseRead + 'static> Reader<R> {
                     ChunkedProtocolMode::negotiate(srv_chunked_recv, cl_chunked_recv, "recv")?,
                 )
             } else {
-                (ChunkedProtocolMode::default(), ChunkedProtocolMode::default())
+                (
+                    ChunkedProtocolMode::default(),
+                    ChunkedProtocolMode::default(),
+                )
             };
 
         tracing::trace!(
@@ -404,7 +427,9 @@ impl<R: ClickHouseRead + 'static> Reader<R> {
     }
 
     async fn read_table_status_response(reader: &mut R) -> Result<TablesStatusResponse> {
-        let mut response = TablesStatusResponse { database_tables: FxIndexMap::default() };
+        let mut response = TablesStatusResponse {
+            database_tables: FxIndexMap::default(),
+        };
         let size = reader.read_var_uint().await?;
 
         #[expect(clippy::cast_possible_truncation)]
@@ -418,13 +443,22 @@ impl<R: ClickHouseRead + 'static> Reader<R> {
             let table_name = reader.read_utf8_string().await?;
             let is_replicated = reader.read_u8().await? != 0;
             #[expect(clippy::cast_possible_truncation)]
-            let absolute_delay =
-                if is_replicated { reader.read_var_uint().await? as u32 } else { 0 };
+            let absolute_delay = if is_replicated {
+                reader.read_var_uint().await? as u32
+            } else {
+                0
+            };
             let _ = response
                 .database_tables
                 .entry(database_name)
                 .or_default()
-                .insert(table_name, TableStatus { is_replicated, absolute_delay });
+                .insert(
+                    table_name,
+                    TableStatus {
+                        is_replicated,
+                        absolute_delay,
+                    },
+                );
         }
         Ok(response)
     }
@@ -456,7 +490,7 @@ impl<R: ClickHouseRead + 'static> Reader<R> {
 
     async fn read_table_columns(reader: &mut R) -> Result<TableColumns> {
         Ok(TableColumns {
-            name:        reader.read_utf8_string().await?,
+            name: reader.read_utf8_string().await?,
             description: reader.read_utf8_string().await?,
         })
     }
@@ -488,8 +522,9 @@ impl<R: ClickHouseRead + 'static> Reader<R> {
         state: &mut DeserializerState<T::Deser>,
     ) -> Result<Option<ServerData<T::Data>>> {
         drop(reader.read_string().await?);
-        let Some(block) =
-            T::read(reader, revision, metadata, state).await.inspect_err(|error| {
+        let Some(block) = T::read(reader, revision, metadata, state)
+            .await
+            .inspect_err(|error| {
                 error!(?error, { ATT_CID } = metadata.client_id, "Data read fail");
             })?
         else {
@@ -513,8 +548,8 @@ mod tests {
 
     fn metadata() -> ClientMetadata {
         ClientMetadata {
-            client_id:     7,
-            compression:   CompressionMethod::None,
+            client_id: 7,
+            compression: CompressionMethod::None,
             arrow_options: super::super::ArrowOptions::default(),
         }
     }
@@ -522,7 +557,9 @@ mod tests {
     #[tokio::test]
     async fn receive_hello_reads_basic_server_hello() {
         let mut buf = Cursor::new(Vec::new());
-        buf.write_var_uint(ServerPacketId::Hello as u64).await.unwrap();
+        buf.write_var_uint(ServerPacketId::Hello as u64)
+            .await
+            .unwrap();
         buf.write_string("test-server").await.unwrap();
         buf.write_var_uint(24).await.unwrap();
         buf.write_var_uint(8).await.unwrap();
@@ -532,7 +569,10 @@ mod tests {
         let hello = Reader::<Cursor<Vec<u8>>>::receive_hello(
             &mut reader,
             DBMS_TCP_PROTOCOL_VERSION,
-            (ChunkedProtocolMode::ChunkedOptional, ChunkedProtocolMode::ChunkedOptional),
+            (
+                ChunkedProtocolMode::ChunkedOptional,
+                ChunkedProtocolMode::ChunkedOptional,
+            ),
             1,
         )
         .await
@@ -548,7 +588,9 @@ mod tests {
     #[tokio::test]
     async fn receive_hello_propagates_server_exception() {
         let mut buf = Cursor::new(Vec::new());
-        buf.write_var_uint(ServerPacketId::Exception as u64).await.unwrap();
+        buf.write_var_uint(ServerPacketId::Exception as u64)
+            .await
+            .unwrap();
         buf.write_i32_le(43).await.unwrap();
         buf.write_string("DB::Exception").await.unwrap();
         buf.write_string("boom").await.unwrap();
@@ -559,7 +601,10 @@ mod tests {
         let err = Reader::<Cursor<Vec<u8>>>::receive_hello(
             &mut reader,
             DBMS_TCP_PROTOCOL_VERSION,
-            (ChunkedProtocolMode::ChunkedOptional, ChunkedProtocolMode::ChunkedOptional),
+            (
+                ChunkedProtocolMode::ChunkedOptional,
+                ChunkedProtocolMode::ChunkedOptional,
+            ),
             99,
         )
         .await
@@ -570,7 +615,10 @@ mod tests {
     #[tokio::test]
     async fn receive_header_handles_progress_table_columns_and_eof() {
         let mut progress_buf = Cursor::new(Vec::new());
-        progress_buf.write_var_uint(ServerPacketId::Progress as u64).await.unwrap();
+        progress_buf
+            .write_var_uint(ServerPacketId::Progress as u64)
+            .await
+            .unwrap();
         progress_buf.write_var_uint(10).await.unwrap();
         progress_buf.write_var_uint(20).await.unwrap();
 
@@ -589,7 +637,10 @@ mod tests {
         }
 
         let mut table_columns_buf = Cursor::new(Vec::new());
-        table_columns_buf.write_var_uint(ServerPacketId::TableColumns as u64).await.unwrap();
+        table_columns_buf
+            .write_var_uint(ServerPacketId::TableColumns as u64)
+            .await
+            .unwrap();
         table_columns_buf.write_string("table").await.unwrap();
         table_columns_buf.write_string("id UInt64").await.unwrap();
         let mut reader = Cursor::new(table_columns_buf.into_inner());
@@ -606,7 +657,10 @@ mod tests {
         }
 
         let mut eos_buf = Cursor::new(Vec::new());
-        eos_buf.write_var_uint(ServerPacketId::EndOfStream as u64).await.unwrap();
+        eos_buf
+            .write_var_uint(ServerPacketId::EndOfStream as u64)
+            .await
+            .unwrap();
         let mut reader = Cursor::new(eos_buf.into_inner());
         let packet =
             Reader::<Cursor<Vec<u8>>>::receive_header::<NativeFormat>(&mut reader, 0, metadata())
@@ -620,7 +674,10 @@ mod tests {
         let mut state = DeserializerState::default();
 
         let mut pong_buf = Cursor::new(Vec::new());
-        pong_buf.write_var_uint(ServerPacketId::Pong as u64).await.unwrap();
+        pong_buf
+            .write_var_uint(ServerPacketId::Pong as u64)
+            .await
+            .unwrap();
         let mut reader = Cursor::new(pong_buf.into_inner());
         let packet = Reader::<Cursor<Vec<u8>>>::receive_packet::<NativeFormat>(
             &mut reader,
@@ -633,7 +690,10 @@ mod tests {
         assert!(matches!(packet, ServerPacket::Pong));
 
         let mut task_buf = Cursor::new(Vec::new());
-        task_buf.write_var_uint(ServerPacketId::ReadTaskRequest as u64).await.unwrap();
+        task_buf
+            .write_var_uint(ServerPacketId::ReadTaskRequest as u64)
+            .await
+            .unwrap();
         task_buf.write_string("task-1").await.unwrap();
         let mut reader = Cursor::new(task_buf.into_inner());
         let packet = Reader::<Cursor<Vec<u8>>>::receive_packet::<NativeFormat>(
@@ -648,7 +708,10 @@ mod tests {
 
         let uuid = Uuid::from_u128(0x1122_3344_5566_7788_9900_aabb_ccdd_eeff);
         let mut part_buf = Cursor::new(Vec::new());
-        part_buf.write_var_uint(ServerPacketId::PartUUIDs as u64).await.unwrap();
+        part_buf
+            .write_var_uint(ServerPacketId::PartUUIDs as u64)
+            .await
+            .unwrap();
         part_buf.write_var_uint(1).await.unwrap();
         part_buf.write_all(uuid.as_bytes()).await.unwrap();
         let mut reader = Cursor::new(part_buf.into_inner());
@@ -663,7 +726,10 @@ mod tests {
         assert!(matches!(packet, ServerPacket::PartUUIDs(parts) if parts == vec![uuid]));
 
         let mut hello_buf = Cursor::new(Vec::new());
-        hello_buf.write_var_uint(ServerPacketId::Hello as u64).await.unwrap();
+        hello_buf
+            .write_var_uint(ServerPacketId::Hello as u64)
+            .await
+            .unwrap();
         let mut reader = Cursor::new(hello_buf.into_inner());
         let err = Reader::<Cursor<Vec<u8>>>::receive_packet::<NativeFormat>(
             &mut reader,
@@ -706,7 +772,9 @@ mod tests {
         profile_old.write_var_uint(4).await.unwrap();
         profile_old.write_u8(0).await.unwrap();
         let mut reader = Cursor::new(profile_old.into_inner());
-        let info = Reader::<Cursor<Vec<u8>>>::read_profile_info(&mut reader, 0).await.unwrap();
+        let info = Reader::<Cursor<Vec<u8>>>::read_profile_info(&mut reader, 0)
+            .await
+            .unwrap();
         assert_eq!(info.rows, 1);
         assert!(!info.applied_aggregation);
         assert_eq!(info.rows_before_aggregation, 0);
@@ -738,25 +806,35 @@ mod tests {
         status_buf.write_u8(1).await.unwrap();
         status_buf.write_var_uint(9).await.unwrap();
         let mut reader = Cursor::new(status_buf.into_inner());
-        let statuses =
-            Reader::<Cursor<Vec<u8>>>::read_table_status_response(&mut reader).await.unwrap();
-        let table_status =
-            statuses.database_tables.get("db").and_then(|tables| tables.get("tbl")).unwrap();
+        let statuses = Reader::<Cursor<Vec<u8>>>::read_table_status_response(&mut reader)
+            .await
+            .unwrap();
+        let table_status = statuses
+            .database_tables
+            .get("db")
+            .and_then(|tables| tables.get("tbl"))
+            .unwrap();
         assert!(table_status.is_replicated);
         assert_eq!(table_status.absolute_delay, 9);
 
         let mut oversized_status = Cursor::new(Vec::new());
-        oversized_status.write_var_uint((MAX_STRING_SIZE as u64) + 1).await.unwrap();
+        oversized_status
+            .write_var_uint((MAX_STRING_SIZE as u64) + 1)
+            .await
+            .unwrap();
         let mut reader = Cursor::new(oversized_status.into_inner());
-        let err =
-            Reader::<Cursor<Vec<u8>>>::read_table_status_response(&mut reader).await.unwrap_err();
+        let err = Reader::<Cursor<Vec<u8>>>::read_table_status_response(&mut reader)
+            .await
+            .unwrap_err();
         assert!(err.to_string().contains("size too large"));
 
         let mut valid_task = Cursor::new(Vec::new());
         valid_task.write_string("work").await.unwrap();
         let mut reader = Cursor::new(valid_task.into_inner());
         assert_eq!(
-            Reader::<Cursor<Vec<u8>>>::read_task_request(&mut reader).await.unwrap(),
+            Reader::<Cursor<Vec<u8>>>::read_task_request(&mut reader)
+                .await
+                .unwrap(),
             Some("work".to_string())
         );
 
@@ -764,27 +842,41 @@ mod tests {
         invalid_task.write_var_uint(1).await.unwrap();
         invalid_task.write_all(&[0xFF]).await.unwrap();
         let mut reader = Cursor::new(invalid_task.into_inner());
-        assert!(Reader::<Cursor<Vec<u8>>>::read_task_request(&mut reader).await.unwrap().is_none());
+        assert!(
+            Reader::<Cursor<Vec<u8>>>::read_task_request(&mut reader)
+                .await
+                .unwrap()
+                .is_none()
+        );
 
         let uuid = Uuid::from_u128(0xaaaa_aaaa_aaaa_aaaa_aaaa_aaaa_aaaa_aaaa);
         let mut part_buf = Cursor::new(Vec::new());
         part_buf.write_var_uint(1).await.unwrap();
         part_buf.write_all(uuid.as_bytes()).await.unwrap();
         let mut reader = Cursor::new(part_buf.into_inner());
-        let parts = Reader::<Cursor<Vec<u8>>>::read_part_uuids(&mut reader).await.unwrap();
+        let parts = Reader::<Cursor<Vec<u8>>>::read_part_uuids(&mut reader)
+            .await
+            .unwrap();
         assert_eq!(parts, vec![uuid]);
 
         let mut oversized_parts = Cursor::new(Vec::new());
-        oversized_parts.write_var_uint((MAX_STRING_SIZE as u64) + 1).await.unwrap();
+        oversized_parts
+            .write_var_uint((MAX_STRING_SIZE as u64) + 1)
+            .await
+            .unwrap();
         let mut reader = Cursor::new(oversized_parts.into_inner());
-        let err = Reader::<Cursor<Vec<u8>>>::read_part_uuids(&mut reader).await.unwrap_err();
+        let err = Reader::<Cursor<Vec<u8>>>::read_part_uuids(&mut reader)
+            .await
+            .unwrap_err();
         assert!(err.to_string().contains("size too large"));
 
         let mut columns = Cursor::new(Vec::new());
         columns.write_string("my_table").await.unwrap();
         columns.write_string("x UInt32").await.unwrap();
         let mut reader = Cursor::new(columns.into_inner());
-        let cols = Reader::<Cursor<Vec<u8>>>::read_table_columns(&mut reader).await.unwrap();
+        let cols = Reader::<Cursor<Vec<u8>>>::read_table_columns(&mut reader)
+            .await
+            .unwrap();
         assert_eq!(cols.name, "my_table");
         assert_eq!(cols.description, "x UInt32");
     }
@@ -800,7 +892,9 @@ mod tests {
         buf.write_u8(1).await.unwrap();
 
         let mut reader = Cursor::new(buf.into_inner());
-        let exception = Reader::<Cursor<Vec<u8>>>::read_exception(&mut reader).await.unwrap();
+        let exception = Reader::<Cursor<Vec<u8>>>::read_exception(&mut reader)
+            .await
+            .unwrap();
         assert_eq!(exception.code, 123);
         assert_eq!(exception.name, "Name");
         assert!(exception.message.starts_with("fo"));

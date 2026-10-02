@@ -45,14 +45,16 @@ impl From<u8> for ConnectionStatus {
 }
 
 impl From<ConnectionStatus> for u8 {
-    fn from(value: ConnectionStatus) -> u8 { value as u8 }
+    fn from(value: ConnectionStatus) -> u8 {
+        value as u8
+    }
 }
 
 /// Client metadata passed around the internal client
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct ClientMetadata {
-    pub(crate) client_id:     u16,
-    pub(crate) compression:   CompressionMethod,
+    pub(crate) client_id: u16,
+    pub(crate) compression: CompressionMethod,
     pub(crate) arrow_options: ArrowOptions,
 }
 
@@ -60,8 +62,8 @@ impl ClientMetadata {
     /// Helper function to disable compression on the metadata.
     pub(crate) fn disable_compression(self) -> Self {
         Self {
-            client_id:     self.client_id,
-            compression:   CompressionMethod::None,
+            client_id: self.client_id,
+            compression: CompressionMethod::None,
             arrow_options: self.arrow_options,
         }
     }
@@ -69,7 +71,9 @@ impl ClientMetadata {
     /// Helper function to provide settings for compression
     pub(crate) fn compression_settings(self) -> Settings {
         match self.compression {
-            CompressionMethod::None | CompressionMethod::LZ4 => Settings::default(),
+            CompressionMethod::None => Settings::default(),
+            // Servers may default to ZSTD; request the codec our decoder expects.
+            CompressionMethod::LZ4 => [("network_compression_method", "lz4")].into(),
             CompressionMethod::ZSTD => vec![
                 ("network_compression_method", "zstd"),
                 ("network_zstd_compression_level", "1"),
@@ -82,25 +86,25 @@ impl ClientMetadata {
 /// A struct defining the information needed to connect over TCP.
 #[derive(Debug)]
 struct ConnectState<T: Send + Sync + 'static> {
-    status:  Arc<AtomicU8>,
+    status: Arc<AtomicU8>,
     channel: mpsc::Sender<Message<T>>,
     #[expect(unused)]
-    handle:  AbortHandle,
+    handle: AbortHandle,
 }
 
 // NOTE: ArcSwaps are used to support reconnects in the future.
 #[derive(Debug)]
 pub(super) struct Connection<T: ClientFormat> {
     #[expect(unused)]
-    addrs:         Arc<[SocketAddr]>,
-    options:       Arc<ClientOptions>,
-    io_task:       Arc<Mutex<IoHandle<T::Data>>>,
-    metadata:      ClientMetadata,
+    addrs: Arc<[SocketAddr]>,
+    options: Arc<ClientOptions>,
+    io_task: Arc<Mutex<IoHandle<T::Data>>>,
+    metadata: ClientMetadata,
     #[cfg(not(feature = "inner_pool"))]
-    state:         Arc<ConnectState<T::Data>>,
+    state: Arc<ConnectState<T::Data>>,
     /// NOTE: Max connections must remain at 4, unless algorithm changes
     #[cfg(feature = "inner_pool")]
-    state:         Vec<ArcSwap<ConnectState<T::Data>>>,
+    state: Vec<ArcSwap<ConnectState<T::Data>>>,
     #[cfg(feature = "inner_pool")]
     load_balancer: Arc<load::AtomicLoad>,
 }
@@ -146,8 +150,14 @@ impl<T: ClientFormat> Connection<T> {
 
         // Establish tcp connection, perform handshake, and spawn io task
         let state = Arc::new(
-            Self::connect_inner(&addrs, &mut io_task, Arc::clone(&events), &options, metadata)
-                .await?,
+            Self::connect_inner(
+                &addrs,
+                &mut io_task,
+                Arc::clone(&events),
+                &options,
+                metadata,
+            )
+            .await?,
         );
 
         #[cfg(feature = "inner_pool")]
@@ -159,7 +169,9 @@ impl<T: ClientFormat> Connection<T> {
         let inner_pool_size = options
             .ext
             .fast_mode_size
-            .map_or(load::DEFAULT_MAX_CONNECTIONS, |s| s.clamp(2, load::ABSOLUTE_MAX_CONNECTIONS));
+            .map_or(load::DEFAULT_MAX_CONNECTIONS, |s| {
+                s.clamp(2, load::ABSOLUTE_MAX_CONNECTIONS)
+            });
 
         #[cfg(feature = "inner_pool")]
         for _ in 0..inner_pool_size.saturating_sub(1) {
@@ -269,7 +281,11 @@ impl<T: ClientFormat> Connection<T> {
         );
 
         trace!({ ATT_CID } = cid, "spawned connection loop");
-        Ok(ConnectState { status, channel: operations, handle })
+        Ok(ConnectState {
+            status,
+            channel: operations,
+            handle,
+        })
     }
 
     #[instrument(
@@ -324,7 +340,11 @@ impl<T: ClientFormat> Connection<T> {
             return Err(Error::Client("No active connection".into()));
         }
 
-        let result = state.channel.send(Message::Operation { qid, op }).instrument(span).await;
+        let result = state
+            .channel
+            .send(Message::Operation { qid, op })
+            .instrument(span)
+            .await;
         if result.is_err() {
             error!({ ATT_QID } = %qid, "failed to send message");
             self.update_status(conn_idx, ConnectionStatus::Closed);
@@ -340,7 +360,10 @@ impl<T: ClientFormat> Connection<T> {
         fields(db.system = "clickhouse", clickhouse.client.id = self.metadata.client_id)
     )]
     pub(crate) async fn shutdown(&self) -> Result<()> {
-        trace!({ ATT_CID } = self.metadata.client_id, "Shutting down connections");
+        trace!(
+            { ATT_CID } = self.metadata.client_id,
+            "Shutting down connections"
+        );
         #[cfg(not(feature = "inner_pool"))]
         {
             if self.state.channel.send(Message::Shutdown).await.is_err() {
@@ -398,7 +421,11 @@ impl<T: ClientFormat> Connection<T> {
     }
 
     fn update_status(&self, idx: usize, status: ConnectionStatus) {
-        trace!({ ATT_CID } = self.metadata.client_id, ?status, "Updating status conn {idx}");
+        trace!(
+            { ATT_CID } = self.metadata.client_id,
+            ?status,
+            "Updating status conn {idx}"
+        );
 
         #[cfg(not(feature = "inner_pool"))]
         let state = &self.state;
@@ -418,8 +445,8 @@ impl<T: ClientFormat> Connection<T> {
 
         let client_hello = ClientHello {
             default_database: options.default_database.clone(),
-            username:         options.username.clone(),
-            password:         options.password.get().to_string(),
+            username: options.username.clone(),
+            password: options.password.get().to_string(),
         };
 
         // Send client hello
@@ -436,7 +463,10 @@ impl<T: ClientFormat> Connection<T> {
 
         if server_hello.revision_version >= DBMS_MIN_PROTOCOL_VERSION_WITH_ADDENDUM {
             Writer::send_addendum(stream, server_hello.revision_version, &server_hello).await?;
-            stream.flush().await.inspect_err(|error| error!(?error, "Error writing addendum"))?;
+            stream
+                .flush()
+                .await
+                .inspect_err(|error| error!(?error, "Error writing addendum"))?;
         }
 
         Ok(server_hello)
@@ -444,9 +474,13 @@ impl<T: ClientFormat> Connection<T> {
 }
 
 impl<T: ClientFormat> Connection<T> {
-    pub(crate) fn metadata(&self) -> ClientMetadata { self.metadata }
+    pub(crate) fn metadata(&self) -> ClientMetadata {
+        self.metadata
+    }
 
-    pub(crate) fn database(&self) -> &str { &self.options.default_database }
+    pub(crate) fn database(&self) -> &str {
+        &self.options.default_database
+    }
 
     #[cfg(feature = "inner_pool")]
     pub(crate) fn finish(&self, conn_idx: usize, weight: u8) {
@@ -509,7 +543,7 @@ mod load {
     /// scaling up to 16 concurrent connections.
     #[derive(Debug)]
     pub(super) struct AtomicLoad {
-        load_counters:   Box<[AtomicUsize]>,
+        load_counters: Box<[AtomicUsize]>,
         max_connections: u8,
     }
 
@@ -531,7 +565,10 @@ mod load {
                 .collect::<Vec<_>>()
                 .into_boxed_slice();
 
-            Self { load_counters, max_connections }
+            Self {
+                load_counters,
+                max_connections,
+            }
         }
 
         /// Assign a connection index, incrementing its load by the specified weight.
@@ -636,11 +673,15 @@ mod load {
 
         #[test]
         #[should_panic(expected = "Max 16 connections")]
-        fn test_rejects_too_many_connections() { drop(AtomicLoad::new(17)); }
+        fn test_rejects_too_many_connections() {
+            drop(AtomicLoad::new(17));
+        }
 
         #[test]
         #[should_panic(expected = "At least 1 connection")]
-        fn test_rejects_zero_connections() { drop(AtomicLoad::new(0)); }
+        fn test_rejects_zero_connections() {
+            drop(AtomicLoad::new(0));
+        }
 
         #[test]
         fn test_zero_weight_returns_index_without_increment() {

@@ -45,10 +45,15 @@ fn build_generics(cont: &Container) -> syn::Generics {
 
     match cont.attrs.bound() {
         Some(predicates) => bound::with_where_predicates(&generics, predicates),
-        None => bound::with_bound(cont, &generics, needs_serialize_bound, &[
-            &parse_quote!(::clickhouse_arrow::FromSql),
-            &parse_quote!(::clickhouse_arrow::ToSql),
-        ]),
+        None => bound::with_bound(
+            cont,
+            &generics,
+            needs_serialize_bound,
+            &[
+                &parse_quote!(::clickhouse_arrow::FromSql),
+                &parse_quote!(::clickhouse_arrow::ToSql),
+            ],
+        ),
     }
 }
 
@@ -66,7 +71,12 @@ impl Parameters {
 
         let generics = build_generics(cont);
 
-        Parameters { self_var, this, generics, is_packed }
+        Parameters {
+            self_var,
+            this,
+            generics,
+            is_packed,
+        }
     }
 }
 
@@ -335,7 +345,11 @@ fn serialize_struct_visitor(fields: &[Field], params: &Parameters) -> Vec<TokenS
 
 fn get_member(params: &Parameters, member: &Member) -> TokenStream {
     let self_var = &params.self_var;
-    if params.is_packed { quote!({#self_var.#member}) } else { quote!(#self_var.#member) }
+    if params.is_packed {
+        quote!({#self_var.#member})
+    } else {
+        quote!(#self_var.#member)
+    }
 }
 
 fn deserialize_body(cont: &Container, params: &Parameters) -> Fragment {
@@ -381,7 +395,9 @@ fn deserialize_struct(params: &Parameters, fields: &[Field], cattrs: &attr::Cont
     }
 }
 
-fn field_i(i: usize) -> Ident { Ident::new(&format!("__field{}", i), Span::call_site()) }
+fn field_i(i: usize) -> Ident {
+    Ident::new(&format!("__field{}", i), Span::call_site())
+}
 
 fn deserialize_map(
     struct_path: &TokenStream,
@@ -389,19 +405,25 @@ fn deserialize_map(
     cattrs: &attr::Container,
 ) -> Fragment {
     // Create the field names for the fields.
-    let fields_names: Vec<_> =
-        fields.iter().enumerate().map(|(i, field)| (field, field_i(i))).collect();
+    let fields_names: Vec<_> = fields
+        .iter()
+        .enumerate()
+        .map(|(i, field)| (field, field_i(i)))
+        .collect();
 
     let skip = |field: &Field| field.attrs.skip_deserializing() || field.attrs.flatten();
 
     // Declare each field that will be deserialized.
     let let_values =
-        fields_names.iter().filter(|&&(field, _)| !skip(field)).map(|(field, name)| {
-            let field_ty = field.ty;
-            quote! {
-                let mut #name: ::std::option::Option<#field_ty> = ::std::option::Option::None;
-            }
-        });
+        fields_names
+            .iter()
+            .filter(|&&(field, _)| !skip(field))
+            .map(|(field, name)| {
+                let field_ty = field.ty;
+                quote! {
+                    let mut #name: ::std::option::Option<#field_ty> = ::std::option::Option::None;
+                }
+            });
 
     // Match arms to extract a value for a field.
     let mut name_match_arms = Vec::with_capacity(fields_names.len());
@@ -573,16 +595,19 @@ fn deserialize_map(
     };
 
     let extract_values =
-        fields_names.iter().filter(|&&(field, _)| !skip(field)).map(|(field, name)| {
-            let missing_expr = Match(expr_is_missing(field, cattrs));
+        fields_names
+            .iter()
+            .filter(|&&(field, _)| !skip(field))
+            .map(|(field, name)| {
+                let missing_expr = Match(expr_is_missing(field, cattrs));
 
-            quote! {
-                let #name = match #name {
-                    ::std::option::Option::Some(#name) => #name,
-                    ::std::option::Option::None => #missing_expr
-                };
-            }
-        });
+                quote! {
+                    let #name = match #name {
+                        ::std::option::Option::Some(#name) => #name,
+                        ::std::option::Option::None => #missing_expr
+                    };
+                }
+            });
 
     let result = fields_names.iter().map(|(field, name)| {
         let member = &field.member;

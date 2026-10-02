@@ -88,8 +88,12 @@ async fn create_typed_table(client: &ArrowClient, column_type: &str) -> (String,
 }
 
 async fn drop_typed_table(client: &ArrowClient, db: &str, table: &str) {
-    let _drop_t = client.execute(format!("DROP TABLE IF EXISTS {db}.{table}"), None).await;
-    let _drop_d = client.execute(format!("DROP DATABASE IF EXISTS {db}"), None).await;
+    let _drop_t = client
+        .execute(format!("DROP TABLE IF EXISTS {db}.{table}"), None)
+        .await;
+    let _drop_d = client
+        .execute(format!("DROP DATABASE IF EXISTS {db}"), None)
+        .await;
 }
 
 // ---------------------------------------------------------------------------
@@ -104,16 +108,25 @@ async fn direction_a(client: &ArrowClient, column_type: &str, rows: &[(u32, &str
     let fq = format!("{db}.{table}");
 
     // INSERT via raw SQL — every value goes through the CH server's parser.
-    let values_list =
-        rows.iter().map(|(id, lit, _)| format!("({id}, {lit})")).collect::<Vec<_>>().join(", ");
+    let values_list = rows
+        .iter()
+        .map(|(id, lit, _)| format!("({id}, {lit})"))
+        .collect::<Vec<_>>()
+        .join(", ");
     client
-        .execute(format!("INSERT INTO {fq} VALUES {values_list}"), Some(Qid::new()))
+        .execute(
+            format!("INSERT INTO {fq} VALUES {values_list}"),
+            Some(Qid::new()),
+        )
         .await
         .expect("raw insert");
 
     // SELECT via this crate's deserializer.
     let result: Vec<Vec<Value>> = client
-        .query_rows(format!("SELECT id, v FROM {fq} ORDER BY id"), Some(Qid::new()))
+        .query_rows(
+            format!("SELECT id, v FROM {fq} ORDER BY id"),
+            Some(Qid::new()),
+        )
         .await
         .expect("query")
         .collect::<Vec<_>>()
@@ -132,8 +145,10 @@ async fn direction_a(client: &ArrowClient, column_type: &str, rows: &[(u32, &str
             got_row[0]
         );
         if &got_row[1] != expected {
-            mismatches
-                .push(format!("literal {lit:?}: got {:?}, expected {expected:?}", got_row[1]));
+            mismatches.push(format!(
+                "literal {lit:?}: got {:?}, expected {expected:?}",
+                got_row[1]
+            ));
         }
     }
     assert!(
@@ -172,15 +187,19 @@ async fn direction_b(
         Field::new("id", DataType::UInt32, false),
         Field::new("v", arrow_field_type, true),
     ]));
-    let batch = RecordBatch::try_new(Arc::clone(&schema), vec![
-        Arc::new(UInt32Array::from(ids.clone())) as ArrayRef,
-        values,
-    ])
+    let batch = RecordBatch::try_new(
+        Arc::clone(&schema),
+        vec![Arc::new(UInt32Array::from(ids.clone())) as ArrayRef, values],
+    )
     .expect("build record batch");
 
     // INSERT via this crate's serializer.
     let _insert = client
-        .insert(format!("INSERT INTO {fq} FORMAT Native"), batch, Some(Qid::new()))
+        .insert(
+            format!("INSERT INTO {fq} FORMAT Native"),
+            batch,
+            Some(Qid::new()),
+        )
         .await
         .expect("arrow insert")
         .collect::<Vec<_>>()
@@ -191,7 +210,10 @@ async fn direction_b(
 
     // SELECT toString(v) — the server formats every value to canonical text.
     let result: Vec<Vec<Value>> = client
-        .query_rows(format!("SELECT id, toString(v) AS vs FROM {fq} ORDER BY id"), Some(Qid::new()))
+        .query_rows(
+            format!("SELECT id, toString(v) AS vs FROM {fq} ORDER BY id"),
+            Some(Qid::new()),
+        )
         .await
         .expect("query")
         .collect::<Vec<_>>()
@@ -200,7 +222,11 @@ async fn direction_b(
         .collect::<Result<Vec<_>>>()
         .expect("collect");
 
-    assert_eq!(result.len(), expected_strings.len(), "[B:{column_type}] row count");
+    assert_eq!(
+        result.len(),
+        expected_strings.len(),
+        "[B:{column_type}] row count"
+    );
     // Collect mismatches before asserting so a sweep over many values doesn't
     // stop at the first one — the shape of the disagreement (how many rows,
     // what the offset pattern looks like) is what locates the bug.
@@ -245,11 +271,15 @@ pub async fn test_cross_client_primitives(ch: Arc<ClickHouseContainer>) {
     let client = connect(ch.as_ref()).await;
 
     header(Qid::new(), "Section: signed integers");
-    direction_a(&client, "Int8", &[
-        (0, "-128", Value::Int8(i8::MIN)),
-        (1, "0", Value::Int8(0)),
-        (2, "127", Value::Int8(i8::MAX)),
-    ])
+    direction_a(
+        &client,
+        "Int8",
+        &[
+            (0, "-128", Value::Int8(i8::MIN)),
+            (1, "0", Value::Int8(0)),
+            (2, "127", Value::Int8(i8::MAX)),
+        ],
+    )
     .await;
     direction_b(
         &client,
@@ -261,11 +291,15 @@ pub async fn test_cross_client_primitives(ch: Arc<ClickHouseContainer>) {
     )
     .await;
 
-    direction_a(&client, "Int16", &[
-        (0, "-32768", Value::Int16(i16::MIN)),
-        (1, "0", Value::Int16(0)),
-        (2, "32767", Value::Int16(i16::MAX)),
-    ])
+    direction_a(
+        &client,
+        "Int16",
+        &[
+            (0, "-32768", Value::Int16(i16::MIN)),
+            (1, "0", Value::Int16(0)),
+            (2, "32767", Value::Int16(i16::MAX)),
+        ],
+    )
     .await;
     direction_b(
         &client,
@@ -277,11 +311,15 @@ pub async fn test_cross_client_primitives(ch: Arc<ClickHouseContainer>) {
     )
     .await;
 
-    direction_a(&client, "Int32", &[
-        (0, "-2147483648", Value::Int32(i32::MIN)),
-        (1, "0", Value::Int32(0)),
-        (2, "2147483647", Value::Int32(i32::MAX)),
-    ])
+    direction_a(
+        &client,
+        "Int32",
+        &[
+            (0, "-2147483648", Value::Int32(i32::MIN)),
+            (1, "0", Value::Int32(0)),
+            (2, "2147483647", Value::Int32(i32::MAX)),
+        ],
+    )
     .await;
     direction_b(
         &client,
@@ -293,11 +331,15 @@ pub async fn test_cross_client_primitives(ch: Arc<ClickHouseContainer>) {
     )
     .await;
 
-    direction_a(&client, "Int64", &[
-        (0, "-9223372036854775808", Value::Int64(i64::MIN)),
-        (1, "0", Value::Int64(0)),
-        (2, "9223372036854775807", Value::Int64(i64::MAX)),
-    ])
+    direction_a(
+        &client,
+        "Int64",
+        &[
+            (0, "-9223372036854775808", Value::Int64(i64::MIN)),
+            (1, "0", Value::Int64(0)),
+            (2, "9223372036854775807", Value::Int64(i64::MAX)),
+        ],
+    )
     .await;
     direction_b(
         &client,
@@ -310,8 +352,12 @@ pub async fn test_cross_client_primitives(ch: Arc<ClickHouseContainer>) {
     .await;
 
     header(Qid::new(), "Section: unsigned integers");
-    direction_a(&client, "UInt8", &[(0, "0", Value::UInt8(0)), (1, "255", Value::UInt8(u8::MAX))])
-        .await;
+    direction_a(
+        &client,
+        "UInt8",
+        &[(0, "0", Value::UInt8(0)), (1, "255", Value::UInt8(u8::MAX))],
+    )
+    .await;
     direction_b(
         &client,
         "UInt8",
@@ -322,10 +368,14 @@ pub async fn test_cross_client_primitives(ch: Arc<ClickHouseContainer>) {
     )
     .await;
 
-    direction_a(&client, "UInt16", &[
-        (0, "0", Value::UInt16(0)),
-        (1, "65535", Value::UInt16(u16::MAX)),
-    ])
+    direction_a(
+        &client,
+        "UInt16",
+        &[
+            (0, "0", Value::UInt16(0)),
+            (1, "65535", Value::UInt16(u16::MAX)),
+        ],
+    )
     .await;
     direction_b(
         &client,
@@ -337,10 +387,14 @@ pub async fn test_cross_client_primitives(ch: Arc<ClickHouseContainer>) {
     )
     .await;
 
-    direction_a(&client, "UInt32", &[
-        (0, "0", Value::UInt32(0)),
-        (1, "4294967295", Value::UInt32(u32::MAX)),
-    ])
+    direction_a(
+        &client,
+        "UInt32",
+        &[
+            (0, "0", Value::UInt32(0)),
+            (1, "4294967295", Value::UInt32(u32::MAX)),
+        ],
+    )
     .await;
     direction_b(
         &client,
@@ -352,10 +406,14 @@ pub async fn test_cross_client_primitives(ch: Arc<ClickHouseContainer>) {
     )
     .await;
 
-    direction_a(&client, "UInt64", &[
-        (0, "0", Value::UInt64(0)),
-        (1, "18446744073709551615", Value::UInt64(u64::MAX)),
-    ])
+    direction_a(
+        &client,
+        "UInt64",
+        &[
+            (0, "0", Value::UInt64(0)),
+            (1, "18446744073709551615", Value::UInt64(u64::MAX)),
+        ],
+    )
     .await;
     direction_b(
         &client,
@@ -370,14 +428,18 @@ pub async fn test_cross_client_primitives(ch: Arc<ClickHouseContainer>) {
     header(Qid::new(), "Section: floats");
     // NaN's bit pattern is preserved (PartialEq on Value::Float uses to_bits).
     // toString() formats NaN as "nan", inf as "inf", subnormals as decimal text.
-    direction_a(&client, "Float32", &[
-        (0, "0", Value::Float32(0.0)),
-        (1, "-0", Value::Float32(-0.0)),
-        (2, "1.5", Value::Float32(1.5)),
-        (3, "-1.5", Value::Float32(-1.5)),
-        (4, "inf", Value::Float32(f32::INFINITY)),
-        (5, "-inf", Value::Float32(f32::NEG_INFINITY)),
-    ])
+    direction_a(
+        &client,
+        "Float32",
+        &[
+            (0, "0", Value::Float32(0.0)),
+            (1, "-0", Value::Float32(-0.0)),
+            (2, "1.5", Value::Float32(1.5)),
+            (3, "-1.5", Value::Float32(-1.5)),
+            (4, "inf", Value::Float32(f32::INFINITY)),
+            (5, "-inf", Value::Float32(f32::NEG_INFINITY)),
+        ],
+    )
     .await;
     direction_b(
         &client,
@@ -396,14 +458,18 @@ pub async fn test_cross_client_primitives(ch: Arc<ClickHouseContainer>) {
     )
     .await;
 
-    direction_a(&client, "Float64", &[
-        (0, "0", Value::Float64(0.0)),
-        (1, "-0", Value::Float64(-0.0)),
-        (2, "1.5", Value::Float64(1.5)),
-        (3, "-1.5", Value::Float64(-1.5)),
-        (4, "inf", Value::Float64(f64::INFINITY)),
-        (5, "-inf", Value::Float64(f64::NEG_INFINITY)),
-    ])
+    direction_a(
+        &client,
+        "Float64",
+        &[
+            (0, "0", Value::Float64(0.0)),
+            (1, "-0", Value::Float64(-0.0)),
+            (2, "1.5", Value::Float64(1.5)),
+            (3, "-1.5", Value::Float64(-1.5)),
+            (4, "inf", Value::Float64(f64::INFINITY)),
+            (5, "-inf", Value::Float64(f64::NEG_INFINITY)),
+        ],
+    )
     .await;
     direction_b(
         &client,
@@ -425,10 +491,14 @@ pub async fn test_cross_client_primitives(ch: Arc<ClickHouseContainer>) {
     header(Qid::new(), "Section: Date (UInt16 days-since-1970)");
     // Date range: 1970-01-01..=2149-06-06 (the post-2106 extension landed in
     // CH 22.x). 65535 ~= 2149-06-06.
-    direction_a(&client, "Date", &[
-        (0, "'1970-01-01'", Value::Date(Date(0))),
-        (1, "'2024-12-31'", Value::Date(Date(20088))),
-    ])
+    direction_a(
+        &client,
+        "Date",
+        &[
+            (0, "'1970-01-01'", Value::Date(Date(0))),
+            (1, "'2024-12-31'", Value::Date(Date(20088))),
+        ],
+    )
     .await;
     direction_b(
         &client,
@@ -443,13 +513,17 @@ pub async fn test_cross_client_primitives(ch: Arc<ClickHouseContainer>) {
     header(Qid::new(), "Section: Date32 (Int32 days-since-1970)");
     // Probes the full Date32 range, including pre-1970 and post-2149 values
     // that don't fit a plain Date.
-    direction_a(&client, "Date32", &[
-        (0, "'1900-01-01'", Value::Date32(Date32(-25567))),
-        (1, "'1969-12-31'", Value::Date32(Date32(-1))),
-        (2, "'1970-01-01'", Value::Date32(Date32(0))),
-        (3, "'2024-12-31'", Value::Date32(Date32(20088))),
-        (4, "'2106-02-07'", Value::Date32(Date32(49710))),
-    ])
+    direction_a(
+        &client,
+        "Date32",
+        &[
+            (0, "'1900-01-01'", Value::Date32(Date32(-25567))),
+            (1, "'1969-12-31'", Value::Date32(Date32(-1))),
+            (2, "'1970-01-01'", Value::Date32(Date32(0))),
+            (3, "'2024-12-31'", Value::Date32(Date32(20088))),
+            (4, "'2106-02-07'", Value::Date32(Date32(49710))),
+        ],
+    )
     .await;
     direction_b(
         &client,
@@ -464,15 +538,37 @@ pub async fn test_cross_client_primitives(ch: Arc<ClickHouseContainer>) {
             49702,      // 2106-01-30 (past plain-Date range)
             65535,      // 2149-06-06 (u16::MAX boundary)
         ])) as ArrayRef,
-        &["1900-01-01", "1969-12-31", "1970-01-01", "2024-12-31", "2106-01-30", "2149-06-06"],
+        &[
+            "1900-01-01",
+            "1969-12-31",
+            "1970-01-01",
+            "2024-12-31",
+            "2106-01-30",
+            "2149-06-06",
+        ],
     )
     .await;
 
-    header(Qid::new(), "Section: DateTime (UInt32 seconds-since-epoch UTC)");
-    direction_a(&client, "DateTime('UTC')", &[
-        (0, "'1970-01-01 00:00:00'", Value::DateTime(DateTime(chrono_tz::UTC, 0))),
-        (1, "'2024-12-31 23:59:59'", Value::DateTime(DateTime(chrono_tz::UTC, 1_735_689_599))),
-    ])
+    header(
+        Qid::new(),
+        "Section: DateTime (UInt32 seconds-since-epoch UTC)",
+    );
+    direction_a(
+        &client,
+        "DateTime('UTC')",
+        &[
+            (
+                0,
+                "'1970-01-01 00:00:00'",
+                Value::DateTime(DateTime(chrono_tz::UTC, 0)),
+            ),
+            (
+                1,
+                "'2024-12-31 23:59:59'",
+                Value::DateTime(DateTime(chrono_tz::UTC, 1_735_689_599)),
+            ),
+        ],
+    )
     .await;
     direction_b(
         &client,
@@ -486,36 +582,59 @@ pub async fn test_cross_client_primitives(ch: Arc<ClickHouseContainer>) {
     )
     .await;
 
-    header(Qid::new(), "Section: DateTime64 — subsecond precision sweep");
-    direction_a(&client, "DateTime64(3, 'UTC')", &[
-        (0, "'1970-01-01 00:00:00.000'", Value::DateTime64(DynDateTime64(chrono_tz::UTC, 0, 3))),
-        (
-            1,
-            "'2024-12-31 23:59:59.999'",
-            Value::DateTime64(DynDateTime64(chrono_tz::UTC, 1_735_689_599_999, 3)),
-        ),
-    ])
+    header(
+        Qid::new(),
+        "Section: DateTime64 — subsecond precision sweep",
+    );
+    direction_a(
+        &client,
+        "DateTime64(3, 'UTC')",
+        &[
+            (
+                0,
+                "'1970-01-01 00:00:00.000'",
+                Value::DateTime64(DynDateTime64(chrono_tz::UTC, 0, 3)),
+            ),
+            (
+                1,
+                "'2024-12-31 23:59:59.999'",
+                Value::DateTime64(DynDateTime64(chrono_tz::UTC, 1_735_689_599_999, 3)),
+            ),
+        ],
+    )
     .await;
-    direction_a(&client, "DateTime64(6, 'UTC')", &[(
-        0,
-        "'2024-06-15 12:00:00.123456'",
-        Value::DateTime64(DynDateTime64(chrono_tz::UTC, 1_718_452_800_123_456, 6)),
-    )])
+    direction_a(
+        &client,
+        "DateTime64(6, 'UTC')",
+        &[(
+            0,
+            "'2024-06-15 12:00:00.123456'",
+            Value::DateTime64(DynDateTime64(chrono_tz::UTC, 1_718_452_800_123_456, 6)),
+        )],
+    )
     .await;
-    direction_a(&client, "DateTime64(9, 'UTC')", &[(
-        0,
-        "'2024-06-15 12:00:00.123456789'",
-        Value::DateTime64(DynDateTime64(chrono_tz::UTC, 1_718_452_800_123_456_789, 9)),
-    )])
+    direction_a(
+        &client,
+        "DateTime64(9, 'UTC')",
+        &[(
+            0,
+            "'2024-06-15 12:00:00.123456789'",
+            Value::DateTime64(DynDateTime64(chrono_tz::UTC, 1_718_452_800_123_456_789, 9)),
+        )],
+    )
     .await;
 
     header(Qid::new(), "Section: String — UTF-8, empty, embedded NUL");
-    direction_a(&client, "String", &[
-        (0, "''", Value::String(b"".to_vec())),
-        (1, "'hello'", Value::String(b"hello".to_vec())),
-        (2, "'café'", Value::String("café".as_bytes().to_vec())),
-        (3, "'a\\0b'", Value::String(b"a\0b".to_vec())),
-    ])
+    direction_a(
+        &client,
+        "String",
+        &[
+            (0, "''", Value::String(b"".to_vec())),
+            (1, "'hello'", Value::String(b"hello".to_vec())),
+            (2, "'café'", Value::String("café".as_bytes().to_vec())),
+            (3, "'a\\0b'", Value::String(b"a\0b".to_vec())),
+        ],
+    )
     .await;
     direction_b(
         &client,
@@ -532,24 +651,36 @@ pub async fn test_cross_client_primitives(ch: Arc<ClickHouseContainer>) {
     // (high, low) order. The `binary_async!(Uuid)` arm reverses each
     // 8-byte half so bytes land in canonical RFC 4122 order before
     // Uuid::from_bytes reads them.
-    direction_a(&client, "UUID", &[
-        (0, "'00000000-0000-0000-0000-000000000000'", Value::Uuid(uuid::Uuid::nil())),
-        (
-            1,
-            "'12345678-1234-5678-1234-567812345678'",
-            Value::Uuid(uuid::Uuid::parse_str("12345678-1234-5678-1234-567812345678").unwrap()),
-        ),
-        (
-            2,
-            "'ffffffff-ffff-ffff-ffff-ffffffffffff'",
-            Value::Uuid(uuid::Uuid::parse_str("ffffffff-ffff-ffff-ffff-ffffffffffff").unwrap()),
-        ),
-    ])
+    direction_a(
+        &client,
+        "UUID",
+        &[
+            (
+                0,
+                "'00000000-0000-0000-0000-000000000000'",
+                Value::Uuid(uuid::Uuid::nil()),
+            ),
+            (
+                1,
+                "'12345678-1234-5678-1234-567812345678'",
+                Value::Uuid(uuid::Uuid::parse_str("12345678-1234-5678-1234-567812345678").unwrap()),
+            ),
+            (
+                2,
+                "'ffffffff-ffff-ffff-ffff-ffffffffffff'",
+                Value::Uuid(uuid::Uuid::parse_str("ffffffff-ffff-ffff-ffff-ffffffffffff").unwrap()),
+            ),
+        ],
+    )
     .await;
 
     header(Qid::new(), "Section: Bool");
-    direction_a(&client, "Bool", &[(0, "false", Value::UInt8(0)), (1, "true", Value::UInt8(1))])
-        .await;
+    direction_a(
+        &client,
+        "Bool",
+        &[(0, "false", Value::UInt8(0)), (1, "true", Value::UInt8(1))],
+    )
+    .await;
     direction_b(
         &client,
         "Bool",
@@ -561,43 +692,98 @@ pub async fn test_cross_client_primitives(ch: Arc<ClickHouseContainer>) {
     .await;
 
     header(Qid::new(), "Section: wide integers (Int128, UInt128)");
-    direction_a(&client, "Int128", &[
-        (0, "-170141183460469231731687303715884105728", Value::Int128(i128::MIN)),
-        (1, "0", Value::Int128(0)),
-        (2, "170141183460469231731687303715884105727", Value::Int128(i128::MAX)),
-    ])
+    direction_a(
+        &client,
+        "Int128",
+        &[
+            (
+                0,
+                "-170141183460469231731687303715884105728",
+                Value::Int128(i128::MIN),
+            ),
+            (1, "0", Value::Int128(0)),
+            (
+                2,
+                "170141183460469231731687303715884105727",
+                Value::Int128(i128::MAX),
+            ),
+        ],
+    )
     .await;
-    direction_a(&client, "UInt128", &[
-        (0, "0", Value::UInt128(0)),
-        (1, "340282366920938463463374607431768211455", Value::UInt128(u128::MAX)),
-    ])
+    direction_a(
+        &client,
+        "UInt128",
+        &[
+            (0, "0", Value::UInt128(0)),
+            (
+                1,
+                "340282366920938463463374607431768211455",
+                Value::UInt128(u128::MAX),
+            ),
+        ],
+    )
     .await;
 
-    header(Qid::new(), "Section: Decimal32/64/128 — narrow + wide precision");
-    direction_a(&client, "Decimal32(2)", &[
-        (0, "0", Value::Decimal32(2, 0)),
-        (1, "12345.67", Value::Decimal32(2, 1_234_567)),
-        (2, "-12345.67", Value::Decimal32(2, -1_234_567)),
-    ])
+    header(
+        Qid::new(),
+        "Section: Decimal32/64/128 — narrow + wide precision",
+    );
+    direction_a(
+        &client,
+        "Decimal32(2)",
+        &[
+            (0, "0", Value::Decimal32(2, 0)),
+            (1, "12345.67", Value::Decimal32(2, 1_234_567)),
+            (2, "-12345.67", Value::Decimal32(2, -1_234_567)),
+        ],
+    )
     .await;
-    direction_a(&client, "Decimal64(4)", &[
-        (0, "0", Value::Decimal64(4, 0)),
-        (1, "12345.6789", Value::Decimal64(4, 123_456_789)),
-        (2, "-12345.6789", Value::Decimal64(4, -123_456_789)),
-    ])
+    direction_a(
+        &client,
+        "Decimal64(4)",
+        &[
+            (0, "0", Value::Decimal64(4, 0)),
+            (1, "12345.6789", Value::Decimal64(4, 123_456_789)),
+            (2, "-12345.6789", Value::Decimal64(4, -123_456_789)),
+        ],
+    )
     .await;
-    direction_a(&client, "Decimal128(6)", &[
-        (0, "0", Value::Decimal128(6, 0)),
-        (1, "123456789012.345678", Value::Decimal128(6, 123_456_789_012_345_678_i128)),
-        (2, "-123456789012.345678", Value::Decimal128(6, -123_456_789_012_345_678_i128)),
-    ])
+    direction_a(
+        &client,
+        "Decimal128(6)",
+        &[
+            (0, "0", Value::Decimal128(6, 0)),
+            (
+                1,
+                "123456789012.345678",
+                Value::Decimal128(6, 123_456_789_012_345_678_i128),
+            ),
+            (
+                2,
+                "-123456789012.345678",
+                Value::Decimal128(6, -123_456_789_012_345_678_i128),
+            ),
+        ],
+    )
     .await;
 
     header(Qid::new(), "Section: IPv4");
-    direction_a(&client, "IPv4", &[
-        (0, "'127.0.0.1'", Value::Ipv4(Ipv4(std::net::Ipv4Addr::LOCALHOST))),
-        (1, "'192.168.1.42'", Value::Ipv4(Ipv4(std::net::Ipv4Addr::new(192, 168, 1, 42)))),
-    ])
+    direction_a(
+        &client,
+        "IPv4",
+        &[
+            (
+                0,
+                "'127.0.0.1'",
+                Value::Ipv4(Ipv4(std::net::Ipv4Addr::LOCALHOST)),
+            ),
+            (
+                1,
+                "'192.168.1.42'",
+                Value::Ipv4(Ipv4(std::net::Ipv4Addr::new(192, 168, 1, 42))),
+            ),
+        ],
+    )
     .await;
 
     client.shutdown().await.expect("shutdown");
@@ -652,7 +838,10 @@ async fn create_sparse_forcing_table(client: &ArrowClient, column_type: &str) ->
 /// at once (`null_count` is meaningful only over the full column).
 async fn read_v_column(client: &ArrowClient, fq: &str) -> ArrayRef {
     let batches: Vec<RecordBatch> = client
-        .query(format!("SELECT id, v FROM {fq} ORDER BY id"), Some(Qid::new()))
+        .query(
+            format!("SELECT id, v FROM {fq} ORDER BY id"),
+            Some(Qid::new()),
+        )
         .await
         .expect("query")
         .collect::<Vec<_>>()
@@ -662,8 +851,10 @@ async fn read_v_column(client: &ArrowClient, fq: &str) -> ArrayRef {
         .expect("collect batches");
 
     assert!(!batches.is_empty(), "no batches returned for {fq}");
-    let v_arrays: Vec<&dyn Array> =
-        batches.iter().map(|b| b.column_by_name("v").expect("column v").as_ref()).collect();
+    let v_arrays: Vec<&dyn Array> = batches
+        .iter()
+        .map(|b| b.column_by_name("v").expect("column v").as_ref())
+        .collect();
     arrow::compute::concat(&v_arrays).expect("concat v column")
 }
 
@@ -677,8 +868,10 @@ fn mostly_default_rows<'a>(
 ) -> Vec<(u32, String)> {
     (0..total)
         .map(|id| {
-            let lit =
-                sentinels.iter().find(|(sid, _)| *sid == id).map_or(default_lit, |(_, lit)| lit);
+            let lit = sentinels
+                .iter()
+                .find(|(sid, _)| *sid == id)
+                .map_or(default_lit, |(_, lit)| lit);
             (id, lit.to_string())
         })
         .collect()
@@ -686,10 +879,16 @@ fn mostly_default_rows<'a>(
 
 /// Insert `(id, literal)` rows via raw SQL into `fq`.
 async fn sql_insert(client: &ArrowClient, fq: &str, rows: &[(u32, String)]) {
-    let values_list =
-        rows.iter().map(|(id, lit)| format!("({id}, {lit})")).collect::<Vec<_>>().join(", ");
+    let values_list = rows
+        .iter()
+        .map(|(id, lit)| format!("({id}, {lit})"))
+        .collect::<Vec<_>>()
+        .join(", ");
     client
-        .execute(format!("INSERT INTO {fq} VALUES {values_list}"), Some(Qid::new()))
+        .execute(
+            format!("INSERT INTO {fq} VALUES {values_list}"),
+            Some(Qid::new()),
+        )
         .await
         .expect("raw insert");
 }
@@ -697,6 +896,10 @@ async fn sql_insert(client: &ArrowClient, fq: &str, rows: &[(u32, String)]) {
 /// # Panics
 /// Asserts the sparse-default rows of non-nullable `Decimal` and `DateTime64`
 /// columns come back as the type zero, not NULL.
+#[expect(
+    clippy::too_many_lines,
+    reason = "Complete sparse default-fill round trip"
+)]
 pub async fn test_sparse_default_fill_non_nullable(ch: Arc<ClickHouseContainer>) {
     const TOTAL: u32 = 256;
 
@@ -720,24 +923,43 @@ pub async fn test_sparse_default_fill_non_nullable(ch: Arc<ClickHouseContainer>)
             "[sparse Decimal64] non-nullable column must have no nulls; sparse default rows came \
              back NULL"
         );
-        let dec = col.as_any().downcast_ref::<Decimal128Array>().expect("Decimal128Array");
+        let dec = col
+            .as_any()
+            .downcast_ref::<Decimal128Array>()
+            .expect("Decimal128Array");
         // A default (id=0) row: must be raw mantissa 0, not null.
         assert!(!dec.is_null(0), "[sparse Decimal64] default row 0 is NULL");
-        assert_eq!(dec.value(0), 0_i128, "[sparse Decimal64] default row 0 mantissa");
+        assert_eq!(
+            dec.value(0),
+            0_i128,
+            "[sparse Decimal64] default row 0 mantissa"
+        );
         // The sentinel at id=10 = 12.3456 with scale 4 -> mantissa 123456.
-        assert!(!dec.is_null(10), "[sparse Decimal64] sentinel row 10 is NULL");
-        assert_eq!(dec.value(10), 123_456_i128, "[sparse Decimal64] sentinel row 10 mantissa");
+        assert!(
+            !dec.is_null(10),
+            "[sparse Decimal64] sentinel row 10 is NULL"
+        );
+        assert_eq!(
+            dec.value(10),
+            123_456_i128,
+            "[sparse Decimal64] sentinel row 10 mantissa"
+        );
 
         drop_typed_table(&client, &db, &table).await;
     }
 
     // --- DateTime64(3, 'UTC'): defaults must materialize as epoch, not NULL
-    header(Qid::new(), "Sparse: non-nullable DateTime64(3) default-fill");
+    header(
+        Qid::new(),
+        "Sparse: non-nullable DateTime64(3) default-fill",
+    );
     {
         let (db, table) = create_sparse_forcing_table(&client, "DateTime64(3, 'UTC')").await;
         let fq = format!("{db}.{table}");
-        let sentinels: &[(u32, &str)] =
-            &[(10, "'2024-12-31 23:59:59.999'"), (200, "'2024-06-15 12:00:00.123'")];
+        let sentinels: &[(u32, &str)] = &[
+            (10, "'2024-12-31 23:59:59.999'"),
+            (200, "'2024-06-15 12:00:00.123'"),
+        ];
         // The DateTime64 default is the epoch '1970-01-01 00:00:00.000'.
         let rows = mostly_default_rows(TOTAL, "'1970-01-01 00:00:00.000'", sentinels);
         sql_insert(&client, &fq, &rows).await;
@@ -756,10 +978,21 @@ pub async fn test_sparse_default_fill_non_nullable(ch: Arc<ClickHouseContainer>)
             .expect("TimestampMillisecondArray");
         // Default (id=0) row: epoch == 0 ms, not null.
         assert!(!ts.is_null(0), "[sparse DateTime64] default row 0 is NULL");
-        assert_eq!(ts.value(0), 0_i64, "[sparse DateTime64] default row 0 epoch ms");
+        assert_eq!(
+            ts.value(0),
+            0_i64,
+            "[sparse DateTime64] default row 0 epoch ms"
+        );
         // Sentinel id=10 = 2024-12-31 23:59:59.999 UTC -> 1_735_689_599_999 ms.
-        assert!(!ts.is_null(10), "[sparse DateTime64] sentinel row 10 is NULL");
-        assert_eq!(ts.value(10), 1_735_689_599_999_i64, "[sparse DateTime64] sentinel row 10 ms");
+        assert!(
+            !ts.is_null(10),
+            "[sparse DateTime64] sentinel row 10 is NULL"
+        );
+        assert_eq!(
+            ts.value(10),
+            1_735_689_599_999_i64,
+            "[sparse DateTime64] sentinel row 10 ms"
+        );
 
         drop_typed_table(&client, &db, &table).await;
     }
@@ -767,7 +1000,10 @@ pub async fn test_sparse_default_fill_non_nullable(ch: Arc<ClickHouseContainer>)
     // --- Nullable(Decimal64(4)): the Nullable default IS null, so the
     // omitted rows must come back NULL (the `is_nullable` branch of
     // default_array_of), while the sentinels carry values. -----------------
-    header(Qid::new(), "Sparse: Nullable(Decimal64(4)) default-fill is NULL");
+    header(
+        Qid::new(),
+        "Sparse: Nullable(Decimal64(4)) default-fill is NULL",
+    );
     {
         let (db, table) = create_sparse_forcing_table(&client, "Nullable(Decimal64(4))").await;
         let fq = format!("{db}.{table}");
@@ -778,7 +1014,11 @@ pub async fn test_sparse_default_fill_non_nullable(ch: Arc<ClickHouseContainer>)
         sql_insert(&client, &fq, &rows).await;
 
         let col = read_v_column(&client, &fq).await;
-        assert_eq!(col.len(), TOTAL as usize, "[sparse Nullable Decimal64] row count");
+        assert_eq!(
+            col.len(),
+            TOTAL as usize,
+            "[sparse Nullable Decimal64] row count"
+        );
         // Every default (omitted) row must be NULL; only the two sentinels
         // are non-null.
         assert_eq!(
@@ -786,10 +1026,23 @@ pub async fn test_sparse_default_fill_non_nullable(ch: Arc<ClickHouseContainer>)
             TOTAL as usize - sentinels.len(),
             "[sparse Nullable Decimal64] omitted rows must materialize as NULL"
         );
-        let dec = col.as_any().downcast_ref::<Decimal128Array>().expect("Decimal128Array");
-        assert!(dec.is_null(0), "[sparse Nullable Decimal64] default row 0 should be NULL");
-        assert!(!dec.is_null(10), "[sparse Nullable Decimal64] sentinel row 10 is NULL");
-        assert_eq!(dec.value(10), 123_456_i128, "[sparse Nullable Decimal64] sentinel row 10");
+        let dec = col
+            .as_any()
+            .downcast_ref::<Decimal128Array>()
+            .expect("Decimal128Array");
+        assert!(
+            dec.is_null(0),
+            "[sparse Nullable Decimal64] default row 0 should be NULL"
+        );
+        assert!(
+            !dec.is_null(10),
+            "[sparse Nullable Decimal64] sentinel row 10 is NULL"
+        );
+        assert_eq!(
+            dec.value(10),
+            123_456_i128,
+            "[sparse Nullable Decimal64] sentinel row 10"
+        );
 
         drop_typed_table(&client, &db, &table).await;
     }

@@ -117,7 +117,9 @@ pub(crate) async fn deserialize<R: ClickHouseRead>(
     let (DataType::List(inner) | DataType::ListView(inner) | DataType::LargeList(inner)) =
         data_type
     else {
-        return Err(Error::ArrowDeserialize(format!("Unexpected list type: {data_type:?}")));
+        return Err(Error::ArrowDeserialize(format!(
+            "Unexpected list type: {data_type:?}"
+        )));
     };
 
     let TypedBuilder::List(list_builder) = builder else {
@@ -135,16 +137,21 @@ pub(crate) async fn deserialize<R: ClickHouseRead>(
             // Offsets
             let offset_bytes = bulk_offsets!(reader, ctx.row_buffer, rows);
             let offsets: &[u64] = bytemuck::cast_slice::<u8, u64>(&ctx.row_buffer[..offset_bytes]);
-            let offset_buffer =
-                OffsetBuffer::new(offsets.iter().map(|&o| o as $t).collect::<ScalarBuffer<_>>());
+            let offset_buffer = OffsetBuffer::new(
+                offsets
+                    .iter()
+                    .map(|&o| o as $t)
+                    .collect::<ScalarBuffer<_>>(),
+            );
             let total_values = *offsets.last().unwrap_or(&0) as usize;
             // Recursively deserialize the inner array
             let inner_array = inner_type
                 .deserialize_arrow($b, reader, inner_data_type, total_values, &[], ctx)
                 .await?;
             // The null mask provides the null buffer for THIS list
-            let null_buffer = (!nulls.is_empty())
-                .then_some(NullBuffer::from(nulls.iter().map(|&n| n == 0).collect::<Vec<bool>>()));
+            let null_buffer = (!nulls.is_empty()).then_some(NullBuffer::from(
+                nulls.iter().map(|&n| n == 0).collect::<Vec<bool>>(),
+            ));
             // Construct the ListArray directly
             let inner_dt = inner_array.data_type().clone();
             let field = Arc::new(Field::new(LIST_ITEM_FIELD_NAME, inner_dt, inner_nullable));
@@ -166,11 +173,13 @@ pub(crate) async fn deserialize<R: ClickHouseRead>(
         B::LargeList(b) => list_deser!(b, LargeListArray, i64),
         B::FixedList((size, b)) => {
             // Recursively deserialize the inner array
-            let inner_array =
-                inner_type.deserialize_arrow(b, reader, inner_data_type, rows, &[], ctx).await?;
+            let inner_array = inner_type
+                .deserialize_arrow(b, reader, inner_data_type, rows, &[], ctx)
+                .await?;
             // The null mask provides the null buffer for THIS list
-            let null_buffer = (!nulls.is_empty())
-                .then_some(NullBuffer::from(nulls.iter().map(|&n| n == 0).collect::<Vec<bool>>()));
+            let null_buffer = (!nulls.is_empty()).then_some(NullBuffer::from(
+                nulls.iter().map(|&n| n == 0).collect::<Vec<bool>>(),
+            ));
             let inner_dt = inner_array.data_type().clone();
             let field = Arc::new(Field::new(LIST_ITEM_FIELD_NAME, inner_dt, inner_nullable));
             let list_array = FixedSizeListArray::new(field, *size, inner_array, null_buffer);
@@ -218,24 +227,41 @@ mod tests {
             5, 0, 0, 0, // 5
         ];
         let mut reader = Cursor::new(input);
-        let data_type =
-            DataType::List(Arc::new(Field::new(LIST_ITEM_FIELD_NAME, DataType::Int32, false)));
+        let data_type = DataType::List(Arc::new(Field::new(
+            LIST_ITEM_FIELD_NAME,
+            DataType::Int32,
+            false,
+        )));
         let mut builder =
             TypedBuilder::try_new(&Type::Array(Box::new(inner_type.clone())), &data_type).unwrap();
 
         let mut row_buffer = Vec::new();
         let mut ctx = ArrowFieldCtx::new(&mut row_buffer);
-        let result =
-            deserialize(&inner_type, &mut builder, &data_type, &mut reader, rows, &nulls, &mut ctx)
-                .await
-                .expect("Failed to deserialize List(Int32)");
+        let result = deserialize(
+            &inner_type,
+            &mut builder,
+            &data_type,
+            &mut reader,
+            rows,
+            &nulls,
+            &mut ctx,
+        )
+        .await
+        .expect("Failed to deserialize List(Int32)");
 
         let list_array = result.as_any().downcast_ref::<ListArray>().unwrap();
-        let values = list_array.values().as_any().downcast_ref::<Int32Array>().unwrap();
+        let values = list_array
+            .values()
+            .as_any()
+            .downcast_ref::<Int32Array>()
+            .unwrap();
 
         assert_eq!(list_array.len(), 3);
         assert_eq!(values, &Int32Array::from(vec![1, 2, 3, 4, 5]));
-        assert_eq!(list_array.offsets().iter().copied().collect::<Vec<_>>(), vec![0, 2, 3, 5]);
+        assert_eq!(
+            list_array.offsets().iter().copied().collect::<Vec<_>>(),
+            vec![0, 2, 3, 5]
+        );
         assert_eq!(list_array.nulls(), None);
     }
 
@@ -258,27 +284,45 @@ mod tests {
         ];
         let mut reader = Cursor::new(input);
 
-        let data_type =
-            DataType::List(Arc::new(Field::new(LIST_ITEM_FIELD_NAME, DataType::Int32, false)));
+        let data_type = DataType::List(Arc::new(Field::new(
+            LIST_ITEM_FIELD_NAME,
+            DataType::Int32,
+            false,
+        )));
         let mut builder =
             TypedBuilder::try_new(&Type::Array(Box::new(inner_type.clone())), &data_type).unwrap();
 
         let mut row_buffer = Vec::new();
         let mut ctx = ArrowFieldCtx::new(&mut row_buffer);
-        let result =
-            deserialize(&inner_type, &mut builder, &data_type, &mut reader, rows, &nulls, &mut ctx)
-                .await
-                .expect("Failed to deserialize List(Int32)");
+        let result = deserialize(
+            &inner_type,
+            &mut builder,
+            &data_type,
+            &mut reader,
+            rows,
+            &nulls,
+            &mut ctx,
+        )
+        .await
+        .expect("Failed to deserialize List(Int32)");
 
         let list_array = result.as_any().downcast_ref::<ListArray>().unwrap();
-        let values = list_array.values().as_any().downcast_ref::<Int32Array>().unwrap();
+        let values = list_array
+            .values()
+            .as_any()
+            .downcast_ref::<Int32Array>()
+            .unwrap();
 
         assert_eq!(list_array.len(), 3);
         assert_eq!(values, &Int32Array::from(vec![1, 2, 3, 4, 5]));
-        assert_eq!(list_array.offsets().iter().copied().collect::<Vec<_>>(), vec![0, 2, 3, 5]);
-        assert_eq!(list_array.nulls().unwrap().iter().collect::<Vec<bool>>(), vec![
-            true, false, true
-        ]);
+        assert_eq!(
+            list_array.offsets().iter().copied().collect::<Vec<_>>(),
+            vec![0, 2, 3, 5]
+        );
+        assert_eq!(
+            list_array.nulls().unwrap().iter().collect::<Vec<bool>>(),
+            vec![true, false, true]
+        );
     }
 
     #[tokio::test]
@@ -300,23 +344,43 @@ mod tests {
             5, 0, 0, 0, // 5
         ];
         let mut reader = Cursor::new(input);
-        let data_type =
-            DataType::List(Arc::new(Field::new(LIST_ITEM_FIELD_NAME, DataType::Int32, true)));
+        let data_type = DataType::List(Arc::new(Field::new(
+            LIST_ITEM_FIELD_NAME,
+            DataType::Int32,
+            true,
+        )));
         let mut builder =
             TypedBuilder::try_new(&Type::Array(Box::new(inner_type.clone())), &data_type).unwrap();
 
         let mut row_buffer = Vec::new();
         let mut ctx = ArrowFieldCtx::new(&mut row_buffer);
-        let result =
-            deserialize(&inner_type, &mut builder, &data_type, &mut reader, rows, &nulls, &mut ctx)
-                .await
-                .expect("Failed to deserialize List(Nullable(Int32))");
+        let result = deserialize(
+            &inner_type,
+            &mut builder,
+            &data_type,
+            &mut reader,
+            rows,
+            &nulls,
+            &mut ctx,
+        )
+        .await
+        .expect("Failed to deserialize List(Nullable(Int32))");
         let list_array = result.as_any().downcast_ref::<ListArray>().unwrap();
-        let values = list_array.values().as_any().downcast_ref::<Int32Array>().unwrap();
+        let values = list_array
+            .values()
+            .as_any()
+            .downcast_ref::<Int32Array>()
+            .unwrap();
 
         assert_eq!(list_array.len(), 3);
-        assert_eq!(values, &Int32Array::from(vec![Some(1), None, Some(3), None, Some(5)]));
-        assert_eq!(list_array.offsets().iter().copied().collect::<Vec<_>>(), vec![0, 2, 3, 5]);
+        assert_eq!(
+            values,
+            &Int32Array::from(vec![Some(1), None, Some(3), None, Some(5)])
+        );
+        assert_eq!(
+            list_array.offsets().iter().copied().collect::<Vec<_>>(),
+            vec![0, 2, 3, 5]
+        );
         assert_eq!(list_array.nulls(), None);
     }
 
@@ -328,23 +392,40 @@ mod tests {
         let input = vec![]; // Initial offset
         let mut reader = Cursor::new(input);
 
-        let data_type =
-            DataType::List(Arc::new(Field::new(LIST_ITEM_FIELD_NAME, DataType::Int32, false)));
+        let data_type = DataType::List(Arc::new(Field::new(
+            LIST_ITEM_FIELD_NAME,
+            DataType::Int32,
+            false,
+        )));
         let mut builder =
             TypedBuilder::try_new(&Type::Array(Box::new(inner_type.clone())), &data_type).unwrap();
 
         let mut row_buffer = Vec::new();
         let mut ctx = ArrowFieldCtx::new(&mut row_buffer);
-        let result =
-            deserialize(&inner_type, &mut builder, &data_type, &mut reader, rows, &nulls, &mut ctx)
-                .await
-                .expect("Failed to deserialize List(Int32) with zero rows");
+        let result = deserialize(
+            &inner_type,
+            &mut builder,
+            &data_type,
+            &mut reader,
+            rows,
+            &nulls,
+            &mut ctx,
+        )
+        .await
+        .expect("Failed to deserialize List(Int32) with zero rows");
         let list_array = result.as_any().downcast_ref::<ListArray>().unwrap();
-        let values = list_array.values().as_any().downcast_ref::<Int32Array>().unwrap();
+        let values = list_array
+            .values()
+            .as_any()
+            .downcast_ref::<Int32Array>()
+            .unwrap();
 
         assert_eq!(list_array.len(), 0);
         assert_eq!(values, &Int32Array::from(Vec::<i32>::new()));
-        assert_eq!(list_array.offsets().iter().copied().collect::<Vec<_>>(), vec![0]);
+        assert_eq!(
+            list_array.offsets().iter().copied().collect::<Vec<_>>(),
+            vec![0]
+        );
         assert_eq!(list_array.nulls(), None);
     }
 
@@ -367,23 +448,40 @@ mod tests {
             1, b'e', // "e"
         ];
         let mut reader = Cursor::new(input);
-        let data_type =
-            DataType::List(Arc::new(Field::new(LIST_ITEM_FIELD_NAME, DataType::Utf8, false)));
+        let data_type = DataType::List(Arc::new(Field::new(
+            LIST_ITEM_FIELD_NAME,
+            DataType::Utf8,
+            false,
+        )));
         let mut builder =
             TypedBuilder::try_new(&Type::Array(Box::new(inner_type.clone())), &data_type).unwrap();
 
         let mut row_buffer = Vec::new();
         let mut ctx = ArrowFieldCtx::new(&mut row_buffer);
-        let result =
-            deserialize(&inner_type, &mut builder, &data_type, &mut reader, rows, &nulls, &mut ctx)
-                .await
-                .expect("Failed to deserialize Array(String)");
+        let result = deserialize(
+            &inner_type,
+            &mut builder,
+            &data_type,
+            &mut reader,
+            rows,
+            &nulls,
+            &mut ctx,
+        )
+        .await
+        .expect("Failed to deserialize Array(String)");
         let list_array = result.as_any().downcast_ref::<ListArray>().unwrap();
-        let values = list_array.values().as_any().downcast_ref::<StringArray>().unwrap();
+        let values = list_array
+            .values()
+            .as_any()
+            .downcast_ref::<StringArray>()
+            .unwrap();
 
         assert_eq!(list_array.len(), 3);
         assert_eq!(values, &StringArray::from(vec!["a", "b", "c", "d", "e"]));
-        assert_eq!(list_array.offsets().iter().copied().collect::<Vec<i32>>(), vec![0, 2, 3, 5]);
+        assert_eq!(
+            list_array.offsets().iter().copied().collect::<Vec<i32>>(),
+            vec![0, 2, 3, 5]
+        );
         assert_eq!(list_array.nulls(), None);
     }
 
@@ -407,23 +505,43 @@ mod tests {
             1, b'e', // "e"
         ];
         let mut reader = Cursor::new(input);
-        let data_type =
-            DataType::List(Arc::new(Field::new(LIST_ITEM_FIELD_NAME, DataType::Utf8, true)));
+        let data_type = DataType::List(Arc::new(Field::new(
+            LIST_ITEM_FIELD_NAME,
+            DataType::Utf8,
+            true,
+        )));
         let mut builder =
             TypedBuilder::try_new(&Type::Array(Box::new(inner_type.clone())), &data_type).unwrap();
 
         let mut row_buffer = Vec::new();
         let mut ctx = ArrowFieldCtx::new(&mut row_buffer);
-        let result =
-            deserialize(&inner_type, &mut builder, &data_type, &mut reader, rows, &nulls, &mut ctx)
-                .await
-                .expect("Failed to deserialize Array(Nullable(String))");
+        let result = deserialize(
+            &inner_type,
+            &mut builder,
+            &data_type,
+            &mut reader,
+            rows,
+            &nulls,
+            &mut ctx,
+        )
+        .await
+        .expect("Failed to deserialize Array(Nullable(String))");
         let list_array = result.as_any().downcast_ref::<ListArray>().unwrap();
-        let values = list_array.values().as_any().downcast_ref::<StringArray>().unwrap();
+        let values = list_array
+            .values()
+            .as_any()
+            .downcast_ref::<StringArray>()
+            .unwrap();
 
         assert_eq!(list_array.len(), 3);
-        assert_eq!(values, &StringArray::from(vec![Some("a"), None, Some("c"), None, Some("e")]));
-        assert_eq!(list_array.offsets().iter().copied().collect::<Vec<i32>>(), vec![0, 2, 3, 5]);
+        assert_eq!(
+            values,
+            &StringArray::from(vec![Some("a"), None, Some("c"), None, Some("e")])
+        );
+        assert_eq!(
+            list_array.offsets().iter().copied().collect::<Vec<i32>>(),
+            vec![0, 2, 3, 5]
+        );
         assert_eq!(list_array.nulls(), None);
     }
 
@@ -449,8 +567,11 @@ mod tests {
             5, 0, 0, 0, // 5
         ];
         let mut reader = Cursor::new(input);
-        let inner_data_type =
-            DataType::List(Arc::new(Field::new(LIST_ITEM_FIELD_NAME, DataType::Int32, false)));
+        let inner_data_type = DataType::List(Arc::new(Field::new(
+            LIST_ITEM_FIELD_NAME,
+            DataType::Int32,
+            false,
+        )));
         let inner_field = Arc::new(Field::new(LIST_ITEM_FIELD_NAME, inner_data_type, false));
         let data_type = DataType::List(inner_field);
         let mut builder =
@@ -458,21 +579,44 @@ mod tests {
 
         let mut row_buffer = Vec::new();
         let mut ctx = ArrowFieldCtx::new(&mut row_buffer);
-        let result =
-            deserialize(&inner_type, &mut builder, &data_type, &mut reader, rows, &nulls, &mut ctx)
-                .await
-                .expect("Failed to deserialize Array(Array(Int32))");
+        let result = deserialize(
+            &inner_type,
+            &mut builder,
+            &data_type,
+            &mut reader,
+            rows,
+            &nulls,
+            &mut ctx,
+        )
+        .await
+        .expect("Failed to deserialize Array(Array(Int32))");
         let list_array = result.as_any().downcast_ref::<ListArray>().unwrap();
-        let inner_list_array = list_array.values().as_any().downcast_ref::<ListArray>().unwrap();
-        let values = inner_list_array.values().as_any().downcast_ref::<Int32Array>().unwrap();
+        let inner_list_array = list_array
+            .values()
+            .as_any()
+            .downcast_ref::<ListArray>()
+            .unwrap();
+        let values = inner_list_array
+            .values()
+            .as_any()
+            .downcast_ref::<Int32Array>()
+            .unwrap();
 
         assert_eq!(list_array.len(), 2);
         assert_eq!(inner_list_array.len(), 3);
         assert_eq!(values, &Int32Array::from(vec![1, 2, 3, 4, 5]));
-        assert_eq!(list_array.offsets().iter().copied().collect::<Vec<i32>>(), vec![0, 2, 3]);
-        assert_eq!(inner_list_array.offsets().iter().copied().collect::<Vec<i32>>(), vec![
-            0, 2, 3, 5
-        ]);
+        assert_eq!(
+            list_array.offsets().iter().copied().collect::<Vec<i32>>(),
+            vec![0, 2, 3]
+        );
+        assert_eq!(
+            inner_list_array
+                .offsets()
+                .iter()
+                .copied()
+                .collect::<Vec<i32>>(),
+            vec![0, 2, 3, 5]
+        );
         assert_eq!(list_array.nulls(), None);
     }
 
@@ -503,8 +647,11 @@ mod tests {
             5, 0, 0, 0, // 5
         ];
         let mut reader = Cursor::new(input);
-        let inner_data_type =
-            DataType::List(Arc::new(Field::new(LIST_ITEM_FIELD_NAME, DataType::Int32, false)));
+        let inner_data_type = DataType::List(Arc::new(Field::new(
+            LIST_ITEM_FIELD_NAME,
+            DataType::Int32,
+            false,
+        )));
         let inner_field = Arc::new(Field::new(LIST_ITEM_FIELD_NAME, inner_data_type, true));
         let data_type = DataType::List(inner_field);
         let mut builder =
@@ -512,23 +659,50 @@ mod tests {
 
         let mut row_buffer = Vec::new();
         let mut ctx = ArrowFieldCtx::new(&mut row_buffer);
-        let result =
-            deserialize(&inner_type, &mut builder, &data_type, &mut reader, rows, &nulls, &mut ctx)
-                .await
-                .expect("Failed to deserialize Array(Nullable(Array(Int32)))");
+        let result = deserialize(
+            &inner_type,
+            &mut builder,
+            &data_type,
+            &mut reader,
+            rows,
+            &nulls,
+            &mut ctx,
+        )
+        .await
+        .expect("Failed to deserialize Array(Nullable(Array(Int32)))");
         let list_array = result.as_any().downcast_ref::<ListArray>().unwrap();
-        let inner_list_array = list_array.values().as_any().downcast_ref::<ListArray>().unwrap();
-        let values = inner_list_array.values().as_any().downcast_ref::<Int32Array>().unwrap();
+        let inner_list_array = list_array
+            .values()
+            .as_any()
+            .downcast_ref::<ListArray>()
+            .unwrap();
+        let values = inner_list_array
+            .values()
+            .as_any()
+            .downcast_ref::<Int32Array>()
+            .unwrap();
 
         assert_eq!(list_array.len(), 3);
         assert_eq!(inner_list_array.len(), 5);
         assert_eq!(values, &Int32Array::from(vec![1, 2, 3, 4, 5]));
-        assert_eq!(list_array.offsets().iter().copied().collect::<Vec<i32>>(), vec![0, 2, 3, 5]);
-        assert_eq!(inner_list_array.offsets().iter().copied().collect::<Vec<i32>>(), vec![
-            0, 2, 2, 3, 3, 5
-        ]);
         assert_eq!(
-            inner_list_array.nulls().unwrap().iter().collect::<Vec<bool>>(),
+            list_array.offsets().iter().copied().collect::<Vec<i32>>(),
+            vec![0, 2, 3, 5]
+        );
+        assert_eq!(
+            inner_list_array
+                .offsets()
+                .iter()
+                .copied()
+                .collect::<Vec<i32>>(),
+            vec![0, 2, 2, 3, 3, 5]
+        );
+        assert_eq!(
+            inner_list_array
+                .nulls()
+                .unwrap()
+                .iter()
+                .collect::<Vec<bool>>(),
             vec![true, false, true, false, true] // 0=non-null, 1=null
         );
         assert_eq!(list_array.nulls(), None);
@@ -557,8 +731,11 @@ mod tests {
             5, 0, 0, 0, // 5
         ];
         let mut reader = Cursor::new(input);
-        let inner_data_type =
-            DataType::List(Arc::new(Field::new(LIST_ITEM_FIELD_NAME, DataType::Int32, true)));
+        let inner_data_type = DataType::List(Arc::new(Field::new(
+            LIST_ITEM_FIELD_NAME,
+            DataType::Int32,
+            true,
+        )));
         let inner_field = Arc::new(Field::new(LIST_ITEM_FIELD_NAME, inner_data_type, false));
         let data_type = DataType::List(inner_field);
         let mut builder =
@@ -566,21 +743,47 @@ mod tests {
 
         let mut row_buffer = Vec::new();
         let mut ctx = ArrowFieldCtx::new(&mut row_buffer);
-        let result =
-            deserialize(&inner_type, &mut builder, &data_type, &mut reader, rows, &nulls, &mut ctx)
-                .await
-                .expect("Failed to deserialize Array(Array(Nullable(Int32)))");
+        let result = deserialize(
+            &inner_type,
+            &mut builder,
+            &data_type,
+            &mut reader,
+            rows,
+            &nulls,
+            &mut ctx,
+        )
+        .await
+        .expect("Failed to deserialize Array(Array(Nullable(Int32)))");
         let list_array = result.as_any().downcast_ref::<ListArray>().unwrap();
-        let inner_list_array = list_array.values().as_any().downcast_ref::<ListArray>().unwrap();
-        let values = inner_list_array.values().as_any().downcast_ref::<Int32Array>().unwrap();
+        let inner_list_array = list_array
+            .values()
+            .as_any()
+            .downcast_ref::<ListArray>()
+            .unwrap();
+        let values = inner_list_array
+            .values()
+            .as_any()
+            .downcast_ref::<Int32Array>()
+            .unwrap();
 
         assert_eq!(list_array.len(), 2);
         assert_eq!(inner_list_array.len(), 3);
-        assert_eq!(values, &Int32Array::from(vec![Some(1), None, Some(3), None, Some(5)]));
-        assert_eq!(list_array.offsets().iter().copied().collect::<Vec<i32>>(), vec![0, 2, 3]);
-        assert_eq!(inner_list_array.offsets().iter().copied().collect::<Vec<i32>>(), vec![
-            0, 2, 3, 5
-        ]);
+        assert_eq!(
+            values,
+            &Int32Array::from(vec![Some(1), None, Some(3), None, Some(5)])
+        );
+        assert_eq!(
+            list_array.offsets().iter().copied().collect::<Vec<i32>>(),
+            vec![0, 2, 3]
+        );
+        assert_eq!(
+            inner_list_array
+                .offsets()
+                .iter()
+                .copied()
+                .collect::<Vec<i32>>(),
+            vec![0, 2, 3, 5]
+        );
         assert_eq!(list_array.nulls(), None);
     }
 
@@ -606,8 +809,11 @@ mod tests {
             1, b'e', // "e"
         ];
         let mut reader = Cursor::new(input);
-        let inner_data_type =
-            DataType::List(Arc::new(Field::new(LIST_ITEM_FIELD_NAME, DataType::Utf8, false)));
+        let inner_data_type = DataType::List(Arc::new(Field::new(
+            LIST_ITEM_FIELD_NAME,
+            DataType::Utf8,
+            false,
+        )));
         let inner_field = Arc::new(Field::new(LIST_ITEM_FIELD_NAME, inner_data_type, false));
         let data_type = DataType::List(inner_field);
         let mut builder =
@@ -615,21 +821,44 @@ mod tests {
 
         let mut row_buffer = Vec::new();
         let mut ctx = ArrowFieldCtx::new(&mut row_buffer);
-        let result =
-            deserialize(&inner_type, &mut builder, &data_type, &mut reader, rows, &nulls, &mut ctx)
-                .await
-                .expect("Failed to deserialize Array(Array(String))");
+        let result = deserialize(
+            &inner_type,
+            &mut builder,
+            &data_type,
+            &mut reader,
+            rows,
+            &nulls,
+            &mut ctx,
+        )
+        .await
+        .expect("Failed to deserialize Array(Array(String))");
         let list_array = result.as_any().downcast_ref::<ListArray>().unwrap();
-        let inner_list_array = list_array.values().as_any().downcast_ref::<ListArray>().unwrap();
-        let values = inner_list_array.values().as_any().downcast_ref::<StringArray>().unwrap();
+        let inner_list_array = list_array
+            .values()
+            .as_any()
+            .downcast_ref::<ListArray>()
+            .unwrap();
+        let values = inner_list_array
+            .values()
+            .as_any()
+            .downcast_ref::<StringArray>()
+            .unwrap();
 
         assert_eq!(list_array.len(), 2);
         assert_eq!(inner_list_array.len(), 3);
         assert_eq!(values, &StringArray::from(vec!["a", "b", "c", "d", "e"]));
-        assert_eq!(list_array.offsets().iter().copied().collect::<Vec<i32>>(), vec![0, 2, 3]);
-        assert_eq!(inner_list_array.offsets().iter().copied().collect::<Vec<i32>>(), vec![
-            0, 2, 3, 5
-        ]);
+        assert_eq!(
+            list_array.offsets().iter().copied().collect::<Vec<i32>>(),
+            vec![0, 2, 3]
+        );
+        assert_eq!(
+            inner_list_array
+                .offsets()
+                .iter()
+                .copied()
+                .collect::<Vec<i32>>(),
+            vec![0, 2, 3, 5]
+        );
         assert_eq!(list_array.nulls(), None);
     }
 
@@ -661,8 +890,11 @@ mod tests {
         ];
         let mut reader = Cursor::new(input);
 
-        let inner_data_type =
-            DataType::List(Arc::new(Field::new(LIST_ITEM_FIELD_NAME, DataType::Utf8, false)));
+        let inner_data_type = DataType::List(Arc::new(Field::new(
+            LIST_ITEM_FIELD_NAME,
+            DataType::Utf8,
+            false,
+        )));
         let inner_field = Arc::new(Field::new(LIST_ITEM_FIELD_NAME, inner_data_type, true));
         let data_type = DataType::List(inner_field);
         let mut builder =
@@ -670,24 +902,50 @@ mod tests {
 
         let mut row_buffer = Vec::new();
         let mut ctx = ArrowFieldCtx::new(&mut row_buffer);
-        let result =
-            deserialize(&inner_type, &mut builder, &data_type, &mut reader, rows, &nulls, &mut ctx)
-                .await
-                .expect("Failed to deserialize Array(Nullable(Array(String)))");
+        let result = deserialize(
+            &inner_type,
+            &mut builder,
+            &data_type,
+            &mut reader,
+            rows,
+            &nulls,
+            &mut ctx,
+        )
+        .await
+        .expect("Failed to deserialize Array(Nullable(Array(String)))");
         let list_array = result.as_any().downcast_ref::<ListArray>().unwrap();
-        let inner_list_array = list_array.values().as_any().downcast_ref::<ListArray>().unwrap();
-        let values = inner_list_array.values().as_any().downcast_ref::<StringArray>().unwrap();
+        let inner_list_array = list_array
+            .values()
+            .as_any()
+            .downcast_ref::<ListArray>()
+            .unwrap();
+        let values = inner_list_array
+            .values()
+            .as_any()
+            .downcast_ref::<StringArray>()
+            .unwrap();
 
         assert_eq!(list_array.len(), 3);
         assert_eq!(inner_list_array.len(), 5); // Reflects total inner arrays, including nulls
         assert_eq!(values, &StringArray::from(vec!["a", "b", "c", "d", "e"]));
-        assert_eq!(list_array.offsets().iter().copied().collect::<Vec<i32>>(), vec![0, 2, 3, 5]);
         assert_eq!(
-            inner_list_array.offsets().iter().copied().collect::<Vec<i32>>(),
+            list_array.offsets().iter().copied().collect::<Vec<i32>>(),
+            vec![0, 2, 3, 5]
+        );
+        assert_eq!(
+            inner_list_array
+                .offsets()
+                .iter()
+                .copied()
+                .collect::<Vec<i32>>(),
             vec![0, 2, 2, 3, 3, 5] // Null arrays have same offset
         );
         assert_eq!(
-            inner_list_array.nulls().unwrap().iter().collect::<Vec<bool>>(),
+            inner_list_array
+                .nulls()
+                .unwrap()
+                .iter()
+                .collect::<Vec<bool>>(),
             vec![true, false, true, false, true] // 0=non-null, 1=null
         );
         assert_eq!(list_array.nulls(), None);
@@ -717,8 +975,11 @@ mod tests {
             1, b'e', // "e"
         ];
         let mut reader = Cursor::new(input);
-        let inner_data_type =
-            DataType::List(Arc::new(Field::new(LIST_ITEM_FIELD_NAME, DataType::Utf8, true)));
+        let inner_data_type = DataType::List(Arc::new(Field::new(
+            LIST_ITEM_FIELD_NAME,
+            DataType::Utf8,
+            true,
+        )));
         let inner_field = Arc::new(Field::new(LIST_ITEM_FIELD_NAME, inner_data_type, false));
         let data_type = DataType::List(inner_field);
         let mut builder =
@@ -726,21 +987,47 @@ mod tests {
 
         let mut row_buffer = Vec::new();
         let mut ctx = ArrowFieldCtx::new(&mut row_buffer);
-        let result =
-            deserialize(&inner_type, &mut builder, &data_type, &mut reader, rows, &nulls, &mut ctx)
-                .await
-                .expect("Failed to deserialize Array(Array(Nullable(String)))");
+        let result = deserialize(
+            &inner_type,
+            &mut builder,
+            &data_type,
+            &mut reader,
+            rows,
+            &nulls,
+            &mut ctx,
+        )
+        .await
+        .expect("Failed to deserialize Array(Array(Nullable(String)))");
         let list_array = result.as_any().downcast_ref::<ListArray>().unwrap();
-        let inner_list_array = list_array.values().as_any().downcast_ref::<ListArray>().unwrap();
-        let values = inner_list_array.values().as_any().downcast_ref::<StringArray>().unwrap();
+        let inner_list_array = list_array
+            .values()
+            .as_any()
+            .downcast_ref::<ListArray>()
+            .unwrap();
+        let values = inner_list_array
+            .values()
+            .as_any()
+            .downcast_ref::<StringArray>()
+            .unwrap();
 
         assert_eq!(list_array.len(), 2);
         assert_eq!(inner_list_array.len(), 3);
-        assert_eq!(values, &StringArray::from(vec![Some("a"), None, Some("c"), None, Some("e")]));
-        assert_eq!(list_array.offsets().iter().copied().collect::<Vec<i32>>(), vec![0, 2, 3]);
-        assert_eq!(inner_list_array.offsets().iter().copied().collect::<Vec<i32>>(), vec![
-            0, 2, 3, 5
-        ]);
+        assert_eq!(
+            values,
+            &StringArray::from(vec![Some("a"), None, Some("c"), None, Some("e")])
+        );
+        assert_eq!(
+            list_array.offsets().iter().copied().collect::<Vec<i32>>(),
+            vec![0, 2, 3]
+        );
+        assert_eq!(
+            inner_list_array
+                .offsets()
+                .iter()
+                .copied()
+                .collect::<Vec<i32>>(),
+            vec![0, 2, 3, 5]
+        );
         assert_eq!(list_array.nulls(), None);
     }
 
@@ -757,23 +1044,40 @@ mod tests {
                 * No values */
         ];
         let mut reader = Cursor::new(input);
-        let data_type =
-            DataType::List(Arc::new(Field::new(LIST_ITEM_FIELD_NAME, DataType::Int32, false)));
+        let data_type = DataType::List(Arc::new(Field::new(
+            LIST_ITEM_FIELD_NAME,
+            DataType::Int32,
+            false,
+        )));
         let mut builder =
             TypedBuilder::try_new(&Type::Array(Box::new(inner_type.clone())), &data_type).unwrap();
 
         let mut row_buffer = Vec::new();
         let mut ctx = ArrowFieldCtx::new(&mut row_buffer);
-        let result =
-            deserialize(&inner_type, &mut builder, &data_type, &mut reader, rows, &nulls, &mut ctx)
-                .await
-                .expect("Failed to deserialize Array(Int32) with empty inner arrays");
+        let result = deserialize(
+            &inner_type,
+            &mut builder,
+            &data_type,
+            &mut reader,
+            rows,
+            &nulls,
+            &mut ctx,
+        )
+        .await
+        .expect("Failed to deserialize Array(Int32) with empty inner arrays");
         let list_array = result.as_any().downcast_ref::<ListArray>().unwrap();
-        let values = list_array.values().as_any().downcast_ref::<Int32Array>().unwrap();
+        let values = list_array
+            .values()
+            .as_any()
+            .downcast_ref::<Int32Array>()
+            .unwrap();
 
         assert_eq!(list_array.len(), 2);
         assert_eq!(values, &Int32Array::from(Vec::<i32>::new()));
-        assert_eq!(list_array.offsets().iter().copied().collect::<Vec<i32>>(), vec![0, 0, 0]);
+        assert_eq!(
+            list_array.offsets().iter().copied().collect::<Vec<i32>>(),
+            vec![0, 0, 0]
+        );
         assert_eq!(list_array.nulls(), None);
     }
 
@@ -796,24 +1100,41 @@ mod tests {
             0, 0, 0, 0, 0, 0, 20, 64, // 5.0
         ];
         let mut reader = Cursor::new(input);
-        let data_type =
-            DataType::List(Arc::new(Field::new(LIST_ITEM_FIELD_NAME, DataType::Float64, false)));
+        let data_type = DataType::List(Arc::new(Field::new(
+            LIST_ITEM_FIELD_NAME,
+            DataType::Float64,
+            false,
+        )));
         let mut builder =
             TypedBuilder::try_new(&Type::Array(Box::new(inner_type.clone())), &data_type).unwrap();
 
         let mut row_buffer = Vec::new();
         let mut ctx = ArrowFieldCtx::new(&mut row_buffer);
-        let result =
-            deserialize(&inner_type, &mut builder, &data_type, &mut reader, rows, &nulls, &mut ctx)
-                .await
-                .expect("Failed to deserialize Array(Float64)");
+        let result = deserialize(
+            &inner_type,
+            &mut builder,
+            &data_type,
+            &mut reader,
+            rows,
+            &nulls,
+            &mut ctx,
+        )
+        .await
+        .expect("Failed to deserialize Array(Float64)");
 
         let list_array = result.as_any().downcast_ref::<ListArray>().unwrap();
-        let values = list_array.values().as_any().downcast_ref::<Float64Array>().unwrap();
+        let values = list_array
+            .values()
+            .as_any()
+            .downcast_ref::<Float64Array>()
+            .unwrap();
 
         assert_eq!(list_array.len(), 3);
         assert_eq!(values, &Float64Array::from(vec![1.0, 2.0, 3.0, 4.0, 5.0]));
-        assert_eq!(list_array.offsets().iter().copied().collect::<Vec<i32>>(), vec![0, 2, 3, 5]);
+        assert_eq!(
+            list_array.offsets().iter().copied().collect::<Vec<i32>>(),
+            vec![0, 2, 3, 5]
+        );
         assert_eq!(list_array.nulls(), None);
     }
 
@@ -837,24 +1158,44 @@ mod tests {
             0, 0, 0, 0, 0, 0, 20, 64, // 5.0
         ];
         let mut reader = Cursor::new(input);
-        let data_type =
-            DataType::List(Arc::new(Field::new(LIST_ITEM_FIELD_NAME, DataType::Float64, true)));
+        let data_type = DataType::List(Arc::new(Field::new(
+            LIST_ITEM_FIELD_NAME,
+            DataType::Float64,
+            true,
+        )));
         let mut builder =
             TypedBuilder::try_new(&Type::Array(Box::new(inner_type.clone())), &data_type).unwrap();
 
         let mut row_buffer = Vec::new();
         let mut ctx = ArrowFieldCtx::new(&mut row_buffer);
-        let result =
-            deserialize(&inner_type, &mut builder, &data_type, &mut reader, rows, &nulls, &mut ctx)
-                .await
-                .expect("Failed to deserialize Array(Nullable(Float64))");
+        let result = deserialize(
+            &inner_type,
+            &mut builder,
+            &data_type,
+            &mut reader,
+            rows,
+            &nulls,
+            &mut ctx,
+        )
+        .await
+        .expect("Failed to deserialize Array(Nullable(Float64))");
 
         let list_array = result.as_any().downcast_ref::<ListArray>().unwrap();
-        let values = list_array.values().as_any().downcast_ref::<Float64Array>().unwrap();
+        let values = list_array
+            .values()
+            .as_any()
+            .downcast_ref::<Float64Array>()
+            .unwrap();
 
         assert_eq!(list_array.len(), 3);
-        assert_eq!(values, &Float64Array::from(vec![Some(1.0), None, Some(3.0), None, Some(5.0)]));
-        assert_eq!(list_array.offsets().iter().copied().collect::<Vec<i32>>(), vec![0, 2, 3, 5]);
+        assert_eq!(
+            values,
+            &Float64Array::from(vec![Some(1.0), None, Some(3.0), None, Some(5.0)])
+        );
+        assert_eq!(
+            list_array.offsets().iter().copied().collect::<Vec<i32>>(),
+            vec![0, 2, 3, 5]
+        );
         assert_eq!(list_array.nulls(), None);
     }
 
@@ -882,12 +1223,23 @@ mod tests {
 
         let mut row_buffer = Vec::new();
         let mut ctx = ArrowFieldCtx::new(&mut row_buffer);
-        let result =
-            deserialize(&inner_type, &mut builder, &data_type, &mut reader, rows, &nulls, &mut ctx)
-                .await
-                .expect("Failed to deserialize Array(DateTime)");
+        let result = deserialize(
+            &inner_type,
+            &mut builder,
+            &data_type,
+            &mut reader,
+            rows,
+            &nulls,
+            &mut ctx,
+        )
+        .await
+        .expect("Failed to deserialize Array(DateTime)");
         let list_array = result.as_any().downcast_ref::<ListArray>().unwrap();
-        let values = list_array.values().as_any().downcast_ref::<TimestampSecondArray>().unwrap();
+        let values = list_array
+            .values()
+            .as_any()
+            .downcast_ref::<TimestampSecondArray>()
+            .unwrap();
 
         assert_eq!(list_array.len(), 2);
         assert_eq!(
@@ -895,7 +1247,10 @@ mod tests {
             &TimestampSecondArray::from(vec![1000, 2000, 3000, 4000])
                 .with_timezone_opt(Some("UTC"))
         );
-        assert_eq!(list_array.offsets().iter().copied().collect::<Vec<i32>>(), vec![0, 2, 4]);
+        assert_eq!(
+            list_array.offsets().iter().copied().collect::<Vec<i32>>(),
+            vec![0, 2, 4]
+        );
         assert_eq!(list_array.nulls(), None);
     }
 
@@ -926,13 +1281,24 @@ mod tests {
 
         let mut row_buffer = Vec::new();
         let mut ctx = ArrowFieldCtx::new(&mut row_buffer);
-        let result =
-            deserialize(&inner_type, &mut builder, &data_type, &mut reader, rows, &nulls, &mut ctx)
-                .await
-                .expect("Failed to deserialize Array(Nullable(DateTime))");
+        let result = deserialize(
+            &inner_type,
+            &mut builder,
+            &data_type,
+            &mut reader,
+            rows,
+            &nulls,
+            &mut ctx,
+        )
+        .await
+        .expect("Failed to deserialize Array(Nullable(DateTime))");
 
         let list_array = result.as_any().downcast_ref::<ListArray>().unwrap();
-        let values = list_array.values().as_any().downcast_ref::<TimestampSecondArray>().unwrap();
+        let values = list_array
+            .values()
+            .as_any()
+            .downcast_ref::<TimestampSecondArray>()
+            .unwrap();
 
         assert_eq!(list_array.len(), 3);
         assert_eq!(
@@ -940,7 +1306,10 @@ mod tests {
             &TimestampSecondArray::from(vec![Some(1000), None, Some(3000), None, Some(5000)],)
                 .with_timezone_opt(Some("UTC"))
         );
-        assert_eq!(list_array.offsets().iter().copied().collect::<Vec<i32>>(), vec![0, 2, 3, 5]);
+        assert_eq!(
+            list_array.offsets().iter().copied().collect::<Vec<i32>>(),
+            vec![0, 2, 3, 5]
+        );
         assert_eq!(list_array.nulls(), None);
     }
 
@@ -981,27 +1350,39 @@ mod tests {
         ];
         let mut reader = Cursor::new(input);
         let opts = Some(ArrowOptions::default().with_strings_as_strings(true));
-        let data_type =
-            ch_to_arrow_type(&Type::Array(Box::new(inner_type.clone())), opts, None).unwrap().0;
+        let data_type = ch_to_arrow_type(&Type::Array(Box::new(inner_type.clone())), opts, None)
+            .unwrap()
+            .0;
         let mut builder =
             TypedBuilder::try_new(&Type::Array(Box::new(inner_type.clone())), &data_type).unwrap();
 
         let mut row_buffer = Vec::new();
         let mut ctx = ArrowFieldCtx::new(&mut row_buffer);
-        let result =
-            deserialize(&inner_type, &mut builder, &data_type, &mut reader, rows, &[], &mut ctx)
-                .await
-                .expect("Failed to deserialize Array(LowCardinality(Nullable(String)))");
+        let result = deserialize(
+            &inner_type,
+            &mut builder,
+            &data_type,
+            &mut reader,
+            rows,
+            &[],
+            &mut ctx,
+        )
+        .await
+        .expect("Failed to deserialize Array(LowCardinality(Nullable(String)))");
 
         let list_array = result.as_any().downcast_ref::<ListArray>().unwrap();
-        let values =
-            list_array.values().as_any().downcast_ref::<DictionaryArray<Int32Type>>().unwrap();
+        let values = list_array
+            .values()
+            .as_any()
+            .downcast_ref::<DictionaryArray<Int32Type>>()
+            .unwrap();
 
         assert_eq!(list_array.len(), rows);
 
-        assert_eq!(list_array.offsets().iter().copied().collect::<Vec<i32>>(), vec![
-            0, 2, 2, 4, 7, 8
-        ]);
+        assert_eq!(
+            list_array.offsets().iter().copied().collect::<Vec<i32>>(),
+            vec![0, 2, 2, 4, 7, 8]
+        );
         assert_eq!(list_array.nulls(), None);
         let expected_keys = Int32Array::from(vec![
             Some(1),

@@ -103,6 +103,10 @@ pub(crate) trait ClickHouseArrowSerializer {
 /// - Propagates errors from sub-modules (e.g., `Io` for write failures, `ArrowSerialize` for type
 ///   mismatches).
 impl ClickHouseArrowSerializer for Type {
+    #[expect(
+        clippy::too_many_lines,
+        reason = "One dispatch arm per ClickHouse type"
+    )]
     async fn serialize_async<W: ClickHouseWrite>(
         &self,
         writer: &mut W,
@@ -165,12 +169,17 @@ impl ClickHouseArrowSerializer for Type {
             }
             // LowCardinality
             Type::LowCardinality(_) => {
-                Box::pin(low_cardinality::serialize_async(self, writer, column, data_type, state))
-                    .await?;
+                Box::pin(low_cardinality::serialize_async(
+                    self, writer, column, data_type, state,
+                ))
+                .await?;
             }
             // Lists
             Type::Array(_) => {
-                Box::pin(list::serialize_async(self, writer, column, data_type, state)).await?;
+                Box::pin(list::serialize_async(
+                    self, writer, column, data_type, state,
+                ))
+                .await?;
             }
             // Maps
             Type::Map(_, _) => {
@@ -182,7 +191,10 @@ impl ClickHouseArrowSerializer for Type {
             }
             #[cfg(feature = "extended-types")]
             Type::Nested(_) => {
-                Box::pin(nested::serialize_async(self, writer, column, data_type, state)).await?;
+                Box::pin(nested::serialize_async(
+                    self, writer, column, data_type, state,
+                ))
+                .await?;
             }
             #[cfg(feature = "extended-types")]
             Type::AggregateFunction { .. } => {
@@ -360,11 +372,14 @@ mod tests {
             .unwrap();
 
         let output = buffer.into_inner();
-        assert_eq!(output, vec![
-            1, 0, 0, 0, // 1
-            2, 0, 0, 0, // 2
-            3, 0, 0, 0, // 3
-        ]);
+        assert_eq!(
+            output,
+            vec![
+                1, 0, 0, 0, // 1
+                2, 0, 0, 0, // 2
+                3, 0, 0, 0, // 3
+            ]
+        );
     }
 
     /// Tests serialization of `Nullable(Int32)` array with nulls.
@@ -380,13 +395,16 @@ mod tests {
             .unwrap();
 
         let output = buffer.into_inner();
-        assert_eq!(output, vec![
-            // Null mask: [0, 1, 0] (0=non-null, 1=null)
-            0, 1, 0, // Values: [1, 0, 3]
-            1, 0, 0, 0, // 1
-            0, 0, 0, 0, // null
-            3, 0, 0, 0, // 3
-        ]);
+        assert_eq!(
+            output,
+            vec![
+                // Null mask: [0, 1, 0] (0=non-null, 1=null)
+                0, 1, 0, // Values: [1, 0, 3]
+                1, 0, 0, 0, // 1
+                0, 0, 0, 0, // null
+                3, 0, 0, 0, // 3
+            ]
+        );
     }
 
     /// Tests serialization of `String` array.
@@ -402,11 +420,14 @@ mod tests {
             .unwrap();
 
         let output = buffer.into_inner();
-        assert_eq!(output, vec![
-            5, b'h', b'e', b'l', b'l', b'o', // "hello"
-            0,    // ""
-            5, b'w', b'o', b'r', b'l', b'd', // "world"
-        ]);
+        assert_eq!(
+            output,
+            vec![
+                5, b'h', b'e', b'l', b'l', b'o', // "hello"
+                0,    // ""
+                5, b'w', b'o', b'r', b'l', b'd', // "world"
+            ]
+        );
     }
 
     /// Tests serialization of `Nullable(String)` array with nulls.
@@ -422,13 +443,16 @@ mod tests {
             .unwrap();
 
         let output = buffer.into_inner();
-        assert_eq!(output, vec![
-            // Null mask: [0, 1, 0]
-            0, 1, 0, // Values: ["a", "", "c"]
-            1, b'a', // "a"
-            0,    // null (empty string)
-            1, b'c', // "c"
-        ]);
+        assert_eq!(
+            output,
+            vec![
+                // Null mask: [0, 1, 0]
+                0, 1, 0, // Values: ["a", "", "c"]
+                1, b'a', // "a"
+                0,    // null (empty string)
+                1, b'c', // "c"
+            ]
+        );
     }
 
     /// Tests serialization of `Array(Int32)` with non-nullable inner values.
@@ -437,29 +461,41 @@ mod tests {
         let inner_field = Arc::new(Field::new(LIST_ITEM_FIELD_NAME, DataType::Int32, false));
         let values = Arc::new(Int32Array::from(vec![1, 2, 3, 4, 5]));
         let offsets = OffsetBuffer::new(vec![0, 2, 3, 5].into());
-        let column =
-            Arc::new(ListArray::new(Arc::clone(&inner_field), offsets, values, None)) as ArrayRef;
+        let column = Arc::new(ListArray::new(
+            Arc::clone(&inner_field),
+            offsets,
+            values,
+            None,
+        )) as ArrayRef;
         let mut buffer = Cursor::new(Vec::new());
         let mut state = SerializerState::default();
 
         Type::Array(Box::new(Type::Int32))
-            .serialize_async(&mut buffer, &column, &DataType::List(inner_field), &mut state)
+            .serialize_async(
+                &mut buffer,
+                &column,
+                &DataType::List(inner_field),
+                &mut state,
+            )
             .await
             .unwrap();
 
         let output = buffer.into_inner();
-        assert_eq!(output, vec![
-            // Offsets: [2, 3, 5] (skipping first 0)
-            2, 0, 0, 0, 0, 0, 0, 0, // 2
-            3, 0, 0, 0, 0, 0, 0, 0, // 3
-            5, 0, 0, 0, 0, 0, 0, 0, // 5
-            // Values: [1, 2, 3, 4, 5]
-            1, 0, 0, 0, // 1
-            2, 0, 0, 0, // 2
-            3, 0, 0, 0, // 3
-            4, 0, 0, 0, // 4
-            5, 0, 0, 0, // 5
-        ]);
+        assert_eq!(
+            output,
+            vec![
+                // Offsets: [2, 3, 5] (skipping first 0)
+                2, 0, 0, 0, 0, 0, 0, 0, // 2
+                3, 0, 0, 0, 0, 0, 0, 0, // 3
+                5, 0, 0, 0, 0, 0, 0, 0, // 5
+                // Values: [1, 2, 3, 4, 5]
+                1, 0, 0, 0, // 1
+                2, 0, 0, 0, // 2
+                3, 0, 0, 0, // 3
+                4, 0, 0, 0, // 4
+                5, 0, 0, 0, // 5
+            ]
+        );
     }
 
     /// Tests serialization of `Nullable(Array(Int32))` with null arrays.
@@ -481,18 +517,21 @@ mod tests {
             .unwrap();
 
         let output = buffer.into_inner();
-        assert_eq!(output, vec![
-            // Null mask: [] (0=non-null, 1=null)
-            2, 0, 0, 0, 0, 0, 0, 0, // 2
-            2, 0, 0, 0, 0, 0, 0, 0, // 2 (null)
-            5, 0, 0, 0, 0, 0, 0, 0, // 5
-            // Values: [1, 2, 3, 4, 5]
-            1, 0, 0, 0, // 1
-            2, 0, 0, 0, // 2
-            3, 0, 0, 0, // 3
-            4, 0, 0, 0, // 4
-            5, 0, 0, 0, // 5
-        ]);
+        assert_eq!(
+            output,
+            vec![
+                // Null mask: [] (0=non-null, 1=null)
+                2, 0, 0, 0, 0, 0, 0, 0, // 2
+                2, 0, 0, 0, 0, 0, 0, 0, // 2 (null)
+                5, 0, 0, 0, 0, 0, 0, 0, // 5
+                // Values: [1, 2, 3, 4, 5]
+                1, 0, 0, 0, // 1
+                2, 0, 0, 0, // 2
+                3, 0, 0, 0, // 3
+                4, 0, 0, 0, // 4
+                5, 0, 0, 0, // 5
+            ]
+        );
     }
 
     /// Tests serialization of `Map(String, Int32)` with non-nullable key-value pairs.
@@ -505,7 +544,11 @@ mod tests {
             DataType::Struct(Fields::from(vec![key_field.clone(), value_field.clone()])),
             false,
         ));
-        let field = Field::new("col", DataType::Map(Arc::clone(&struct_field), false), false);
+        let field = Field::new(
+            "col",
+            DataType::Map(Arc::clone(&struct_field), false),
+            false,
+        );
         let keys = Arc::new(StringArray::from(vec!["a", "b", "c", "d", "e"]));
         let values = Arc::new(Int32Array::from(vec![1, 2, 3, 4, 5]));
         let struct_array = StructArray::from(vec![
@@ -513,8 +556,13 @@ mod tests {
             (Arc::new(value_field), values as ArrayRef),
         ]);
         let offsets = OffsetBuffer::new(vec![0, 2, 3, 5].into());
-        let column =
-            Arc::new(MapArray::new(struct_field, offsets, struct_array, None, false)) as ArrayRef;
+        let column = Arc::new(MapArray::new(
+            struct_field,
+            offsets,
+            struct_array,
+            None,
+            false,
+        )) as ArrayRef;
         let mut buffer = Cursor::new(Vec::new());
         let mut state = SerializerState::default();
 
@@ -524,24 +572,27 @@ mod tests {
             .unwrap();
 
         let output = buffer.into_inner();
-        assert_eq!(output, vec![
-            // Offsets: [2, 3, 5] (skipping first 0)
-            2, 0, 0, 0, 0, 0, 0, 0, // 2
-            3, 0, 0, 0, 0, 0, 0, 0, // 3
-            5, 0, 0, 0, 0, 0, 0, 0, // 5
-            // Keys: ["a", "b", "c", "d", "e"]
-            1, b'a', // "a"
-            1, b'b', // "b"
-            1, b'c', // "c"
-            1, b'd', // "d"
-            1, b'e', // "e"
-            // Values: [1, 2, 3, 4, 5]
-            1, 0, 0, 0, // 1
-            2, 0, 0, 0, // 2
-            3, 0, 0, 0, // 3
-            4, 0, 0, 0, // 4
-            5, 0, 0, 0, // 5
-        ]);
+        assert_eq!(
+            output,
+            vec![
+                // Offsets: [2, 3, 5] (skipping first 0)
+                2, 0, 0, 0, 0, 0, 0, 0, // 2
+                3, 0, 0, 0, 0, 0, 0, 0, // 3
+                5, 0, 0, 0, 0, 0, 0, 0, // 5
+                // Keys: ["a", "b", "c", "d", "e"]
+                1, b'a', // "a"
+                1, b'b', // "b"
+                1, b'c', // "c"
+                1, b'd', // "d"
+                1, b'e', // "e"
+                // Values: [1, 2, 3, 4, 5]
+                1, 0, 0, 0, // 1
+                2, 0, 0, 0, // 2
+                3, 0, 0, 0, // 3
+                4, 0, 0, 0, // 4
+                5, 0, 0, 0, // 5
+            ]
+        );
     }
 
     /// Tests serialization of `Int32` array with zero rows.
@@ -574,7 +625,10 @@ mod tests {
         let mut state = SerializerState::default();
 
         let type_ = Type::Array(Type::Int32.into());
-        type_.serialize_async(&mut buffer, &column, &data_type, &mut state).await.unwrap();
+        type_
+            .serialize_async(&mut buffer, &column, &data_type, &mut state)
+            .await
+            .unwrap();
 
         let output = buffer.into_inner();
         assert!(output.is_empty()); // No data for zero rows
@@ -596,7 +650,10 @@ mod tests {
         let mut buffer = Cursor::new(Vec::new());
         let mut state = SerializerState::default()
             .with_arrow_options(ArrowOptions::default().with_strings_as_strings(true));
-        type_.serialize_async(&mut buffer, &array, &data_type, &mut state).await.unwrap();
+        type_
+            .serialize_async(&mut buffer, &array, &data_type, &mut state)
+            .await
+            .unwrap();
 
         let output = buffer.into_inner();
         assert!(output.is_empty()); // No data for zero rows
@@ -620,14 +677,20 @@ mod tests {
         ]);
         let struct_array = StructArray::new(
             fields,
-            vec![Arc::new(x_values) as ArrayRef, Arc::new(y_values) as ArrayRef],
+            vec![
+                Arc::new(x_values) as ArrayRef,
+                Arc::new(y_values) as ArrayRef,
+            ],
             None,
         );
         let column = Arc::new(struct_array) as ArrayRef;
 
         let mut buffer = Cursor::new(Vec::new());
         let mut state = SerializerState::default();
-        type_.serialize_async(&mut buffer, &column, &data_type, &mut state).await.unwrap();
+        type_
+            .serialize_async(&mut buffer, &column, &data_type, &mut state)
+            .await
+            .unwrap();
 
         let output = buffer.into_inner();
         assert_eq!(output.len(), 6 * 8); // 3 points * 2 coordinates * 8 bytes each
@@ -671,7 +734,10 @@ mod tests {
         ]);
         let struct_array = StructArray::new(
             fields,
-            vec![Arc::new(x_values) as ArrayRef, Arc::new(y_values) as ArrayRef],
+            vec![
+                Arc::new(x_values) as ArrayRef,
+                Arc::new(y_values) as ArrayRef,
+            ],
             None,
         );
 
@@ -686,7 +752,10 @@ mod tests {
 
         let mut buffer = Cursor::new(Vec::new());
         let mut state = SerializerState::default();
-        type_.serialize_async(&mut buffer, &column, &data_type, &mut state).await.unwrap();
+        type_
+            .serialize_async(&mut buffer, &column, &data_type, &mut state)
+            .await
+            .unwrap();
 
         let output = buffer.into_inner();
         assert_eq!(output.len(), 8 + 4 * 2 * 8); // size (8) + 4 points * 2 coords * 8 bytes
@@ -717,7 +786,10 @@ mod tests {
         ]);
         let struct_array = StructArray::new(
             fields,
-            vec![Arc::new(x_values) as ArrayRef, Arc::new(y_values) as ArrayRef],
+            vec![
+                Arc::new(x_values) as ArrayRef,
+                Arc::new(y_values) as ArrayRef,
+            ],
             None,
         );
 
@@ -742,7 +814,10 @@ mod tests {
 
         let mut buffer = Cursor::new(Vec::new());
         let mut state = SerializerState::default();
-        type_.serialize_async(&mut buffer, &column, &data_type, &mut state).await.unwrap();
+        type_
+            .serialize_async(&mut buffer, &column, &data_type, &mut state)
+            .await
+            .unwrap();
 
         let output = buffer.into_inner();
         assert_eq!(output.len(), 8 + 8 + 4 * 2 * 8); // num_rings + ring_size + points
@@ -777,7 +852,10 @@ mod tests {
         ]);
         let struct_array = StructArray::new(
             fields,
-            vec![Arc::new(x_values) as ArrayRef, Arc::new(y_values) as ArrayRef],
+            vec![
+                Arc::new(x_values) as ArrayRef,
+                Arc::new(y_values) as ArrayRef,
+            ],
             None,
         );
 
@@ -811,7 +889,10 @@ mod tests {
 
         let mut buffer = Cursor::new(Vec::new());
         let mut state = SerializerState::default();
-        type_.serialize_async(&mut buffer, &column, &data_type, &mut state).await.unwrap();
+        type_
+            .serialize_async(&mut buffer, &column, &data_type, &mut state)
+            .await
+            .unwrap();
 
         let output = buffer.into_inner();
         assert_eq!(output.len(), 8 + 8 + 8 + 4 * 2 * 8); // num_polygons + num_rings + ring_size + points

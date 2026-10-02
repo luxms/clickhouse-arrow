@@ -48,10 +48,10 @@ use crate::{Result, Type};
 
 pub(crate) struct ArrowFieldCtx<'a> {
     pub(crate) row_buffer: &'a mut Vec<u8>,
-    sparse_offsets:        Option<Vec<usize>>,
-    sparse_node:           Option<CustomPlanNodeId>,
-    custom_plan:           Option<CustomPlan>,
-    custom_node:           Option<CustomPlanNodeId>,
+    sparse_offsets: Option<Vec<usize>>,
+    sparse_node: Option<CustomPlanNodeId>,
+    custom_plan: Option<CustomPlan>,
+    custom_node: Option<CustomPlanNodeId>,
 }
 
 impl ArrowFieldCtx<'_> {
@@ -74,10 +74,14 @@ impl ArrowFieldCtx<'_> {
     }
 
     #[inline]
-    pub(crate) fn sparse_offsets(&self) -> Option<&[usize]> { self.sparse_offsets.as_deref() }
+    pub(crate) fn sparse_offsets(&self) -> Option<&[usize]> {
+        self.sparse_offsets.as_deref()
+    }
 
     #[inline]
-    pub(crate) fn sparse_rows(&self) -> Option<usize> { self.sparse_offsets.as_ref().map(Vec::len) }
+    pub(crate) fn sparse_rows(&self) -> Option<usize> {
+        self.sparse_offsets.as_ref().map(Vec::len)
+    }
 
     #[cfg(test)]
     #[inline]
@@ -87,7 +91,9 @@ impl ArrowFieldCtx<'_> {
     }
 
     #[inline]
-    pub(crate) fn custom_node(&self) -> Option<CustomPlanNodeId> { self.custom_node }
+    pub(crate) fn custom_node(&self) -> Option<CustomPlanNodeId> {
+        self.custom_node
+    }
 
     #[inline]
     pub(crate) fn set_custom_node(
@@ -113,7 +119,8 @@ impl ArrowFieldCtx<'_> {
     #[cfg(feature = "extended-types")]
     #[inline]
     pub(crate) fn dynamic_prefix(&self) -> Option<&DynamicPrefixState> {
-        self.custom_node_data().and_then(|node| node.dynamic_prefix.as_ref())
+        self.custom_node_data()
+            .and_then(|node| node.dynamic_prefix.as_ref())
     }
 
     #[cfg(feature = "extended-types")]
@@ -130,7 +137,11 @@ impl ArrowFieldCtx<'_> {
         let Some(node_id) = self.custom_node else {
             return Ok(());
         };
-        let Some(node) = self.custom_plan.as_ref().and_then(|plan| plan.node(node_id)) else {
+        let Some(node) = self
+            .custom_plan
+            .as_ref()
+            .and_then(|plan| plan.node(node_id))
+        else {
             return Ok(());
         };
         if !node.is_sparse() {
@@ -161,7 +172,7 @@ impl ArrowFieldCtx<'_> {
                 variant_prefix,
             }],
             edges: Vec::new(),
-            root:  0,
+            root: 0,
         });
         self.custom_node = Some(0);
         self
@@ -183,9 +194,9 @@ impl ArrowFieldCtx<'_> {
 #[derive(Default)]
 pub(crate) struct ArrowDeserializerState {
     pub(crate) builders: Vec<TypedBuilder>,
-    pub(crate) buffer:   Vec<u8>,
-    fields:              Vec<FieldRef>,
-    arrays:              Vec<ArrayRef>,
+    pub(crate) buffer: Vec<u8>,
+    fields: Vec<FieldRef>,
+    arrays: Vec<ArrayRef>,
 }
 
 impl ArrowDeserializerState {
@@ -203,7 +214,8 @@ impl ArrowDeserializerState {
         // Choose the size of i128 as an upper bound (i128)
         let min_buffer_size = rows_cap * 16;
         if self.buffer.capacity() < min_buffer_size {
-            self.buffer.reserve(min_buffer_size - self.buffer.capacity());
+            self.buffer
+                .reserve(min_buffer_size - self.buffer.capacity());
         }
         self
     }
@@ -221,7 +233,10 @@ impl ArrowDeserializerState {
     }
 
     pub(crate) fn take(&mut self) -> (Vec<FieldRef>, Vec<ArrayRef>) {
-        (std::mem::take(&mut self.fields), std::mem::take(&mut self.arrays))
+        (
+            std::mem::take(&mut self.fields),
+            std::mem::take(&mut self.arrays),
+        )
     }
 }
 
@@ -556,7 +571,9 @@ mod tests {
     use crate::arrow::ch_to_arrow_type;
     use crate::native::types::Type;
 
-    fn test_ctx(row_buffer: &mut Vec<u8>) -> ArrowFieldCtx<'_> { ArrowFieldCtx::new(row_buffer) }
+    fn test_ctx(row_buffer: &mut Vec<u8>) -> ArrowFieldCtx<'_> {
+        ArrowFieldCtx::new(row_buffer)
+    }
 
     async fn deserialize_for_test(
         type_: &Type,
@@ -568,7 +585,9 @@ mod tests {
     ) -> Result<ArrayRef> {
         let mut row_buffer = Vec::new();
         let mut ctx = test_ctx(&mut row_buffer);
-        type_.deserialize_arrow(builder, reader, data_type, rows, nulls, &mut ctx).await
+        type_
+            .deserialize_arrow(builder, reader, data_type, rows, nulls, &mut ctx)
+            .await
     }
 
     /// Tests `arrow_type` for `Int32` (non-nullable).
@@ -709,19 +728,29 @@ mod tests {
         ];
         let mut reader = Cursor::new(input);
 
-        let data_type =
-            DataType::List(Arc::new(Field::new(LIST_ITEM_FIELD_NAME, DataType::Int32, false)));
+        let data_type = DataType::List(Arc::new(Field::new(
+            LIST_ITEM_FIELD_NAME,
+            DataType::Int32,
+            false,
+        )));
         let type_ = Type::Array(Box::new(Type::Int32));
         let mut builder = TypedBuilder::try_new(&type_, &data_type).unwrap();
         let array = deserialize_for_test(&type_, &mut builder, &mut reader, &data_type, 3, &[])
             .await
             .unwrap();
         let list_array = array.as_any().downcast_ref::<ListArray>().unwrap();
-        let values = list_array.values().as_any().downcast_ref::<Int32Array>().unwrap();
+        let values = list_array
+            .values()
+            .as_any()
+            .downcast_ref::<Int32Array>()
+            .unwrap();
 
         assert_eq!(list_array.len(), 3);
         assert_eq!(values, &Int32Array::from(vec![1, 2, 3, 4, 5]));
-        assert_eq!(list_array.offsets().iter().copied().collect::<Vec<i32>>(), vec![0, 2, 3, 5]);
+        assert_eq!(
+            list_array.offsets().iter().copied().collect::<Vec<i32>>(),
+            vec![0, 2, 3, 5]
+        );
         assert_eq!(list_array.nulls(), None);
     }
 
@@ -743,22 +772,33 @@ mod tests {
         ];
         let mut reader = Cursor::new(input);
 
-        let data_type =
-            DataType::List(Arc::new(Field::new(LIST_ITEM_FIELD_NAME, DataType::Int32, true)));
+        let data_type = DataType::List(Arc::new(Field::new(
+            LIST_ITEM_FIELD_NAME,
+            DataType::Int32,
+            true,
+        )));
         let type_ = Type::Nullable(Box::new(Type::Array(Box::new(Type::Int32))));
         let mut builder = TypedBuilder::try_new(&type_, &data_type).unwrap();
         let array = deserialize_for_test(&type_, &mut builder, &mut reader, &data_type, 3, &[])
             .await
             .unwrap();
         let list_array = array.as_any().downcast_ref::<ListArray>().unwrap();
-        let values = list_array.values().as_any().downcast_ref::<Int32Array>().unwrap();
+        let values = list_array
+            .values()
+            .as_any()
+            .downcast_ref::<Int32Array>()
+            .unwrap();
 
         assert_eq!(list_array.len(), 3);
         assert_eq!(values, &Int32Array::from(vec![1, 2, 3, 4, 5]));
-        assert_eq!(list_array.offsets().iter().copied().collect::<Vec<i32>>(), vec![0, 2, 2, 5]);
-        assert_eq!(list_array.nulls().unwrap().iter().collect::<Vec<bool>>(), vec![
-            true, false, true
-        ]);
+        assert_eq!(
+            list_array.offsets().iter().copied().collect::<Vec<i32>>(),
+            vec![0, 2, 2, 5]
+        );
+        assert_eq!(
+            list_array.nulls().unwrap().iter().collect::<Vec<bool>>(),
+            vec![true, false, true]
+        );
     }
 
     /// Tests deserialization of `Map(String, Int32)` with non-nullable key-value pairs.
@@ -787,7 +827,7 @@ mod tests {
             Arc::new(Field::new(
                 MAP_FIELD_NAME,
                 DataType::Struct(Fields::from(vec![
-                    Field::new("key", DataType::Utf8, true),
+                    Field::new("key", DataType::Utf8, false),
                     Field::new("value", DataType::Int32, true),
                 ])),
                 false,
@@ -800,14 +840,29 @@ mod tests {
             .await
             .unwrap();
         let map_array = array.as_any().downcast_ref::<MapArray>().unwrap();
-        let struct_array = map_array.entries().as_any().downcast_ref::<StructArray>().unwrap();
-        let keys = struct_array.column(0).as_any().downcast_ref::<StringArray>().unwrap();
-        let values = struct_array.column(1).as_any().downcast_ref::<Int32Array>().unwrap();
+        let struct_array = map_array
+            .entries()
+            .as_any()
+            .downcast_ref::<StructArray>()
+            .unwrap();
+        let keys = struct_array
+            .column(0)
+            .as_any()
+            .downcast_ref::<StringArray>()
+            .unwrap();
+        let values = struct_array
+            .column(1)
+            .as_any()
+            .downcast_ref::<Int32Array>()
+            .unwrap();
 
         assert_eq!(map_array.len(), 3);
         assert_eq!(keys, &StringArray::from(vec!["a", "b", "c", "d", "e"]));
         assert_eq!(values, &Int32Array::from(vec![1, 2, 3, 4, 5]));
-        assert_eq!(map_array.offsets().iter().copied().collect::<Vec<i32>>(), vec![0, 2, 3, 5]);
+        assert_eq!(
+            map_array.offsets().iter().copied().collect::<Vec<i32>>(),
+            vec![0, 2, 3, 5]
+        );
         assert_eq!(map_array.nulls(), None);
     }
 

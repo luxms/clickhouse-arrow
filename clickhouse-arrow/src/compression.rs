@@ -194,9 +194,9 @@ pub(crate) async fn decompress_data_async(
             zstd::bulk::decompress(&compressed[9..], decompressed_size as usize)
                 .map_err(|e| Error::Deserialize(format!("ZSTD decompress error: {e}")))
         }
-        CompressionMethod::None => {
-            Err(Error::Deserialize("Attempted to decompress uncompressed data".into()))
-        }
+        CompressionMethod::None => Err(Error::Deserialize(
+            "Attempted to decompress uncompressed data".into(),
+        )),
     }
 }
 
@@ -218,10 +218,10 @@ type BlockReadingFuture<'a, R> =
 /// let bytes_read = decompressor.read(&mut buffer).await.unwrap();
 /// ```
 pub(crate) struct DecompressionReader<'a, R: ClickHouseRead + 'static> {
-    mode:                 CompressionMethod,
-    inner:                Option<&'a mut R>,
-    decompressed:         Vec<u8>,
-    position:             usize,
+    mode: CompressionMethod,
+    inner: Option<&'a mut R>,
+    decompressed: Vec<u8>,
+    position: usize,
     block_reading_future: Option<BlockReadingFuture<'a, R>>,
 }
 
@@ -246,11 +246,19 @@ impl<'a, R: ClickHouseRead> DecompressionReader<'a, R> {
     /// - Memory safety violations (chunk sizes exceeding limits)
     pub(crate) async fn new(mode: CompressionMethod, inner: &'a mut R) -> Result<Self> {
         // Decompress intial block
-        let decompressed = decompress_data_async(inner, mode).await.inspect_err(|error| {
-            tracing::error!(?error, "Error decompressing data");
-        })?;
+        let decompressed = decompress_data_async(inner, mode)
+            .await
+            .inspect_err(|error| {
+                tracing::error!(?error, "Error decompressing data");
+            })?;
 
-        Ok(Self { mode, inner: Some(inner), decompressed, position: 0, block_reading_future: None })
+        Ok(Self {
+            mode,
+            inner: Some(inner),
+            decompressed,
+            position: 0,
+            block_reading_future: None,
+        })
     }
 }
 
@@ -325,14 +333,17 @@ mod tests {
         let data = b"test data for compression".to_vec();
         let mut buffer = Vec::new();
 
-        compress_data(&mut buffer, data.clone(), CompressionMethod::LZ4).await.unwrap();
+        compress_data(&mut buffer, data.clone(), CompressionMethod::LZ4)
+            .await
+            .unwrap();
         assert!(!buffer.is_empty());
         assert!(buffer.len() >= 25); // 16 checksum + 9 header + payload
 
         // Verify we can decompress it back
         let mut reader = Cursor::new(buffer);
-        let decompressed =
-            decompress_data_async(&mut reader, CompressionMethod::LZ4).await.unwrap();
+        let decompressed = decompress_data_async(&mut reader, CompressionMethod::LZ4)
+            .await
+            .unwrap();
         assert_eq!(decompressed, data);
     }
 
@@ -341,14 +352,17 @@ mod tests {
         let data = b"test data for ZSTD compression".to_vec();
         let mut buffer = Vec::new();
 
-        compress_data(&mut buffer, data.clone(), CompressionMethod::ZSTD).await.unwrap();
+        compress_data(&mut buffer, data.clone(), CompressionMethod::ZSTD)
+            .await
+            .unwrap();
         assert!(!buffer.is_empty());
         assert!(buffer.len() >= 25); // 16 checksum + 9 header + payload
 
         // Verify we can decompress it back
         let mut reader = Cursor::new(buffer);
-        let decompressed =
-            decompress_data_async(&mut reader, CompressionMethod::ZSTD).await.unwrap();
+        let decompressed = decompress_data_async(&mut reader, CompressionMethod::ZSTD)
+            .await
+            .unwrap();
         assert_eq!(decompressed, data);
     }
 
@@ -357,7 +371,9 @@ mod tests {
         let data = b"test data no compression".to_vec();
         let mut buffer = Vec::new();
 
-        compress_data(&mut buffer, data.clone(), CompressionMethod::None).await.unwrap();
+        compress_data(&mut buffer, data.clone(), CompressionMethod::None)
+            .await
+            .unwrap();
         assert!(buffer.is_empty());
 
         // For None compression, the data should be in the same chunk format
@@ -372,12 +388,15 @@ mod tests {
 
         // First compress the data
         let mut buffer = Vec::new();
-        compress_data(&mut buffer, data.clone(), CompressionMethod::LZ4).await.unwrap();
+        compress_data(&mut buffer, data.clone(), CompressionMethod::LZ4)
+            .await
+            .unwrap();
 
         // Then decompress it
         let mut reader = Cursor::new(buffer);
-        let decompressed =
-            decompress_data_async(&mut reader, CompressionMethod::LZ4).await.unwrap();
+        let decompressed = decompress_data_async(&mut reader, CompressionMethod::LZ4)
+            .await
+            .unwrap();
         assert_eq!(decompressed, data);
     }
 
@@ -387,12 +406,15 @@ mod tests {
 
         // First compress the data
         let mut buffer = Vec::new();
-        compress_data(&mut buffer, data.clone(), CompressionMethod::ZSTD).await.unwrap();
+        compress_data(&mut buffer, data.clone(), CompressionMethod::ZSTD)
+            .await
+            .unwrap();
 
         // Then decompress it
         let mut reader = Cursor::new(buffer);
-        let decompressed =
-            decompress_data_async(&mut reader, CompressionMethod::ZSTD).await.unwrap();
+        let decompressed = decompress_data_async(&mut reader, CompressionMethod::ZSTD)
+            .await
+            .unwrap();
         assert_eq!(decompressed, data);
     }
 
@@ -403,12 +425,16 @@ mod tests {
 
         // Prepare compressed data
         let mut buffer = Vec::new();
-        compress_data(&mut buffer, data.clone(), CompressionMethod::LZ4).await.unwrap();
+        compress_data(&mut buffer, data.clone(), CompressionMethod::LZ4)
+            .await
+            .unwrap();
 
         // Create decompression reader
         let mut reader = Cursor::new(buffer);
         let mut decompression_reader =
-            DecompressionReader::new(CompressionMethod::LZ4, &mut reader).await.unwrap();
+            DecompressionReader::new(CompressionMethod::LZ4, &mut reader)
+                .await
+                .unwrap();
 
         // Read exactly the amount of data we expect (like real ClickHouse usage)
         let mut result = vec![0u8; expected_len];
@@ -430,9 +456,14 @@ mod tests {
 
             // Decompress
             let mut reader = Cursor::new(compressed_buffer);
-            let decompressed = decompress_data_async(&mut reader, compression).await.unwrap();
+            let decompressed = decompress_data_async(&mut reader, compression)
+                .await
+                .unwrap();
 
-            assert_eq!(decompressed, original_data, "Round trip failed for {compression:?}");
+            assert_eq!(
+                decompressed, original_data,
+                "Round trip failed for {compression:?}"
+            );
         }
     }
 
@@ -442,7 +473,9 @@ mod tests {
 
         // Create properly compressed data
         let mut buffer = Vec::new();
-        compress_data(&mut buffer, data.clone(), CompressionMethod::LZ4).await.unwrap();
+        compress_data(&mut buffer, data.clone(), CompressionMethod::LZ4)
+            .await
+            .unwrap();
 
         // Corrupt the checksum (first 8 bytes)
         buffer[0] ^= 0xFF;
@@ -452,6 +485,11 @@ mod tests {
         let result = decompress_data_async(&mut reader, CompressionMethod::LZ4).await;
 
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("Checksum mismatch"));
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("Checksum mismatch")
+        );
     }
 }
