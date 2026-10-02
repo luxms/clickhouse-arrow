@@ -4,10 +4,10 @@ use super::TypedBuilder;
 use crate::{Error, Result, Type};
 
 pub(crate) struct TypedUnionChildBuilder {
-    pub(crate) type_id:   i8,
-    pub(crate) name:      String,
+    pub(crate) type_id: i8,
+    pub(crate) name: String,
     pub(crate) data_type: DataType,
-    pub(crate) builder:   Option<TypedBuilder>,
+    pub(crate) builder: Option<TypedBuilder>,
 }
 
 pub(crate) struct TypedUnionBuilder {
@@ -36,9 +36,12 @@ impl TypedUnionBuilder {
     }
 
     pub(crate) fn data_type(&self, idx: usize) -> Result<&DataType> {
-        self.children.get(idx).map(|child| &child.data_type).ok_or_else(|| {
-            Error::ArrowDeserialize(format!("Dynamic child index out of bounds: {idx}"))
-        })
+        self.children
+            .get(idx)
+            .map(|child| &child.data_type)
+            .ok_or_else(|| {
+                Error::ArrowDeserialize(format!("Dynamic child index out of bounds: {idx}"))
+            })
     }
 
     pub(crate) fn child_parts_mut(
@@ -49,7 +52,9 @@ impl TypedUnionBuilder {
         let child = self.children.get_mut(idx).ok_or_else(|| {
             Error::ArrowDeserialize(format!("Dynamic child index out of bounds: {idx}"))
         })?;
-        let TypedUnionChildBuilder { data_type, builder, .. } = child;
+        let TypedUnionChildBuilder {
+            data_type, builder, ..
+        } = child;
         if builder.is_none() {
             *builder = Some(TypedBuilder::try_new(type_, data_type)?);
         }
@@ -74,18 +79,35 @@ mod tests {
 
     fn dense_union_type() -> DataType {
         DataType::Union(
-            UnionFields::new([3_i8, 9_i8], vec![
-                Field::new("a", DataType::Int32, false),
-                Field::new("b", DataType::Utf8, false),
-            ]),
+            UnionFields::try_new(
+                [3_i8, 9_i8],
+                vec![
+                    Field::new("a", DataType::Int32, false),
+                    Field::new("b", DataType::Utf8, false),
+                ],
+            )
+            .unwrap(),
             UnionMode::Dense,
         )
     }
 
     #[test]
+    fn try_new_preserves_noncontiguous_union_ids() {
+        let builder = TypedUnionBuilder::try_new(&dense_union_type()).unwrap();
+        assert_eq!(builder.children[0].type_id, 3);
+        assert_eq!(builder.children[1].type_id, 9);
+        assert_eq!(builder.children[0].name, "a");
+        assert_eq!(builder.children[1].data_type, DataType::Utf8);
+    }
+
+    #[test]
     fn try_new_rejects_non_dense_union() {
         let error = TypedUnionBuilder::try_new(&DataType::Int32).unwrap_err();
-        assert!(error.to_string().contains("Unexpected datatype for Dynamic"));
+        assert!(
+            error
+                .to_string()
+                .contains("Unexpected datatype for Dynamic")
+        );
     }
 
     #[test]

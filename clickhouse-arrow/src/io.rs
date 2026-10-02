@@ -34,7 +34,9 @@ impl<T: AsyncRead + Unpin + Send + Sync> ClickHouseRead for T {
         #[expect(clippy::cast_possible_truncation)]
         let len = self.read_var_uint().await? as usize;
         if len > MAX_STRING_SIZE {
-            return Err(Error::Protocol(format!("string too large: {len} > {MAX_STRING_SIZE}")));
+            return Err(Error::Protocol(format!(
+                "string too large: {len} > {MAX_STRING_SIZE}"
+            )));
         }
         if len == 0 {
             return Ok(vec![]);
@@ -260,11 +262,16 @@ mod tests {
 
     struct PartialVectoredWriter {
         max_chunk: usize,
-        out:       Vec<u8>,
+        out: Vec<u8>,
     }
 
     impl PartialVectoredWriter {
-        fn new(max_chunk: usize) -> Self { Self { max_chunk, out: Vec::new() } }
+        fn new(max_chunk: usize) -> Self {
+            Self {
+                max_chunk,
+                out: Vec::new(),
+            }
+        }
     }
 
     impl AsyncWrite for PartialVectoredWriter {
@@ -301,7 +308,9 @@ mod tests {
             Poll::Ready(Ok(written))
         }
 
-        fn is_write_vectored(&self) -> bool { true }
+        fn is_write_vectored(&self) -> bool {
+            true
+        }
 
         fn poll_flush(self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<std::io::Result<()>> {
             Poll::Ready(Ok(()))
@@ -320,7 +329,9 @@ mod tests {
         let c = IoSlice::new(b"ghij");
         let bufs = [a, b, c];
 
-        ClickHouseWrite::write_vectored_all(&mut writer, &bufs).await.unwrap();
+        ClickHouseWrite::write_vectored_all(&mut writer, &bufs)
+            .await
+            .unwrap();
 
         assert_eq!(writer.out, b"abcdefghij");
     }
@@ -330,7 +341,9 @@ mod tests {
         let mut writer = PartialVectoredWriter::new(2);
         let bufs: [IoSlice<'_>; 0] = [];
 
-        ClickHouseWrite::write_vectored_all(&mut writer, &bufs).await.unwrap();
+        ClickHouseWrite::write_vectored_all(&mut writer, &bufs)
+            .await
+            .unwrap();
 
         assert!(writer.out.is_empty());
     }

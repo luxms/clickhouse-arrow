@@ -26,7 +26,11 @@ async fn run(ch: &'static ClickHouseContainer) -> Result<()> {
         let start = Instant::now();
 
         let batches = client.query(&query, None).await?.collect::<Vec<_>>().await;
-        let rows = batches.into_iter().map(|b| b.unwrap()).map(|b| b.num_rows()).sum::<usize>();
+        let rows = batches
+            .into_iter()
+            .map(|b| b.unwrap())
+            .map(|b| b.num_rows())
+            .sum::<usize>();
 
         assert_eq!(rows, ROWS, "clickhouse arrow rows mismatch");
         eprintln!("Queried {ROWS} rows in {:#?}", start.elapsed());

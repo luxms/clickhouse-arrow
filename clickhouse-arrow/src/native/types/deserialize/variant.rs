@@ -37,7 +37,9 @@ impl Deserializer for VariantDeserializer {
 
                 Ok(())
             }
-            _ => Err(Error::deserialize("VariantDeserializer called with non-variant type")),
+            _ => Err(Error::deserialize(
+                "VariantDeserializer called with non-variant type",
+            )),
         }
     }
 
@@ -47,7 +49,9 @@ impl Deserializer for VariantDeserializer {
         _rows: usize,
         _state: &mut DeserializerState,
     ) -> Result<Vec<Value>> {
-        Err(Error::deserialize("VariantDeserializer native value read is not implemented"))
+        Err(Error::deserialize(
+            "VariantDeserializer native value read is not implemented",
+        ))
     }
 
     // TODO: Remove
@@ -70,7 +74,9 @@ mod tests {
     use super::*;
     use crate::formats::CustomPlan;
 
-    fn variant_type() -> Type { Type::Variant(vec![Type::UInt8, Type::String]) }
+    fn variant_type() -> Type {
+        Type::Variant(vec![Type::UInt8, Type::String])
+    }
 
     fn state_with_plan(type_: &Type) -> DeserializerState<()> {
         let mut state = DeserializerState::<()>::default();
@@ -95,14 +101,20 @@ mod tests {
         let error = VariantDeserializer::read_prefix(&variant_type(), &mut reader, &mut state)
             .await
             .unwrap_err();
-        assert!(error.to_string().contains("unsupported Variant discriminator mode"));
+        assert!(
+            error
+                .to_string()
+                .contains("unsupported Variant discriminator mode")
+        );
     }
 
     #[tokio::test]
     async fn read_prefix_stores_variant_prefix_state() {
         let mut reader = Cursor::new(1_u64.to_le_bytes().to_vec());
         let mut state = state_with_plan(&variant_type());
-        VariantDeserializer::read_prefix(&variant_type(), &mut reader, &mut state).await.unwrap();
+        VariantDeserializer::read_prefix(&variant_type(), &mut reader, &mut state)
+            .await
+            .unwrap();
         let prefix = state
             .take_custom_plan()
             .and_then(|plan| plan.node(plan.root).cloned())

@@ -33,7 +33,11 @@ impl Serializer for ObjectSerializer {
         _state: &mut SerializerState,
     ) -> Result<()> {
         for value in values {
-            let value = if value == Value::Null { type_.default_value() } else { value };
+            let value = if value == Value::Null {
+                type_.default_value()
+            } else {
+                value
+            };
             match value {
                 Value::Object(bytes) => writer.write_string(bytes).await?,
                 _ => {
@@ -53,7 +57,11 @@ impl Serializer for ObjectSerializer {
         _state: &mut SerializerState,
     ) -> Result<()> {
         for value in values {
-            let value = if value == Value::Null { type_.default_value() } else { value };
+            let value = if value == Value::Null {
+                type_.default_value()
+            } else {
+                value
+            };
             match value {
                 Value::Object(bytes) => writer.put_string(bytes)?,
                 _ => {

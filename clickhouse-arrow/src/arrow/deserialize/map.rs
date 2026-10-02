@@ -64,36 +64,67 @@ pub(super) async fn deserialize<R: ClickHouseRead>(
 
     let offset_bytes = super::list::bulk_offsets!(reader, ctx.row_buffer, rows);
     let offsets: &[u64] = bytemuck::cast_slice::<u8, u64>(&ctx.row_buffer[..offset_bytes]);
-    let offset_buffer =
-        OffsetBuffer::new(offsets.iter().map(|&o| o as i32).collect::<ScalarBuffer<_>>());
+    let offset_buffer = OffsetBuffer::new(
+        offsets
+            .iter()
+            .map(|&o| o as i32)
+            .collect::<ScalarBuffer<_>>(),
+    );
     let total_pairs = *offsets.last().unwrap_or(&0) as usize;
 
     let key_array = key_type
-        .deserialize_arrow(key_builder, reader, key_field.data_type(), total_pairs, &[], ctx)
+        .deserialize_arrow(
+            key_builder,
+            reader,
+            key_field.data_type(),
+            total_pairs,
+            &[],
+            ctx,
+        )
         .await?;
 
     let value_array = value_type
-        .deserialize_arrow(value_builder, reader, value_field.data_type(), total_pairs, &[], ctx)
+        .deserialize_arrow(
+            value_builder,
+            reader,
+            value_field.data_type(),
+            total_pairs,
+            &[],
+            ctx,
+        )
         .await?;
 
     // Construct StructArray for entries
     let struct_field = Arc::new(Field::new(
         MAP_FIELD_NAME,
-        DataType::Struct(Fields::from(vec![Arc::clone(key_field), Arc::clone(value_field)])),
+        DataType::Struct(Fields::from(vec![
+            Arc::clone(key_field),
+            Arc::clone(value_field),
+        ])),
         false,
     ));
-    let struct_fields =
-        vec![(Arc::clone(key_field), key_array), (Arc::clone(value_field), value_array)];
+    let struct_fields = vec![
+        (Arc::clone(key_field), key_array),
+        (Arc::clone(value_field), value_array),
+    ];
 
     // Construct MapArray
     let null_buffer = if nulls.is_empty() {
         None
     } else {
-        Some(NullBuffer::from(nulls.iter().map(|&n| n == 0).collect::<Vec<bool>>()))
+        Some(NullBuffer::from(
+            nulls.iter().map(|&n| n == 0).collect::<Vec<bool>>(),
+        ))
     };
 
     let struct_arr = StructArray::from(struct_fields);
-    Ok(Arc::new(MapArray::new(struct_field, offset_buffer, struct_arr, null_buffer, false)))
+    Ok(Arc::new(MapArray::new(
+        struct_field,
+        offset_buffer,
+        struct_arr,
+        null_buffer,
+        false,
+    )))
 }
 
 #[cfg(test)]
@@ -111,7 +142,9 @@ mod tests {
     use crate::arrow::ch_to_arrow_type;
     use crate::native::types::Type;
 
-    fn test_ctx(row_buffer: &mut Vec<u8>) -> ArrowFieldCtx<'_> { ArrowFieldCtx::new(row_buffer) }
+    fn test_ctx(row_buffer: &mut Vec<u8>) -> ArrowFieldCtx<'_> {
+        ArrowFieldCtx::new(row_buffer)
+    }
 
     fn create_map_type(key: &Type, value: &Type, nullable: bool) -> DataType {
         let opts = Some(ArrowOptions::default().with_strings_as_strings(true));
@@ -170,14 +203,29 @@ mod tests {
         .await
         .expect("Failed to deserialize Map(Int32, String)");
         let map_array = result.as_any().downcast_ref::<MapArray>().unwrap();
-        let struct_array = map_array.entries().as_any().downcast_ref::<StructArray>().unwrap();
-        let keys = struct_array.column(0).as_any().downcast_ref::<Int32Array>().unwrap();
-        let values = struct_array.column(1).as_any().downcast_ref::<StringArray>().unwrap();
+        let struct_array = map_array
+            .entries()
+            .as_any()
+            .downcast_ref::<StructArray>()
+            .unwrap();
+        let keys = struct_array
+            .column(0)
+            .as_any()
+            .downcast_ref::<Int32Array>()
+            .unwrap();
+        let values = struct_array
+            .column(1)
+            .as_any()
+            .downcast_ref::<StringArray>()
+            .unwrap();
 
         assert_eq!(map_array.len(), 3);
         assert_eq!(keys, &Int32Array::from(vec![1, 2, 3, 4, 5]));
         assert_eq!(values, &StringArray::from(vec!["a", "b", "c", "d", "e"]));
-        assert_eq!(map_array.offsets().iter().copied().collect::<Vec<i32>>(), vec![0, 2, 3, 5]);
+        assert_eq!(
+            map_array.offsets().iter().copied().collect::<Vec<i32>>(),
+            vec![0, 2, 3, 5]
+        );
         assert_eq!(map_array.nulls(), None);
     }
 
@@ -227,14 +275,29 @@ mod tests {
         .await
         .expect("Failed to deserialize Nullable(Map(Int32, String))");
         let map_array = result.as_any().downcast_ref::<MapArray>().unwrap();
-        let struct_array = map_array.entries().as_any().downcast_ref::<StructArray>().unwrap();
-        let keys = struct_array.column(0).as_any().downcast_ref::<Int32Array>().unwrap();
-        let values = struct_array.column(1).as_any().downcast_ref::<StringArray>().unwrap();
+        let struct_array = map_array
+            .entries()
+            .as_any()
+            .downcast_ref::<StructArray>()
+            .unwrap();
+        let keys = struct_array
+            .column(0)
+            .as_any()
+            .downcast_ref::<Int32Array>()
+            .unwrap();
+        let values = struct_array
+            .column(1)
+            .as_any()
+            .downcast_ref::<StringArray>()
+            .unwrap();
 
         assert_eq!(map_array.len(), 3);
         assert_eq!(keys, &Int32Array::from(vec![1, 2, 3, 4, 5]));
         assert_eq!(values, &StringArray::from(vec!["a", "b", "c", "d", "e"]));
-        assert_eq!(map_array.offsets().iter().copied().collect::<Vec<i32>>(), vec![0, 2, 3, 5]);
+        assert_eq!(
+            map_array.offsets().iter().copied().collect::<Vec<i32>>(),
+            vec![0, 2, 3, 5]
+        );
         assert_eq!(
             map_array.nulls().unwrap().iter().collect::<Vec<bool>>(),
             vec![true, false, true] // 0=not null, 1=null
@@ -289,14 +352,32 @@ mod tests {
         .await
         .expect("Failed to deserialize Map(Int32, Nullable(Int32))");
         let map_array = result.as_any().downcast_ref::<MapArray>().unwrap();
-        let struct_array = map_array.entries().as_any().downcast_ref::<StructArray>().unwrap();
-        let keys = struct_array.column(0).as_any().downcast_ref::<Int32Array>().unwrap();
-        let values = struct_array.column(1).as_any().downcast_ref::<Int32Array>().unwrap();
+        let struct_array = map_array
+            .entries()
+            .as_any()
+            .downcast_ref::<StructArray>()
+            .unwrap();
+        let keys = struct_array
+            .column(0)
+            .as_any()
+            .downcast_ref::<Int32Array>()
+            .unwrap();
+        let values = struct_array
+            .column(1)
+            .as_any()
+            .downcast_ref::<Int32Array>()
+            .unwrap();
 
         assert_eq!(map_array.len(), 3);
         assert_eq!(keys, &Int32Array::from(vec![1, 2, 3, 4, 5]));
-        assert_eq!(values, &Int32Array::from(vec![Some(10), None, Some(30), None, Some(50)]));
-        assert_eq!(map_array.offsets().iter().copied().collect::<Vec<i32>>(), vec![0, 2, 3, 5]);
+        assert_eq!(
+            values,
+            &Int32Array::from(vec![Some(10), None, Some(30), None, Some(50)])
+        );
+        assert_eq!(
+            map_array.offsets().iter().copied().collect::<Vec<i32>>(),
+            vec![0, 2, 3, 5]
+        );
         assert_eq!(map_array.nulls(), None);
     }
 
@@ -343,17 +424,31 @@ mod tests {
         .await
         .expect("Failed to deserialize Map(String, DateTime)");
         let map_array = result.as_any().downcast_ref::<MapArray>().unwrap();
-        let struct_array = map_array.entries().as_any().downcast_ref::<StructArray>().unwrap();
-        let keys = struct_array.column(0).as_any().downcast_ref::<StringArray>().unwrap();
-        let values =
-            struct_array.column(1).as_any().downcast_ref::<TimestampSecondArray>().unwrap();
+        let struct_array = map_array
+            .entries()
+            .as_any()
+            .downcast_ref::<StructArray>()
+            .unwrap();
+        let keys = struct_array
+            .column(0)
+            .as_any()
+            .downcast_ref::<StringArray>()
+            .unwrap();
+        let values = struct_array
+            .column(1)
+            .as_any()
+            .downcast_ref::<TimestampSecondArray>()
+            .unwrap();
 
         let tz =
             TimestampSecondArray::from(vec![1000, 2000, 3000, 4000]).with_timezone_opt(Some("UTC"));
         assert_eq!(map_array.len(), 2);
         assert_eq!(keys, &StringArray::from(vec!["a", "b", "c", "d"]));
         assert_eq!(values, &tz);
-        assert_eq!(map_array.offsets().iter().copied().collect::<Vec<i32>>(), vec![0, 2, 4]);
+        assert_eq!(
+            map_array.offsets().iter().copied().collect::<Vec<i32>>(),
+            vec![0, 2, 4]
+        );
         assert_eq!(map_array.nulls(), None);
     }
 
@@ -386,14 +481,29 @@ mod tests {
         .await
         .expect("Failed to deserialize Map(Int32, String) with zero rows");
         let map_array = result.as_any().downcast_ref::<MapArray>().unwrap();
-        let struct_array = map_array.entries().as_any().downcast_ref::<StructArray>().unwrap();
-        let keys = struct_array.column(0).as_any().downcast_ref::<Int32Array>().unwrap();
-        let values = struct_array.column(1).as_any().downcast_ref::<StringArray>().unwrap();
+        let struct_array = map_array
+            .entries()
+            .as_any()
+            .downcast_ref::<StructArray>()
+            .unwrap();
+        let keys = struct_array
+            .column(0)
+            .as_any()
+            .downcast_ref::<Int32Array>()
+            .unwrap();
+        let values = struct_array
+            .column(1)
+            .as_any()
+            .downcast_ref::<StringArray>()
+            .unwrap();
 
         assert_eq!(map_array.len(), 0);
         assert_eq!(keys, &Int32Array::from(Vec::<i32>::new()));
         assert_eq!(values, &StringArray::from(Vec::<String>::new()));
-        assert_eq!(map_array.offsets().iter().copied().collect::<Vec<i32>>(), vec![0]);
+        assert_eq!(
+            map_array.offsets().iter().copied().collect::<Vec<i32>>(),
+            vec![0]
+        );
         assert_eq!(map_array.nulls(), None);
     }
 
@@ -431,14 +541,29 @@ mod tests {
         .await
         .expect("Failed to deserialize Map(Int32, String) with empty inner maps");
         let map_array = result.as_any().downcast_ref::<MapArray>().unwrap();
-        let struct_array = map_array.entries().as_any().downcast_ref::<StructArray>().unwrap();
-        let keys = struct_array.column(0).as_any().downcast_ref::<Int32Array>().unwrap();
-        let values = struct_array.column(1).as_any().downcast_ref::<StringArray>().unwrap();
+        let struct_array = map_array
+            .entries()
+            .as_any()
+            .downcast_ref::<StructArray>()
+            .unwrap();
+        let keys = struct_array
+            .column(0)
+            .as_any()
+            .downcast_ref::<Int32Array>()
+            .unwrap();
+        let values = struct_array
+            .column(1)
+            .as_any()
+            .downcast_ref::<StringArray>()
+            .unwrap();
 
         assert_eq!(map_array.len(), 2);
         assert_eq!(keys, &Int32Array::from(Vec::<i32>::new()));
         assert_eq!(values, &StringArray::from(Vec::<String>::new()));
-        assert_eq!(map_array.offsets().iter().copied().collect::<Vec<i32>>(), vec![0, 0, 0]);
+        assert_eq!(
+            map_array.offsets().iter().copied().collect::<Vec<i32>>(),
+            vec![0, 0, 0]
+        );
         assert_eq!(map_array.nulls(), None);
     }
 }

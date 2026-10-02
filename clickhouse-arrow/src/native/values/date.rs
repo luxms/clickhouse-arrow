@@ -17,7 +17,10 @@ impl Date {
     ///
     /// Panics if the number of days is out of range for a `u16`.
     pub fn from_days(days: i32) -> Self {
-        assert!(!(days < 0 || days > i32::from(u16::MAX)), "Date out of range for u16: {days}");
+        assert!(
+            !(days < 0 || days > i32::from(u16::MAX)),
+            "Date out of range for u16: {days}"
+        );
         Date(days as u16)
     }
 
@@ -26,7 +29,10 @@ impl Date {
     /// Panics if the number of milliseconds is out of range for a `u16`.
     pub fn from_millis(ms: i64) -> Self {
         let days = ms / 86_400_000; // Milliseconds per day
-        assert!(!(days < 0 || days > i64::from(u16::MAX)), "Date out of range for u16: {days}");
+        assert!(
+            !(days < 0 || days > i64::from(u16::MAX)),
+            "Date out of range for u16: {days}"
+        );
         Date(days as u16)
     }
 }
@@ -53,7 +59,9 @@ impl<'de> serde::Deserialize<'de> for Date {
 }
 
 impl ToSql for Date {
-    fn to_sql(self, _type_hint: Option<&Type>) -> Result<Value> { Ok(Value::Date(self)) }
+    fn to_sql(self, _type_hint: Option<&Type>) -> Result<Value> {
+        Ok(Value::Date(self))
+    }
 }
 
 impl FromSql for Date {
@@ -72,8 +80,11 @@ impl From<NaiveDate> for Date {
     fn from(other: NaiveDate) -> Self {
         #[expect(clippy::cast_possible_truncation)]
         #[expect(clippy::cast_sign_loss)]
-        Self(other.signed_duration_since(NaiveDate::from_ymd_opt(1970, 1, 1).unwrap()).num_days()
-            as u16)
+        Self(
+            other
+                .signed_duration_since(NaiveDate::from_ymd_opt(1970, 1, 1).unwrap())
+                .num_days() as u16,
+        )
     }
 }
 
@@ -90,7 +101,9 @@ pub struct Date32(pub i32);
 #[expect(clippy::cast_possible_truncation)]
 impl Date32 {
     /// Creates a `Date32` from days since 1970-01-01.
-    pub fn from_days(days: i32) -> Self { Date32(days) }
+    pub fn from_days(days: i32) -> Self {
+        Date32(days)
+    }
 
     /// Creates a `Date32` from milliseconds since 1970-01-01.
     pub fn from_millis(ms: i64) -> Self {
@@ -121,7 +134,9 @@ impl<'de> serde::Deserialize<'de> for Date32 {
 }
 
 impl ToSql for Date32 {
-    fn to_sql(self, _type_hint: Option<&Type>) -> Result<Value> { Ok(Value::Date32(self)) }
+    fn to_sql(self, _type_hint: Option<&Type>) -> Result<Value> {
+        Ok(Value::Date32(self))
+    }
 }
 
 impl FromSql for Date32 {
@@ -139,8 +154,9 @@ impl FromSql for Date32 {
 // CH Date32 wire format is days-since-1970-01-01 (same epoch as Arrow Date32).
 impl From<NaiveDate> for Date32 {
     fn from(other: NaiveDate) -> Self {
-        let days =
-            other.signed_duration_since(NaiveDate::from_ymd_opt(1970, 1, 1).unwrap()).num_days();
+        let days = other
+            .signed_duration_since(NaiveDate::from_ymd_opt(1970, 1, 1).unwrap())
+            .num_days();
         #[expect(clippy::cast_possible_truncation)]
         Date32(days as i32)
     }
@@ -253,12 +269,15 @@ impl<'de> serde::Deserialize<'de> for DateTime {
             chrono::DateTime::<FixedOffset>::parse_from_rfc3339(&raw)
                 .map_err(|e: chrono::ParseError| serde::de::Error::custom(e.to_string()))?;
 
-        date.try_into().map_err(|e: TryFromIntError| serde::de::Error::custom(e.to_string()))
+        date.try_into()
+            .map_err(|e: TryFromIntError| serde::de::Error::custom(e.to_string()))
     }
 }
 
 impl ToSql for DateTime {
-    fn to_sql(self, _type_hint: Option<&Type>) -> Result<Value> { Ok(Value::DateTime(self)) }
+    fn to_sql(self, _type_hint: Option<&Type>) -> Result<Value> {
+        Ok(Value::DateTime(self))
+    }
 }
 
 impl FromSql for DateTime {
@@ -274,7 +293,9 @@ impl FromSql for DateTime {
 }
 
 impl Default for DateTime {
-    fn default() -> Self { Self(UTC, 0) }
+    fn default() -> Self {
+        Self(UTC, 0)
+    }
 }
 
 impl TryFrom<DateTime> for chrono::DateTime<Tz> {
@@ -289,7 +310,11 @@ impl TryFrom<DateTime> for chrono::DateTime<FixedOffset> {
     type Error = TryFromIntError;
 
     fn try_from(date: DateTime) -> Result<Self, TryFromIntError> {
-        Ok(date.0.timestamp_opt(date.1.into(), 0).unwrap().fixed_offset())
+        Ok(date
+            .0
+            .timestamp_opt(date.1.into(), 0)
+            .unwrap()
+            .fixed_offset())
     }
 }
 
@@ -297,7 +322,11 @@ impl TryFrom<DateTime> for chrono::DateTime<Utc> {
     type Error = TryFromIntError;
 
     fn try_from(date: DateTime) -> Result<Self, TryFromIntError> {
-        Ok(date.0.timestamp_opt(date.1.into(), 0).unwrap().with_timezone(&Utc))
+        Ok(date
+            .0
+            .timestamp_opt(date.1.into(), 0)
+            .unwrap()
+            .with_timezone(&Utc))
     }
 }
 
@@ -349,7 +378,10 @@ impl DynDateTime64 {
     /// Panics if seconds is negative.
     pub fn from_seconds(seconds: i64, tz: Option<Arc<str>>) -> Self {
         let tz = tz.map_or(UTC, |s| s.parse::<Tz>().unwrap());
-        assert!(seconds >= 0, "DynDateTime64 does not support negative seconds: {seconds}");
+        assert!(
+            seconds >= 0,
+            "DynDateTime64 does not support negative seconds: {seconds}"
+        );
         DynDateTime64(tz, seconds as u64, 0) // Precision 0 for seconds
     }
 
@@ -358,7 +390,10 @@ impl DynDateTime64 {
     /// Panics if milliseconds is negative.
     pub fn from_millis(ms: i64, tz: Option<Arc<str>>) -> Self {
         let tz = tz.map_or(UTC, |s| s.parse::<Tz>().unwrap());
-        assert!(ms >= 0, "DynDateTime64 does not support negative milliseconds: {ms}");
+        assert!(
+            ms >= 0,
+            "DynDateTime64 does not support negative milliseconds: {ms}"
+        );
         DynDateTime64(tz, ms as u64, 3) // Precision 3 for milliseconds
     }
 
@@ -367,7 +402,10 @@ impl DynDateTime64 {
     /// Panics if micros is negative.
     pub fn from_micros(us: i64, tz: Option<Arc<str>>) -> Self {
         let tz = tz.map_or(UTC, |s| s.parse::<Tz>().unwrap());
-        assert!(us >= 0, "DynDateTime64 does not support negative microseconds: {us}");
+        assert!(
+            us >= 0,
+            "DynDateTime64 does not support negative microseconds: {us}"
+        );
         DynDateTime64(tz, us as u64, 6) // Precision 6 for microseconds
     }
 
@@ -376,13 +414,18 @@ impl DynDateTime64 {
     /// Panics if nanos is negative.
     pub fn from_nanos(ns: i64, tz: Option<Arc<str>>) -> Self {
         let tz = tz.map_or(UTC, |s| s.parse::<Tz>().unwrap());
-        assert!(ns >= 0, "DynDateTime64 does not support negative nanoseconds: {ns}");
+        assert!(
+            ns >= 0,
+            "DynDateTime64 does not support negative nanoseconds: {ns}"
+        );
         DynDateTime64(tz, ns as u64, 9) // Precision 9, adjust for ClickHouse
     }
 }
 
 impl<const PRECISION: usize> From<DateTime64<PRECISION>> for DynDateTime64 {
-    fn from(value: DateTime64<PRECISION>) -> Self { Self(value.0, value.1, PRECISION) }
+    fn from(value: DateTime64<PRECISION>) -> Self {
+        Self(value.0, value.1, PRECISION)
+    }
 }
 
 #[cfg(feature = "serde")]
@@ -440,7 +483,8 @@ impl<'de, const PRECISION: usize> serde::Deserialize<'de> for DateTime64<PRECISI
                 .naive_utc(),
         );
 
-        date.try_into().map_err(|e: TryFromIntError| serde::de::Error::custom(e.to_string()))
+        date.try_into()
+            .map_err(|e: TryFromIntError| serde::de::Error::custom(e.to_string()))
     }
 }
 
@@ -463,7 +507,9 @@ impl<const PRECISION: usize> FromSql for DateTime64<PRECISION> {
 }
 
 impl<const PRECISION: usize> Default for DateTime64<PRECISION> {
-    fn default() -> Self { Self(UTC, 0) }
+    fn default() -> Self {
+        Self(UTC, 0)
+    }
 }
 
 impl ToSql for chrono::DateTime<Utc> {
@@ -490,11 +536,17 @@ impl FromSql for chrono::DateTime<Utc> {
                 let seconds = datetime.1 / 10u64.pow(datetime_2);
                 let units = datetime.1 % 10u64.pow(datetime_2);
                 let units_ns = units * 10u64.pow(9 - datetime_2);
-                let (seconds, units_ns): (i64, u32) =
-                    seconds.try_into().and_then(|k| Ok((k, units_ns.try_into()?))).map_err(
-                        |e| Error::Deserialize(format!("failed to convert DateTime: {e:?}")),
-                    )?;
-                Ok(datetime.0.timestamp_opt(seconds, units_ns).unwrap().with_timezone(&Utc))
+                let (seconds, units_ns): (i64, u32) = seconds
+                    .try_into()
+                    .and_then(|k| Ok((k, units_ns.try_into()?)))
+                    .map_err(|e| {
+                        Error::Deserialize(format!("failed to convert DateTime: {e:?}"))
+                    })?;
+                Ok(datetime
+                    .0
+                    .timestamp_opt(seconds, units_ns)
+                    .unwrap()
+                    .with_timezone(&Utc))
             }
             Value::DateTime(date) => Ok(date
                 .try_into()
@@ -562,10 +614,12 @@ impl FromSql for chrono::DateTime<Tz> {
                 let seconds = datetime.1 / 10u64.pow(datetime_2);
                 let units = datetime.1 % 10u64.pow(datetime_2);
                 let units_ns = units * 10u64.pow(9 - datetime_2);
-                let (seconds, units_ns): (i64, u32) =
-                    seconds.try_into().and_then(|k| Ok((k, units_ns.try_into()?))).map_err(
-                        |e| Error::Deserialize(format!("failed to convert DateTime: {e:?}")),
-                    )?;
+                let (seconds, units_ns): (i64, u32) = seconds
+                    .try_into()
+                    .and_then(|k| Ok((k, units_ns.try_into()?)))
+                    .map_err(|e| {
+                        Error::Deserialize(format!("failed to convert DateTime: {e:?}"))
+                    })?;
                 Ok(datetime.0.timestamp_opt(seconds, units_ns).unwrap())
             }
             Value::DateTime(date) => Ok(date
@@ -615,7 +669,10 @@ impl<const PRECISION: usize> TryFrom<DateTime64<PRECISION>> for chrono::DateTime
         let seconds = date.1 / 10u64.pow(precision);
         let units = date.1 % 10u64.pow(precision);
         let units_ns = units * 10u64.pow(9 - precision);
-        Ok(date.0.timestamp_opt(seconds.try_into()?, units_ns.try_into()?).unwrap())
+        Ok(date
+            .0
+            .timestamp_opt(seconds.try_into()?, units_ns.try_into()?)
+            .unwrap())
     }
 }
 
@@ -628,7 +685,10 @@ impl TryFrom<DynDateTime64> for chrono::DateTime<Tz> {
         let seconds = date.1 / 10u64.pow(date_2);
         let units = date.1 % 10u64.pow(date_2);
         let units_ns = units * 10u64.pow(9 - date_2);
-        Ok(date.0.timestamp_opt(seconds.try_into()?, units_ns.try_into()?).unwrap())
+        Ok(date
+            .0
+            .timestamp_opt(seconds.try_into()?, units_ns.try_into()?)
+            .unwrap())
     }
 }
 
@@ -671,7 +731,11 @@ impl<const PRECISION: usize> TryFrom<DateTime64<PRECISION>> for chrono::DateTime
         let seconds = date.1 / 10u64.pow(precision);
         let units = date.1 % 10u64.pow(precision);
         let units_ns = units * 10u64.pow(9 - precision);
-        Ok(date.0.timestamp_opt(seconds.try_into()?, units_ns.try_into()?).unwrap().fixed_offset())
+        Ok(date
+            .0
+            .timestamp_opt(seconds.try_into()?, units_ns.try_into()?)
+            .unwrap()
+            .fixed_offset())
     }
 }
 
@@ -684,7 +748,11 @@ impl TryFrom<DynDateTime64> for chrono::DateTime<FixedOffset> {
         let seconds = date.1 / 10u64.pow(date_2);
         let units = date.1 % 10u64.pow(date_2);
         let units_ns = units * 10u64.pow(9 - date_2);
-        Ok(date.0.timestamp_opt(seconds.try_into()?, units_ns.try_into()?).unwrap().fixed_offset())
+        Ok(date
+            .0
+            .timestamp_opt(seconds.try_into()?, units_ns.try_into()?)
+            .unwrap()
+            .fixed_offset())
     }
 }
 
@@ -853,15 +921,21 @@ mod chrono_tests {
 
     #[test]
     #[should_panic(expected = "DateTime out of range for u32: -1")]
-    fn test_datetime_panic_secs() { let _d = DateTime::from_seconds(-1, None); }
+    fn test_datetime_panic_secs() {
+        let _d = DateTime::from_seconds(-1, None);
+    }
 
     #[test]
     #[should_panic(expected = "DateTime out of range for u32: -1")]
-    fn test_datetime_panic_millis() { let _d = DateTime::from_millis(-1_000, None); }
+    fn test_datetime_panic_millis() {
+        let _d = DateTime::from_millis(-1_000, None);
+    }
 
     #[test]
     #[should_panic(expected = "DateTime out of range for u32: -1")]
-    fn test_datetime_panic_micros() { let _d = DateTime::from_micros(-1_000_000, None); }
+    fn test_datetime_panic_micros() {
+        let _d = DateTime::from_micros(-1_000_000, None);
+    }
 
     #[test]
     fn test_datetime64() {

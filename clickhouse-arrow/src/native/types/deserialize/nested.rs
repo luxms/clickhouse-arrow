@@ -18,7 +18,9 @@ impl Deserializer for NestedDeserializer {
                 }
                 Ok(())
             }
-            _ => Err(Error::deserialize("NestedDeserializer called with non-nested type")),
+            _ => Err(Error::deserialize(
+                "NestedDeserializer called with non-nested type",
+            )),
         }
     }
 
@@ -28,7 +30,9 @@ impl Deserializer for NestedDeserializer {
         _rows: usize,
         _state: &mut DeserializerState,
     ) -> Result<Vec<Value>> {
-        Err(Error::deserialize("NestedDeserializer native value read is not implemented"))
+        Err(Error::deserialize(
+            "NestedDeserializer native value read is not implemented",
+        ))
     }
 
     // TODO: Remove
@@ -51,7 +55,10 @@ mod tests {
     use super::*;
 
     fn nested_type() -> Type {
-        Type::Nested(vec![("k".to_string(), Type::UInt8), ("v".to_string(), Type::String)])
+        Type::Nested(vec![
+            ("k".to_string(), Type::UInt8),
+            ("v".to_string(), Type::String),
+        ])
     }
 
     #[tokio::test]
@@ -68,15 +75,18 @@ mod tests {
     async fn read_prefix_accepts_nested_type() {
         let mut reader = Cursor::new(Vec::<u8>::new());
         let mut state = DeserializerState::<()>::default();
-        NestedDeserializer::read_prefix(&nested_type(), &mut reader, &mut state).await.unwrap();
+        NestedDeserializer::read_prefix(&nested_type(), &mut reader, &mut state)
+            .await
+            .unwrap();
     }
 
     #[tokio::test]
     async fn read_returns_unimplemented_error() {
         let mut reader = Cursor::new(Vec::<u8>::new());
         let mut state = DeserializerState::<()>::default();
-        let error =
-            NestedDeserializer::read(&nested_type(), &mut reader, 0, &mut state).await.unwrap_err();
+        let error = NestedDeserializer::read(&nested_type(), &mut reader, 0, &mut state)
+            .await
+            .unwrap_err();
         assert!(error.to_string().contains("not implemented"));
     }
 }

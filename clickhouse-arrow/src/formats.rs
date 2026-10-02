@@ -63,7 +63,7 @@ pub(crate) mod sealed {
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub(crate) struct DynamicPrefixState {
     pub(crate) serialization_version: u64,
-    pub(crate) flattened_types:       Vec<Type>,
+    pub(crate) flattened_types: Vec<Type>,
 }
 
 #[cfg(feature = "extended-types")]
@@ -77,10 +77,10 @@ pub(crate) const CUSTOM_PLAN_NO_NODE: CustomPlanNodeId = u32::MAX;
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub(crate) struct CustomPlanNode {
-    pub(crate) stack_type:     u8,
-    pub(crate) kinds:          Vec<u8>,
-    pub(crate) edge_start:     u32,
-    pub(crate) edge_len:       u16,
+    pub(crate) stack_type: u8,
+    pub(crate) kinds: Vec<u8>,
+    pub(crate) edge_start: u32,
+    pub(crate) edge_len: u16,
     #[cfg(feature = "extended-types")]
     pub(crate) dynamic_prefix: Option<DynamicPrefixState>,
     #[cfg(feature = "extended-types")]
@@ -91,7 +91,7 @@ pub(crate) struct CustomPlanNode {
 pub(crate) struct CustomPlan {
     pub(crate) nodes: Vec<CustomPlanNode>,
     pub(crate) edges: Vec<CustomPlanNodeId>,
-    pub(crate) root:  CustomPlanNodeId,
+    pub(crate) root: CustomPlanNodeId,
 }
 
 impl CustomPlanNode {
@@ -106,13 +106,17 @@ impl CustomPlanNode {
 impl CustomPlan {
     #[must_use]
     pub(crate) fn node(&self, node_id: CustomPlanNodeId) -> Option<&CustomPlanNode> {
-        usize::try_from(node_id).ok().and_then(|idx| self.nodes.get(idx))
+        usize::try_from(node_id)
+            .ok()
+            .and_then(|idx| self.nodes.get(idx))
     }
 
     #[cfg(feature = "extended-types")]
     #[must_use]
     pub(crate) fn node_mut(&mut self, node_id: CustomPlanNodeId) -> Option<&mut CustomPlanNode> {
-        usize::try_from(node_id).ok().and_then(|idx| self.nodes.get_mut(idx))
+        usize::try_from(node_id)
+            .ok()
+            .and_then(|idx| self.nodes.get_mut(idx))
     }
 
     #[must_use]
@@ -133,8 +137,8 @@ impl CustomPlan {
     #[must_use]
     pub(crate) fn from_type_structure(type_: &Type) -> Self {
         struct Frame<'a> {
-            type_:      &'a Type,
-            node_id:    CustomPlanNodeId,
+            type_: &'a Type,
+            node_id: CustomPlanNodeId,
             next_child: usize,
         }
 
@@ -150,7 +154,11 @@ impl CustomPlan {
         }];
         let mut edges = Vec::new();
 
-        let mut stack = vec![Frame { type_, node_id: 0, next_child: 0 }];
+        let mut stack = vec![Frame {
+            type_,
+            node_id: 0,
+            next_child: 0,
+        }];
         while let Some(frame) = stack.last_mut() {
             let Type::Tuple(inner) = frame.type_ else {
                 let _ = stack.pop();
@@ -180,10 +188,18 @@ impl CustomPlan {
             if let Some(parent) = nodes.get_mut(parent_idx) {
                 parent.edge_len = parent.edge_len.saturating_add(1);
             }
-            stack.push(Frame { type_: child_type, node_id, next_child: 0 });
+            stack.push(Frame {
+                type_: child_type,
+                node_id,
+                next_child: 0,
+            });
         }
 
-        Self { nodes, edges, root: 0 }
+        Self {
+            nodes,
+            edges,
+            root: 0,
+        }
     }
 }
 
@@ -191,13 +207,15 @@ impl CustomPlan {
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub(crate) struct DeserializerState<T: Default = ()> {
     pub(crate) format_state: T,
-    custom_plan:             Option<CustomPlan>,
-    custom_node:             Option<CustomPlanNodeId>,
+    custom_plan: Option<CustomPlan>,
+    custom_node: Option<CustomPlanNodeId>,
 }
 
 impl<T: Default> DeserializerState<T> {
     #[must_use]
-    pub(crate) fn format_state(&mut self) -> &mut T { &mut self.format_state }
+    pub(crate) fn format_state(&mut self) -> &mut T {
+        &mut self.format_state
+    }
 
     pub(crate) fn replace_custom_plan(&mut self, custom_plan: CustomPlan) -> Option<CustomPlan> {
         self.custom_node = Some(custom_plan.root);
@@ -210,10 +228,14 @@ impl<T: Default> DeserializerState<T> {
     }
 
     #[must_use]
-    pub(crate) fn custom_plan(&self) -> Option<&CustomPlan> { self.custom_plan.as_ref() }
+    pub(crate) fn custom_plan(&self) -> Option<&CustomPlan> {
+        self.custom_plan.as_ref()
+    }
 
     #[must_use]
-    pub(crate) fn custom_node(&self) -> Option<CustomPlanNodeId> { self.custom_node }
+    pub(crate) fn custom_node(&self) -> Option<CustomPlanNodeId> {
+        self.custom_node
+    }
 
     pub(crate) fn set_custom_node(
         &mut self,
@@ -260,11 +282,11 @@ impl<T: Default> DeserializerState<T> {
 /// Context maintained during serialization
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub(crate) struct SerializerState<T: Default = ()> {
-    pub(crate) options:    Option<ArrowOptions>,
+    pub(crate) options: Option<ArrowOptions>,
     pub(crate) serializer: T,
-    custom_plan:           Option<CustomPlan>,
+    custom_plan: Option<CustomPlan>,
     #[cfg(feature = "extended-types")]
-    dynamic_prefix:        Option<DynamicPrefixState>,
+    dynamic_prefix: Option<DynamicPrefixState>,
 }
 
 impl<T: Default> SerializerState<T> {
@@ -276,7 +298,9 @@ impl<T: Default> SerializerState<T> {
 
     #[expect(unused)]
     #[must_use]
-    pub(crate) fn serializer(&mut self) -> &mut T { &mut self.serializer }
+    pub(crate) fn serializer(&mut self) -> &mut T {
+        &mut self.serializer
+    }
 
     #[expect(dead_code, reason = "Reserved for future custom serialization writes")]
     pub(crate) fn replace_custom_plan(&mut self, custom_plan: CustomPlan) -> Option<CustomPlan> {
@@ -284,7 +308,9 @@ impl<T: Default> SerializerState<T> {
     }
 
     #[expect(dead_code, reason = "Reserved for future custom serialization writes")]
-    pub(crate) fn take_custom_plan(&mut self) -> Option<CustomPlan> { self.custom_plan.take() }
+    pub(crate) fn take_custom_plan(&mut self) -> Option<CustomPlan> {
+        self.custom_plan.take()
+    }
 
     #[cfg(feature = "extended-types")]
     pub(crate) fn replace_dynamic_prefix(

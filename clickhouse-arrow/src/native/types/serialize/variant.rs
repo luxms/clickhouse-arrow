@@ -40,7 +40,9 @@ impl Serializer for VariantSerializer {
         _writer: &mut W,
         _state: &mut SerializerState,
     ) -> Result<()> {
-        Err(Error::serialize("Variant native value serialization is not implemented"))
+        Err(Error::serialize(
+            "Variant native value serialization is not implemented",
+        ))
     }
 
     fn write_sync(
@@ -49,7 +51,9 @@ impl Serializer for VariantSerializer {
         _writer: &mut impl ClickHouseBytesWrite,
         _state: &mut SerializerState,
     ) -> Result<()> {
-        Err(Error::serialize("Variant native value serialization is not implemented"))
+        Err(Error::serialize(
+            "Variant native value serialization is not implemented",
+        ))
     }
 }
 
@@ -59,13 +63,17 @@ mod tests {
 
     use super::*;
 
-    fn variant_type() -> Type { Type::Variant(vec![Type::UInt8, Type::String]) }
+    fn variant_type() -> Type {
+        Type::Variant(vec![Type::UInt8, Type::String])
+    }
 
     #[tokio::test]
     async fn write_prefix_async_is_noop_for_non_variant() {
         let mut writer = Cursor::new(Vec::new());
         let mut state = SerializerState::default();
-        VariantSerializer::write_prefix(&Type::UInt8, &mut writer, &mut state).await.unwrap();
+        VariantSerializer::write_prefix(&Type::UInt8, &mut writer, &mut state)
+            .await
+            .unwrap();
         assert!(writer.into_inner().is_empty());
     }
 
@@ -73,7 +81,9 @@ mod tests {
     async fn write_prefix_async_writes_version_word() {
         let mut writer = Cursor::new(Vec::new());
         let mut state = SerializerState::default();
-        VariantSerializer::write_prefix(&variant_type(), &mut writer, &mut state).await.unwrap();
+        VariantSerializer::write_prefix(&variant_type(), &mut writer, &mut state)
+            .await
+            .unwrap();
         assert_eq!(&writer.into_inner()[..8], &0_u64.to_le_bytes());
     }
 

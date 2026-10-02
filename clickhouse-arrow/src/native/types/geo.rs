@@ -17,7 +17,10 @@ pub fn normalize_geo_type(type_: &Type) -> Result<Type> {
         }
         Type::Ring => {
             // Ring = Array(Point) = Array(Tuple(Float64, Float64))
-            Type::Array(Box::new(Type::tuple_anon(vec![Type::Float64, Type::Float64])))
+            Type::Array(Box::new(Type::tuple_anon(vec![
+                Type::Float64,
+                Type::Float64,
+            ])))
         }
         Type::Polygon => {
             // Polygon = Array(Ring) = Array(Array(Tuple(Float64, Float64)))
@@ -28,11 +31,15 @@ pub fn normalize_geo_type(type_: &Type) -> Result<Type> {
         }
         Type::MultiPolygon => {
             // MultiPolygon = Array(Polygon) = Array(Array(Array(Tuple(Float64, Float64))))
-            Type::Array(Box::new(Type::Array(Box::new(Type::Array(Box::new(Type::tuple_anon(
-                vec![Type::Float64, Type::Float64],
-            )))))))
+            Type::Array(Box::new(Type::Array(Box::new(Type::Array(Box::new(
+                Type::tuple_anon(vec![Type::Float64, Type::Float64]),
+            ))))))
         }
-        _ => return Err(Error::TypeConversion(format!("Expected Geo type, got {type_}"))),
+        _ => {
+            return Err(Error::TypeConversion(format!(
+                "Expected Geo type, got {type_}"
+            )));
+        }
     })
 }
 
@@ -51,7 +58,10 @@ mod tests {
         let result = normalize_geo_type(&Type::Ring).unwrap();
         assert_eq!(
             result,
-            Type::Array(Box::new(Type::tuple_anon(vec![Type::Float64, Type::Float64])))
+            Type::Array(Box::new(Type::tuple_anon(vec![
+                Type::Float64,
+                Type::Float64
+            ])))
         );
     }
 
@@ -72,9 +82,9 @@ mod tests {
         let result = normalize_geo_type(&Type::MultiPolygon).unwrap();
         assert_eq!(
             result,
-            Type::Array(Box::new(Type::Array(Box::new(Type::Array(Box::new(Type::tuple_anon(
-                vec![Type::Float64, Type::Float64],
-            )))))))
+            Type::Array(Box::new(Type::Array(Box::new(Type::Array(Box::new(
+                Type::tuple_anon(vec![Type::Float64, Type::Float64],)
+            ))))))
         );
     }
 

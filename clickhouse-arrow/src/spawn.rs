@@ -48,7 +48,9 @@ impl<R: 'static> SpawnedTask<R> {
     ///
     /// # Errors
     /// Returns an error if the underlying task cannot be polled.
-    pub async fn join(self) -> Result<R, JoinError> { self.await }
+    pub async fn join(self) -> Result<R, JoinError> {
+        self.await
+    }
 
     /// Joins the task and unwinds the panic if it happens.
     ///
@@ -81,7 +83,9 @@ impl<R> Future for SpawnedTask<R> {
 }
 
 impl<R> Drop for SpawnedTask<R> {
-    fn drop(&mut self) { self.inner.abort(); }
+    fn drop(&mut self) {
+        self.inner.abort();
+    }
 }
 
 #[cfg(test)]
@@ -123,7 +127,10 @@ mod tests {
     #[should_panic(expected = "foo")]
     async fn panic_resume() {
         // this should panic w/o an `unwrap`
-        let _ = SpawnedTask::spawn(async { panic!("foo") }).join_unwind().await.ok();
+        let _ = SpawnedTask::spawn(async { panic!("foo") })
+            .join_unwind()
+            .await
+            .ok();
     }
 
     #[tokio::test]

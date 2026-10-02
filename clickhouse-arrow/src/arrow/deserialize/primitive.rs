@@ -542,7 +542,9 @@ mod tests {
     use super::*;
     use crate::native::types::Type;
 
-    fn test_ctx(row_buffer: &mut Vec<u8>) -> ArrowFieldCtx<'_> { ArrowFieldCtx::new(row_buffer) }
+    fn test_ctx(row_buffer: &mut Vec<u8>) -> ArrowFieldCtx<'_> {
+        ArrowFieldCtx::new(row_buffer)
+    }
 
     async fn deserialize_for_test(
         type_hint: &Type,
@@ -609,7 +611,10 @@ mod tests {
             .expect("Failed to deserialize Nullable(Int8)");
         let array = result.as_any().downcast_ref::<Int8Array>().unwrap();
         assert_eq!(array, &Int8Array::from(vec![Some(1), None, Some(3)]));
-        assert_eq!(array.nulls().unwrap().iter().collect::<Vec<bool>>(), vec![true, false, true]);
+        assert_eq!(
+            array.nulls().unwrap().iter().collect::<Vec<bool>>(),
+            vec![true, false, true]
+        );
     }
 
     #[tokio::test]
@@ -624,12 +629,16 @@ mod tests {
         let data_type = DataType::Int32;
         let mut builder = TypedBuilder::try_new(&type_hint, &data_type).unwrap();
 
-        let result =
-            deserialize_sparse_for_test(&type_hint, &mut builder, &mut reader, rows, &[], vec![
-                1, 4,
-            ])
-            .await
-            .expect("Failed to deserialize sparse Int32");
+        let result = deserialize_sparse_for_test(
+            &type_hint,
+            &mut builder,
+            &mut reader,
+            rows,
+            &[],
+            vec![1, 4],
+        )
+        .await
+        .expect("Failed to deserialize sparse Int32");
 
         let array = result.as_any().downcast_ref::<Int32Array>().unwrap();
         assert_eq!(array, &Int32Array::from(vec![0, 10, 0, 0, 20, 0]));
@@ -660,7 +669,10 @@ mod tests {
         .expect("Failed to deserialize sparse nullable Int32");
 
         let array = result.as_any().downcast_ref::<Int32Array>().unwrap();
-        assert_eq!(array, &Int32Array::from(vec![Some(0), Some(7), Some(0), Some(0), None]));
+        assert_eq!(
+            array,
+            &Int32Array::from(vec![Some(0), Some(7), Some(0), Some(0), None])
+        );
     }
 
     #[cfg(feature = "extended-types")]
@@ -729,7 +741,10 @@ mod tests {
             .expect("Failed to deserialize Nullable(Int16)");
         let array = result.as_any().downcast_ref::<Int16Array>().unwrap();
         assert_eq!(array, &Int16Array::from(vec![Some(1), None, Some(3)]));
-        assert_eq!(array.nulls().unwrap().iter().collect::<Vec<bool>>(), vec![true, false, true]);
+        assert_eq!(
+            array.nulls().unwrap().iter().collect::<Vec<bool>>(),
+            vec![true, false, true]
+        );
     }
 
     /// Tests deserialization of `Int32` with non-nullable values.
@@ -777,7 +792,10 @@ mod tests {
             .expect("Failed to deserialize Nullable(Int32)");
         let array = result.as_any().downcast_ref::<Int32Array>().unwrap();
         assert_eq!(array, &Int32Array::from(vec![Some(1), None, Some(3)]));
-        assert_eq!(array.nulls().unwrap().iter().collect::<Vec<bool>>(), vec![true, false, true]);
+        assert_eq!(
+            array.nulls().unwrap().iter().collect::<Vec<bool>>(),
+            vec![true, false, true]
+        );
     }
 
     /// Tests deserialization of `Int64` with non-nullable values.
@@ -825,7 +843,10 @@ mod tests {
             .expect("Failed to deserialize Nullable(Int64)");
         let array = result.as_any().downcast_ref::<Int64Array>().unwrap();
         assert_eq!(array, &Int64Array::from(vec![Some(1), None, Some(3)]));
-        assert_eq!(array.nulls().unwrap().iter().collect::<Vec<bool>>(), vec![true, false, true]);
+        assert_eq!(
+            array.nulls().unwrap().iter().collect::<Vec<bool>>(),
+            vec![true, false, true]
+        );
     }
 
     /// Tests deserialization of `UInt8` with non-nullable values.
@@ -867,7 +888,10 @@ mod tests {
             .expect("Failed to deserialize Nullable(UInt8)");
         let array = result.as_any().downcast_ref::<UInt8Array>().unwrap();
         assert_eq!(array, &UInt8Array::from(vec![Some(1), None, Some(3)]));
-        assert_eq!(array.nulls().unwrap().iter().collect::<Vec<bool>>(), vec![true, false, true]);
+        assert_eq!(
+            array.nulls().unwrap().iter().collect::<Vec<bool>>(),
+            vec![true, false, true]
+        );
     }
 
     /// Tests deserialization of `UInt16` with non-nullable values.
@@ -915,7 +939,10 @@ mod tests {
             .expect("Failed to deserialize Nullable(UInt16)");
         let array = result.as_any().downcast_ref::<UInt16Array>().unwrap();
         assert_eq!(array, &UInt16Array::from(vec![Some(1), None, Some(3)]));
-        assert_eq!(array.nulls().unwrap().iter().collect::<Vec<bool>>(), vec![true, false, true]);
+        assert_eq!(
+            array.nulls().unwrap().iter().collect::<Vec<bool>>(),
+            vec![true, false, true]
+        );
     }
 
     /// Tests deserialization of `UInt32` with non-nullable values.
@@ -963,7 +990,10 @@ mod tests {
             .expect("Failed to deserialize Nullable(UInt32)");
         let array = result.as_any().downcast_ref::<UInt32Array>().unwrap();
         assert_eq!(array, &UInt32Array::from(vec![Some(1), None, Some(3)]));
-        assert_eq!(array.nulls().unwrap().iter().collect::<Vec<bool>>(), vec![true, false, true]);
+        assert_eq!(
+            array.nulls().unwrap().iter().collect::<Vec<bool>>(),
+            vec![true, false, true]
+        );
     }
 
     /// Tests deserialization of `UInt64` with non-nullable values.
@@ -1011,7 +1041,10 @@ mod tests {
             .expect("Failed to deserialize Nullable(UInt64)");
         let array = result.as_any().downcast_ref::<UInt64Array>().unwrap();
         assert_eq!(array, &UInt64Array::from(vec![Some(1), None, Some(3)]));
-        assert_eq!(array.nulls().unwrap().iter().collect::<Vec<bool>>(), vec![true, false, true]);
+        assert_eq!(
+            array.nulls().unwrap().iter().collect::<Vec<bool>>(),
+            vec![true, false, true]
+        );
     }
 
     /// Tests deserialization of `Float32` with non-nullable values.
@@ -1063,7 +1096,10 @@ mod tests {
             .expect("Failed to deserialize Nullable(Float32)");
         let array = result.as_any().downcast_ref::<Float32Array>().unwrap();
         assert_eq!(array, &Float32Array::from(vec![Some(1.0), None, Some(3.0)]));
-        assert_eq!(array.nulls().unwrap().iter().collect::<Vec<bool>>(), vec![true, false, true]);
+        assert_eq!(
+            array.nulls().unwrap().iter().collect::<Vec<bool>>(),
+            vec![true, false, true]
+        );
     }
 
     /// Tests deserialization of `Float64` with non-nullable values.
@@ -1115,7 +1151,10 @@ mod tests {
             .expect("Failed to deserialize Nullable(Float64)");
         let array = result.as_any().downcast_ref::<Float64Array>().unwrap();
         assert_eq!(array, &Float64Array::from(vec![Some(1.0), None, Some(3.0)]));
-        assert_eq!(array.nulls().unwrap().iter().collect::<Vec<bool>>(), vec![true, false, true]);
+        assert_eq!(
+            array.nulls().unwrap().iter().collect::<Vec<bool>>(),
+            vec![true, false, true]
+        );
     }
 
     /// Tests deserialization of `Date` with non-nullable values.
@@ -1163,7 +1202,10 @@ mod tests {
             .expect("Failed to deserialize Nullable(Date)");
         let array = result.as_any().downcast_ref::<Date32Array>().unwrap();
         assert_eq!(array, &Date32Array::from(vec![Some(1), None, Some(3)]));
-        assert_eq!(array.nulls().unwrap().iter().collect::<Vec<bool>>(), vec![true, false, true]);
+        assert_eq!(
+            array.nulls().unwrap().iter().collect::<Vec<bool>>(),
+            vec![true, false, true]
+        );
     }
     /// Tests deserialization of `DateTime` with non-nullable values.
     #[tokio::test]
@@ -1186,7 +1228,10 @@ mod tests {
         let result = deserialize_for_test(&type_hint, &mut builder, &mut reader, rows, &null_mask)
             .await
             .expect("Failed to deserialize DateTime");
-        let array = result.as_any().downcast_ref::<TimestampSecondArray>().unwrap();
+        let array = result
+            .as_any()
+            .downcast_ref::<TimestampSecondArray>()
+            .unwrap();
         let expected =
             TimestampSecondArray::from(vec![1000, 2000, 3000]).with_timezone_opt(Some("UTC"));
         assert_eq!(array, &expected);
@@ -1214,11 +1259,17 @@ mod tests {
         let result = deserialize_for_test(&type_hint, &mut builder, &mut reader, rows, &null_mask)
             .await
             .expect("Failed to deserialize Nullable(DateTime)");
-        let array = result.as_any().downcast_ref::<TimestampSecondArray>().unwrap();
+        let array = result
+            .as_any()
+            .downcast_ref::<TimestampSecondArray>()
+            .unwrap();
         let expected = TimestampSecondArray::from(vec![Some(1000), None, Some(3000)])
             .with_timezone_opt(Some("UTC"));
         assert_eq!(array, &expected);
-        assert_eq!(array.nulls().unwrap().iter().collect::<Vec<bool>>(), vec![true, false, true]);
+        assert_eq!(
+            array.nulls().unwrap().iter().collect::<Vec<bool>>(),
+            vec![true, false, true]
+        );
     }
 
     /// Tests deserialization of `DateTime64(3)` with non-nullable values.
@@ -1242,7 +1293,10 @@ mod tests {
         let result = deserialize_for_test(&type_hint, &mut builder, &mut reader, rows, &null_mask)
             .await
             .expect("Failed to deserialize DateTime64(3)");
-        let array = result.as_any().downcast_ref::<TimestampMillisecondArray>().unwrap();
+        let array = result
+            .as_any()
+            .downcast_ref::<TimestampMillisecondArray>()
+            .unwrap();
         let expected =
             TimestampMillisecondArray::from(vec![1000, 2000, 3000]).with_timezone_opt(Some("UTC"));
         assert_eq!(array, &expected);
@@ -1270,11 +1324,17 @@ mod tests {
         let result = deserialize_for_test(&type_hint, &mut builder, &mut reader, rows, &null_mask)
             .await
             .expect("Failed to deserialize Nullable(DateTime64(3))");
-        let array = result.as_any().downcast_ref::<TimestampMillisecondArray>().unwrap();
+        let array = result
+            .as_any()
+            .downcast_ref::<TimestampMillisecondArray>()
+            .unwrap();
         let expected = TimestampMillisecondArray::from(vec![Some(1000), None, Some(3000)])
             .with_timezone_opt(Some("UTC"));
         assert_eq!(array, &expected);
-        assert_eq!(array.nulls().unwrap().iter().collect::<Vec<bool>>(), vec![true, false, true]);
+        assert_eq!(
+            array.nulls().unwrap().iter().collect::<Vec<bool>>(),
+            vec![true, false, true]
+        );
     }
 
     /// Tests deserialization of `DateTime64(6)` with non-nullable values.
@@ -1298,7 +1358,10 @@ mod tests {
         let result = deserialize_for_test(&type_hint, &mut builder, &mut reader, rows, &null_mask)
             .await
             .expect("Failed to deserialize DateTime64(6)");
-        let array = result.as_any().downcast_ref::<TimestampMicrosecondArray>().unwrap();
+        let array = result
+            .as_any()
+            .downcast_ref::<TimestampMicrosecondArray>()
+            .unwrap();
         let expected =
             TimestampMicrosecondArray::from(vec![1000, 2000, 3000]).with_timezone_opt(Some("UTC"));
         assert_eq!(array, &expected);
@@ -1326,11 +1389,17 @@ mod tests {
         let result = deserialize_for_test(&type_hint, &mut builder, &mut reader, rows, &null_mask)
             .await
             .expect("Failed to deserialize Nullable(DateTime64(6))");
-        let array = result.as_any().downcast_ref::<TimestampMicrosecondArray>().unwrap();
+        let array = result
+            .as_any()
+            .downcast_ref::<TimestampMicrosecondArray>()
+            .unwrap();
         let expected = TimestampMicrosecondArray::from(vec![Some(1000), None, Some(3000)])
             .with_timezone_opt(Some("UTC"));
         assert_eq!(array, &expected);
-        assert_eq!(array.nulls().unwrap().iter().collect::<Vec<bool>>(), vec![true, false, true]);
+        assert_eq!(
+            array.nulls().unwrap().iter().collect::<Vec<bool>>(),
+            vec![true, false, true]
+        );
     }
 
     /// Tests deserialization of `DateTime64(9)` with non-nullable values.
@@ -1354,7 +1423,10 @@ mod tests {
         let result = deserialize_for_test(&type_hint, &mut builder, &mut reader, rows, &null_mask)
             .await
             .expect("Failed to deserialize DateTime64(9)");
-        let array = result.as_any().downcast_ref::<TimestampNanosecondArray>().unwrap();
+        let array = result
+            .as_any()
+            .downcast_ref::<TimestampNanosecondArray>()
+            .unwrap();
         let expected =
             TimestampNanosecondArray::from(vec![1000, 2000, 3000]).with_timezone_opt(Some("UTC"));
         assert_eq!(array, &expected);
@@ -1382,11 +1454,17 @@ mod tests {
         let result = deserialize_for_test(&type_hint, &mut builder, &mut reader, rows, &null_mask)
             .await
             .expect("Failed to deserialize Nullable(DateTime64(9))");
-        let array = result.as_any().downcast_ref::<TimestampNanosecondArray>().unwrap();
+        let array = result
+            .as_any()
+            .downcast_ref::<TimestampNanosecondArray>()
+            .unwrap();
         let expected = TimestampNanosecondArray::from(vec![Some(1000), None, Some(3000)])
             .with_timezone_opt(Some("UTC"));
         assert_eq!(array, &expected);
-        assert_eq!(array.nulls().unwrap().iter().collect::<Vec<bool>>(), vec![true, false, true]);
+        assert_eq!(
+            array.nulls().unwrap().iter().collect::<Vec<bool>>(),
+            vec![true, false, true]
+        );
     }
     /// Tests deserialization of `Decimal32` with non-nullable values.
     #[tokio::test]
@@ -1410,8 +1488,9 @@ mod tests {
             .await
             .expect("Failed to deserialize Decimal32");
         let array = result.as_any().downcast_ref::<Decimal128Array>().unwrap();
-        let expected =
-            Decimal128Array::from(vec![100, 200, 300]).with_precision_and_scale(9, 2).unwrap();
+        let expected = Decimal128Array::from(vec![100, 200, 300])
+            .with_precision_and_scale(9, 2)
+            .unwrap();
         assert_eq!(array, &expected);
         assert_eq!(array.nulls(), None);
     }
@@ -1442,7 +1521,10 @@ mod tests {
             .with_precision_and_scale(9, 2)
             .unwrap();
         assert_eq!(array, &expected);
-        assert_eq!(array.nulls().unwrap().iter().collect::<Vec<bool>>(), vec![true, false, true]);
+        assert_eq!(
+            array.nulls().unwrap().iter().collect::<Vec<bool>>(),
+            vec![true, false, true]
+        );
     }
 
     /// Tests deserialization of `Decimal64` with non-nullable values.
@@ -1467,8 +1549,9 @@ mod tests {
             .await
             .expect("Failed to deserialize Decimal64");
         let array = result.as_any().downcast_ref::<Decimal128Array>().unwrap();
-        let expected =
-            Decimal128Array::from(vec![100, 200, 300]).with_precision_and_scale(18, 4).unwrap();
+        let expected = Decimal128Array::from(vec![100, 200, 300])
+            .with_precision_and_scale(18, 4)
+            .unwrap();
         assert_eq!(array, &expected);
         assert_eq!(array.nulls(), None);
     }
@@ -1499,7 +1582,10 @@ mod tests {
             .with_precision_and_scale(18, 4)
             .unwrap();
         assert_eq!(array, &expected);
-        assert_eq!(array.nulls().unwrap().iter().collect::<Vec<bool>>(), vec![true, false, true]);
+        assert_eq!(
+            array.nulls().unwrap().iter().collect::<Vec<bool>>(),
+            vec![true, false, true]
+        );
     }
 
     /// Tests deserialization of `Decimal128` with non-nullable values.
@@ -1524,8 +1610,9 @@ mod tests {
             .await
             .expect("Failed to deserialize Decimal128");
         let array = result.as_any().downcast_ref::<Decimal128Array>().unwrap();
-        let expected =
-            Decimal128Array::from(vec![100, 200, 300]).with_precision_and_scale(38, 8).unwrap();
+        let expected = Decimal128Array::from(vec![100, 200, 300])
+            .with_precision_and_scale(38, 8)
+            .unwrap();
         assert_eq!(array, &expected);
         assert_eq!(array.nulls(), None);
     }
@@ -1556,7 +1643,10 @@ mod tests {
             .with_precision_and_scale(38, 8)
             .unwrap();
         assert_eq!(array, &expected);
-        assert_eq!(array.nulls().unwrap().iter().collect::<Vec<bool>>(), vec![true, false, true]);
+        assert_eq!(
+            array.nulls().unwrap().iter().collect::<Vec<bool>>(),
+            vec![true, false, true]
+        );
     }
 
     /// Tests deserialization of `Decimal256` with non-nullable values.
@@ -1639,7 +1729,10 @@ mod tests {
                 .with_precision_and_scale(76, 10)
                 .unwrap();
         assert_eq!(array, &expected);
-        assert_eq!(array.nulls().unwrap().iter().collect::<Vec<bool>>(), vec![true, false, true]);
+        assert_eq!(
+            array.nulls().unwrap().iter().collect::<Vec<bool>>(),
+            vec![true, false, true]
+        );
     }
 
     /// Tests deserialization of `Int32` with zero rows.

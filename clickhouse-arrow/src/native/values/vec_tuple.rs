@@ -26,7 +26,9 @@ impl<T: FromSql> FromSql for VecTuple<T> {
             Type::Tuple(x) => &**x,
             x => return Err(unexpected_type(x)),
         };
-        let Value::Tuple(values) = value else { return Err(unexpected_type(type_)) };
+        let Value::Tuple(values) = value else {
+            return Err(unexpected_type(type_));
+        };
         if values.len() != subtype.len() {
             return Err(Error::Deserialize(format!(
                 "unexpected type: mismatch tuple length expected {}, got {}",

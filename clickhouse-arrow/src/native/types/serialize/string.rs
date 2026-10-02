@@ -52,7 +52,11 @@ impl Serializer for StringSerializer {
         _state: &mut SerializerState,
     ) -> Result<()> {
         for value in values {
-            let value = if value == Value::Null { type_.default_value() } else { value };
+            let value = if value == Value::Null {
+                type_.default_value()
+            } else {
+                value
+            };
             match value {
                 Value::String(bytes) => {
                     emit_bytes(type_, &bytes, writer).await?;
@@ -94,7 +98,11 @@ impl Serializer for StringSerializer {
         _state: &mut SerializerState,
     ) -> Result<()> {
         for value in values {
-            let value = if value == Value::Null { type_.default_value() } else { value };
+            let value = if value == Value::Null {
+                type_.default_value()
+            } else {
+                value
+            };
             match value {
                 Value::String(bytes) => {
                     emit_bytes_sync(type_, &bytes, writer)?;

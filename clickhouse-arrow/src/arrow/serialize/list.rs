@@ -68,7 +68,9 @@ fn unwrap_array_data_type(dt: &DataType) -> Result<&DataType> {
         | DataType::LargeList(f)
         | DataType::LargeListView(f)
         | DataType::FixedSizeList(f, _) => Ok(f.data_type()),
-        _ => Err(Error::ArrowSerialize(format!("Expected List or FixedSizeList, got {dt:?}"))),
+        _ => Err(Error::ArrowSerialize(format!(
+            "Expected List or FixedSizeList, got {dt:?}"
+        ))),
     }
 }
 
@@ -306,7 +308,9 @@ pub(super) async fn serialize_with_inner_async<W: ClickHouseWrite>(
         write_fixed_offsets_async(writer, value_len, num_rows).await?;
         // Write inner values
         let values = array.values();
-        inner_type.serialize_async(writer, values, inner_dt, state).await?;
+        inner_type
+            .serialize_async(writer, values, inner_dt, state)
+            .await?;
         return Ok(());
     }
 
@@ -415,7 +419,9 @@ mod tests {
 
     type MockWriter = Vec<u8>;
 
-    fn wrap_array(typ: Type) -> Type { Type::Array(Box::new(typ)) }
+    fn wrap_array(typ: Type) -> Type {
+        Type::Array(Box::new(typ))
+    }
 
     /// Helper function used by individual type serializers
     pub(crate) async fn test_type_serializer(
@@ -427,7 +433,9 @@ mod tests {
         let mut writer = MockWriter::new();
         let mut state = SerializerState::default()
             .with_arrow_options(ArrowOptions::default().with_strings_as_strings(true));
-        serialize_async(type_, &mut writer, array, field.data_type(), &mut state).await.unwrap();
+        serialize_async(type_, &mut writer, array, field.data_type(), &mut state)
+            .await
+            .unwrap();
         assert_eq!(writer, expected);
     }
 
@@ -448,7 +456,11 @@ mod tests {
     async fn test_serialize_list_int32() {
         let type_ = wrap_array(Type::Int32);
         let inner_field = Arc::new(Field::new(LIST_ITEM_FIELD_NAME, DataType::Int32, false));
-        let field = Arc::new(Field::new("list", DataType::List(Arc::clone(&inner_field)), false));
+        let field = Arc::new(Field::new(
+            "list",
+            DataType::List(Arc::clone(&inner_field)),
+            false,
+        ));
         let array = Arc::new(ListArray::new(
             inner_field,
             OffsetBuffer::new(vec![0, 2, 3, 5].into()),
@@ -476,11 +488,21 @@ mod tests {
         let type_ = wrap_array(Type::Nullable(Box::new(Type::Int32)));
         let offsets = OffsetBuffer::new(vec![0, 2, 3, 5].into());
         let inner_field = Arc::new(Field::new(LIST_ITEM_FIELD_NAME, DataType::Int32, true));
-        let field = Arc::new(Field::new("list", DataType::List(Arc::clone(&inner_field)), false));
+        let field = Arc::new(Field::new(
+            "list",
+            DataType::List(Arc::clone(&inner_field)),
+            false,
+        ));
         let array = Arc::new(ListArray::new(
             inner_field,
             offsets,
-            Arc::new(Int32Array::from(vec![Some(1), None, Some(3), None, Some(5)])) as ArrayRef,
+            Arc::new(Int32Array::from(vec![
+                Some(1),
+                None,
+                Some(3),
+                None,
+                Some(5),
+            ])) as ArrayRef,
             None,
         )) as ArrayRef;
         let expected = vec![
@@ -503,11 +525,19 @@ mod tests {
     #[tokio::test]
     async fn test_serialize_list_nullable_string() {
         let type_ = wrap_array(Type::Nullable(Box::new(Type::String)));
-        let values = Arc::new(StringArray::from(vec![Some("even"), Some("odd"), None, Some("odd")]))
-            as ArrayRef;
+        let values = Arc::new(StringArray::from(vec![
+            Some("even"),
+            Some("odd"),
+            None,
+            Some("odd"),
+        ])) as ArrayRef;
         let offsets = OffsetBuffer::new(vec![0, 2, 3, 4].into());
         let inner_field = Arc::new(Field::new(LIST_ITEM_FIELD_NAME, DataType::Utf8, true));
-        let field = Arc::new(Field::new("list", DataType::List(Arc::clone(&inner_field)), false));
+        let field = Arc::new(Field::new(
+            "list",
+            DataType::List(Arc::clone(&inner_field)),
+            false,
+        ));
         let list_array = ListArray::new(inner_field, offsets, values, None);
         let array = Arc::new(list_array) as ArrayRef;
         let expected = vec![
@@ -563,7 +593,11 @@ mod tests {
         let values = Arc::new(Int32Array::from(Vec::<i32>::new())) as ArrayRef;
         let offsets = OffsetBuffer::new(vec![0].into());
         let inner_field = Arc::new(Field::new(LIST_ITEM_FIELD_NAME, DataType::Int32, false));
-        let field = Arc::new(Field::new("list", DataType::List(Arc::clone(&inner_field)), false));
+        let field = Arc::new(Field::new(
+            "list",
+            DataType::List(Arc::clone(&inner_field)),
+            false,
+        ));
         let list_array = ListArray::new(inner_field, offsets, values, None);
         let array = Arc::new(list_array) as ArrayRef;
         let expected: Vec<u8> = vec![
@@ -579,7 +613,11 @@ mod tests {
         let values = Arc::new(Int32Array::from(Vec::<i32>::new())) as ArrayRef;
         let offsets = OffsetBuffer::new(vec![0, 0].into());
         let inner_field = Arc::new(Field::new(LIST_ITEM_FIELD_NAME, DataType::Int32, false));
-        let field = Arc::new(Field::new("list", DataType::List(Arc::clone(&inner_field)), false));
+        let field = Arc::new(Field::new(
+            "list",
+            DataType::List(Arc::clone(&inner_field)),
+            false,
+        ));
         let list_array = ListArray::new(inner_field, offsets, values, None);
         let array = Arc::new(list_array) as ArrayRef;
         let expected = vec![
@@ -603,8 +641,11 @@ mod tests {
             false,
         ));
         let inner_list_array = ListArray::new(inner_inner_field, inner_offsets, inner_values, None);
-        let outer_field =
-            Arc::new(Field::new("list", DataType::List(Arc::clone(&inner_field)), false));
+        let outer_field = Arc::new(Field::new(
+            "list",
+            DataType::List(Arc::clone(&inner_field)),
+            false,
+        ));
         // Outer ListArray: [[[1, 2], [3]], [[4, 5]]]
         let array = Arc::new(ListArray::new(
             inner_field,
@@ -632,8 +673,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_serialize_array_nullable_low_cardinality_string() {
-        let type_ =
-            wrap_array(Type::LowCardinality(Box::new(Type::Nullable(Box::new(Type::String)))));
+        let type_ = wrap_array(Type::LowCardinality(Box::new(Type::Nullable(Box::new(
+            Type::String,
+        )))));
         let field = Arc::new(Field::new(
             "array_low_cardinality_string_col",
             DataType::List(Arc::new(Field::new(
@@ -692,7 +734,11 @@ mod tests {
     fn test_serialize_list_int32_sync() {
         let type_ = wrap_array(Type::Int32);
         let inner_field = Arc::new(Field::new(LIST_ITEM_FIELD_NAME, DataType::Int32, false));
-        let field = Arc::new(Field::new("list", DataType::List(Arc::clone(&inner_field)), false));
+        let field = Arc::new(Field::new(
+            "list",
+            DataType::List(Arc::clone(&inner_field)),
+            false,
+        ));
         let array = Arc::new(ListArray::new(
             inner_field,
             OffsetBuffer::new(vec![0, 2, 3, 5].into()),
@@ -718,11 +764,21 @@ mod tests {
         let type_ = wrap_array(Type::Nullable(Box::new(Type::Int32)));
         let offsets = OffsetBuffer::new(vec![0, 2, 3, 5].into());
         let inner_field = Arc::new(Field::new(LIST_ITEM_FIELD_NAME, DataType::Int32, true));
-        let field = Arc::new(Field::new("list", DataType::List(Arc::clone(&inner_field)), false));
+        let field = Arc::new(Field::new(
+            "list",
+            DataType::List(Arc::clone(&inner_field)),
+            false,
+        ));
         let array = Arc::new(ListArray::new(
             inner_field,
             offsets,
-            Arc::new(Int32Array::from(vec![Some(1), None, Some(3), None, Some(5)])) as ArrayRef,
+            Arc::new(Int32Array::from(vec![
+                Some(1),
+                None,
+                Some(3),
+                None,
+                Some(5),
+            ])) as ArrayRef,
             None,
         )) as ArrayRef;
         let expected = vec![

@@ -21,12 +21,18 @@ async fn roundtrip_values(type_: &Type, values: &[Value]) -> Result<Vec<Value>> 
     let mut output = vec![];
 
     let mut state = SerializerState::default();
-    type_.serialize_prefix_async(&mut output, &mut state).await?;
-    type_.serialize_column(values.to_vec(), &mut output, &mut state).await?;
+    type_
+        .serialize_prefix_async(&mut output, &mut state)
+        .await?;
+    type_
+        .serialize_column(values.to_vec(), &mut output, &mut state)
+        .await?;
     let mut input = Cursor::new(output);
     let mut state = DeserializerState::default();
     type_.deserialize_prefix(&mut input, &mut state).await?;
-    let deserialized = type_.deserialize_column(&mut input, values.len(), &mut state).await?;
+    let deserialized = type_
+        .deserialize_column(&mut input, values.len(), &mut state)
+        .await?;
 
     Ok(deserialized)
 }
@@ -42,7 +48,10 @@ fn roundtrip_values_sync(type_: &Type, values: &[Value]) -> Result<Vec<Value>> {
 #[test]
 fn nested_prefix_matches_tuple_of_arrays_prefix() {
     let nested = Type::Nested(vec![
-        ("k".to_string(), Type::LowCardinality(Box::new(Type::String))),
+        (
+            "k".to_string(),
+            Type::LowCardinality(Box::new(Type::String)),
+        ),
         ("v".to_string(), Type::Object),
     ]);
     let tuple = Type::tuple_anon(vec![
@@ -50,15 +59,23 @@ fn nested_prefix_matches_tuple_of_arrays_prefix() {
         Type::Array(Box::new(Type::Object)),
     ]);
 
-    let rt = tokio::runtime::Builder::new_current_thread().build().unwrap();
+    let rt = tokio::runtime::Builder::new_current_thread()
+        .build()
+        .unwrap();
     let (nested_bytes, tuple_bytes) = rt.block_on(async {
         let mut nested_bytes = vec![];
         let mut nested_state = SerializerState::default();
-        nested.serialize_prefix_async(&mut nested_bytes, &mut nested_state).await.unwrap();
+        nested
+            .serialize_prefix_async(&mut nested_bytes, &mut nested_state)
+            .await
+            .unwrap();
 
         let mut tuple_bytes = vec![];
         let mut tuple_state = SerializerState::default();
-        tuple.serialize_prefix_async(&mut tuple_bytes, &mut tuple_state).await.unwrap();
+        tuple
+            .serialize_prefix_async(&mut tuple_bytes, &mut tuple_state)
+            .await
+            .unwrap();
 
         (nested_bytes, tuple_bytes)
     });
@@ -72,29 +89,37 @@ fn prefix_behavior_for_variant_dynamic_and_aggregate_function() {
     let types = vec![
         Type::Variant(vec![Type::UInt8, Type::String]),
         Type::AggregateFunction {
-            name:       "sumState".to_string(),
+            name: "sumState".to_string(),
             parameters: vec![],
-            types:      vec![Type::UInt64],
-            version:    0,
+            types: vec![Type::UInt64],
+            version: 0,
         },
         Type::SimpleAggregateFunction {
-            name:       "sum".to_string(),
+            name: "sum".to_string(),
             parameters: vec![],
-            types:      vec![Type::UInt64],
+            types: vec![Type::UInt64],
         },
     ];
 
-    let rt = tokio::runtime::Builder::new_current_thread().build().unwrap();
+    let rt = tokio::runtime::Builder::new_current_thread()
+        .build()
+        .unwrap();
     rt.block_on(async {
         for type_ in types {
             let mut bytes = vec![];
             let mut serializer_state = SerializerState::default();
-            type_.serialize_prefix_async(&mut bytes, &mut serializer_state).await.unwrap();
+            type_
+                .serialize_prefix_async(&mut bytes, &mut serializer_state)
+                .await
+                .unwrap();
 
             let mut cursor = Cursor::new(bytes.clone());
             let mut deserializer_state = DeserializerState::<()>::default();
             drop(deserializer_state.replace_custom_plan(CustomPlan::from_type_structure(&type_)));
-            type_.deserialize_prefix(&mut cursor, &mut deserializer_state).await.unwrap();
+            type_
+                .deserialize_prefix(&mut cursor, &mut deserializer_state)
+                .await
+                .unwrap();
             assert_eq!(
                 usize::try_from(cursor.position()).expect("cursor position must fit in usize"),
                 bytes.len(),
@@ -111,7 +136,10 @@ fn prefix_behavior_for_variant_dynamic_and_aggregate_function() {
         let mut cursor = Cursor::new(dynamic_prefix.clone());
         let mut deserializer_state = DeserializerState::<()>::default();
         drop(deserializer_state.replace_custom_plan(CustomPlan::from_type_structure(&dynamic)));
-        dynamic.deserialize_prefix(&mut cursor, &mut deserializer_state).await.unwrap();
+        dynamic
+            .deserialize_prefix(&mut cursor, &mut deserializer_state)
+            .await
+            .unwrap();
         assert_eq!(
             usize::try_from(cursor.position()).expect("cursor position must fit in usize"),
             dynamic_prefix.len(),
@@ -129,25 +157,41 @@ fn prefix_behavior_for_variant_dynamic_and_aggregate_function() {
 #[tokio::test]
 async fn roundtrip_u8() {
     let values = &[Value::UInt8(12), Value::UInt8(24), Value::UInt8(30)];
-    assert_eq!(&values[..], roundtrip_values(&Type::UInt8, &values[..]).await.unwrap());
+    assert_eq!(
+        &values[..],
+        roundtrip_values(&Type::UInt8, &values[..]).await.unwrap()
+    );
 }
 
 #[tokio::test]
 async fn roundtrip_u16() {
     let values = &[Value::UInt16(12), Value::UInt16(24), Value::UInt16(30000)];
-    assert_eq!(&values[..], roundtrip_values(&Type::UInt16, &values[..]).await.unwrap());
+    assert_eq!(
+        &values[..],
+        roundtrip_values(&Type::UInt16, &values[..]).await.unwrap()
+    );
 }
 
 #[tokio::test]
 async fn roundtrip_u32() {
     let values = &[Value::UInt32(12), Value::UInt32(24), Value::UInt32(900_000)];
-    assert_eq!(&values[..], roundtrip_values(&Type::UInt32, &values[..]).await.unwrap());
+    assert_eq!(
+        &values[..],
+        roundtrip_values(&Type::UInt32, &values[..]).await.unwrap()
+    );
 }
 
 #[tokio::test]
 async fn roundtrip_u64() {
-    let values = &[Value::UInt64(12), Value::UInt64(24), Value::UInt64(9_000_000_000)];
-    assert_eq!(&values[..], roundtrip_values(&Type::UInt64, &values[..]).await.unwrap());
+    let values = &[
+        Value::UInt64(12),
+        Value::UInt64(24),
+        Value::UInt64(9_000_000_000),
+    ];
+    assert_eq!(
+        &values[..],
+        roundtrip_values(&Type::UInt64, &values[..]).await.unwrap()
+    );
 }
 
 #[tokio::test]
@@ -158,32 +202,64 @@ async fn roundtrip_u128() {
         Value::UInt128(9_000_000_000),
         Value::UInt128(9_000_000_000_u128 * 9_000_000_000),
     ];
-    assert_eq!(&values[..], roundtrip_values(&Type::UInt128, &values[..]).await.unwrap());
+    assert_eq!(
+        &values[..],
+        roundtrip_values(&Type::UInt128, &values[..]).await.unwrap()
+    );
 }
 
 #[tokio::test]
 async fn roundtrip_u256() {
-    let values = &[Value::UInt256(u256([0u8; 32])), Value::UInt256(u256([7u8; 32]))];
-    assert_eq!(&values[..], roundtrip_values(&Type::UInt256, &values[..]).await.unwrap());
+    let values = &[
+        Value::UInt256(u256([0u8; 32])),
+        Value::UInt256(u256([7u8; 32])),
+    ];
+    assert_eq!(
+        &values[..],
+        roundtrip_values(&Type::UInt256, &values[..]).await.unwrap()
+    );
 }
 
 #[tokio::test]
 async fn roundtrip_i8() {
-    let values = &[Value::Int8(12), Value::Int8(24), Value::Int8(30), Value::Int8(-30)];
-    assert_eq!(&values[..], roundtrip_values(&Type::Int8, &values[..]).await.unwrap());
+    let values = &[
+        Value::Int8(12),
+        Value::Int8(24),
+        Value::Int8(30),
+        Value::Int8(-30),
+    ];
+    assert_eq!(
+        &values[..],
+        roundtrip_values(&Type::Int8, &values[..]).await.unwrap()
+    );
 }
 
 #[tokio::test]
 async fn roundtrip_i16() {
-    let values = &[Value::Int16(12), Value::Int16(24), Value::Int16(30000), Value::Int16(-30000)];
-    assert_eq!(&values[..], roundtrip_values(&Type::Int16, &values[..]).await.unwrap());
+    let values = &[
+        Value::Int16(12),
+        Value::Int16(24),
+        Value::Int16(30000),
+        Value::Int16(-30000),
+    ];
+    assert_eq!(
+        &values[..],
+        roundtrip_values(&Type::Int16, &values[..]).await.unwrap()
+    );
 }
 
 #[tokio::test]
 async fn roundtrip_i32() {
-    let values =
-        &[Value::Int32(12), Value::Int32(24), Value::Int32(900_000), Value::Int32(900_0000)];
-    assert_eq!(&values[..], roundtrip_values(&Type::Int32, &values[..]).await.unwrap());
+    let values = &[
+        Value::Int32(12),
+        Value::Int32(24),
+        Value::Int32(900_000),
+        Value::Int32(900_0000),
+    ];
+    assert_eq!(
+        &values[..],
+        roundtrip_values(&Type::Int32, &values[..]).await.unwrap()
+    );
 }
 
 #[tokio::test]
@@ -194,7 +270,10 @@ async fn roundtrip_i64() {
         Value::Int64(9_000_000_000),
         Value::Int64(-9_000_000_000),
     ];
-    assert_eq!(&values[..], roundtrip_values(&Type::Int64, &values[..]).await.unwrap());
+    assert_eq!(
+        &values[..],
+        roundtrip_values(&Type::Int64, &values[..]).await.unwrap()
+    );
 }
 
 #[tokio::test]
@@ -206,13 +285,22 @@ async fn roundtrip_i128() {
         Value::Int128(9_000_000_000_i128 * 9_000_000_000),
         Value::Int128(-9_000_000_000_i128 * 9_000_000_000),
     ];
-    assert_eq!(&values[..], roundtrip_values(&Type::Int128, &values[..]).await.unwrap());
+    assert_eq!(
+        &values[..],
+        roundtrip_values(&Type::Int128, &values[..]).await.unwrap()
+    );
 }
 
 #[tokio::test]
 async fn roundtrip_i256() {
-    let values = &[Value::Int256(i256([0u8; 32])), Value::Int256(i256([7u8; 32]))];
-    assert_eq!(&values[..], roundtrip_values(&Type::Int256, &values[..]).await.unwrap());
+    let values = &[
+        Value::Int256(i256([0u8; 32])),
+        Value::Int256(i256([7u8; 32])),
+    ];
+    assert_eq!(
+        &values[..],
+        roundtrip_values(&Type::Int256, &values[..]).await.unwrap()
+    );
 }
 
 #[tokio::test]
@@ -228,7 +316,10 @@ async fn roundtrip_f32() {
         Value::Float32(f32::INFINITY),
         Value::Float32(f32::NEG_INFINITY),
     ];
-    assert_eq!(&values[..], roundtrip_values(&Type::Float32, &values[..]).await.unwrap());
+    assert_eq!(
+        &values[..],
+        roundtrip_values(&Type::Float32, &values[..]).await.unwrap()
+    );
 }
 
 #[tokio::test]
@@ -244,7 +335,10 @@ async fn roundtrip_f64() {
         Value::Float64(f64::INFINITY),
         Value::Float64(f64::NEG_INFINITY),
     ];
-    assert_eq!(&values[..], roundtrip_values(&Type::Float64, &values[..]).await.unwrap());
+    assert_eq!(
+        &values[..],
+        roundtrip_values(&Type::Float64, &values[..]).await.unwrap()
+    );
 }
 
 #[tokio::test]
@@ -255,7 +349,12 @@ async fn roundtrip_d32() {
         Value::Decimal32(5, 900_000),
         Value::Decimal32(5, -900_000),
     ];
-    assert_eq!(&values[..], roundtrip_values(&Type::Decimal32(5), &values[..]).await.unwrap());
+    assert_eq!(
+        &values[..],
+        roundtrip_values(&Type::Decimal32(5), &values[..])
+            .await
+            .unwrap()
+    );
 }
 
 #[tokio::test]
@@ -266,7 +365,12 @@ async fn roundtrip_d64() {
         Value::Decimal64(5, 9_000_000_000),
         Value::Decimal64(5, -9_000_000_000),
     ];
-    assert_eq!(&values[..], roundtrip_values(&Type::Decimal64(5), &values[..]).await.unwrap());
+    assert_eq!(
+        &values[..],
+        roundtrip_values(&Type::Decimal64(5), &values[..])
+            .await
+            .unwrap()
+    );
 }
 
 #[tokio::test]
@@ -278,13 +382,26 @@ async fn roundtrip_d128() {
         Value::Decimal128(5, 9_000_000_000_i128 * 9_000_000_000),
         Value::Decimal128(5, -9_000_000_000_i128 * 9_000_000_000),
     ];
-    assert_eq!(&values[..], roundtrip_values(&Type::Decimal128(5), &values[..]).await.unwrap());
+    assert_eq!(
+        &values[..],
+        roundtrip_values(&Type::Decimal128(5), &values[..])
+            .await
+            .unwrap()
+    );
 }
 
 #[tokio::test]
 async fn roundtrip_d256() {
-    let values = &[Value::Decimal256(5, i256([0u8; 32])), Value::Decimal256(5, i256([7u8; 32]))];
-    assert_eq!(&values[..], roundtrip_values(&Type::Decimal256(5), &values[..]).await.unwrap());
+    let values = &[
+        Value::Decimal256(5, i256([0u8; 32])),
+        Value::Decimal256(5, i256([7u8; 32])),
+    ];
+    assert_eq!(
+        &values[..],
+        roundtrip_values(&Type::Decimal256(5), &values[..])
+            .await
+            .unwrap()
+    );
 }
 
 #[tokio::test]
@@ -299,7 +416,9 @@ async fn roundtrip_null_int() {
     ];
     assert_eq!(
         &values[..],
-        roundtrip_values(&Type::Nullable(Box::new(Type::UInt32)), &values[..]).await.unwrap()
+        roundtrip_values(&Type::Nullable(Box::new(Type::UInt32)), &values[..])
+            .await
+            .unwrap()
     );
 }
 
@@ -312,14 +431,21 @@ async fn roundtrip_string() {
         Value::string("TESTST"),
         Value::string("日本語"),
     ];
-    assert_eq!(&values[..], roundtrip_values(&Type::String, &values[..]).await.unwrap());
     assert_eq!(
         &values[..],
-        roundtrip_values(&Type::FixedSizedString(32), &values[..]).await.unwrap()
+        roundtrip_values(&Type::String, &values[..]).await.unwrap()
+    );
+    assert_eq!(
+        &values[..],
+        roundtrip_values(&Type::FixedSizedString(32), &values[..])
+            .await
+            .unwrap()
     );
     assert_ne!(
         &values[..],
-        roundtrip_values(&Type::FixedSizedString(3), &values[..]).await.unwrap()
+        roundtrip_values(&Type::FixedSizedString(3), &values[..])
+            .await
+            .unwrap()
     );
 }
 
@@ -337,7 +463,9 @@ async fn roundtrip_null_string() {
     ];
     assert_eq!(
         &values[..],
-        roundtrip_values(&Type::Nullable(Box::new(Type::String)), &values[..]).await.unwrap()
+        roundtrip_values(&Type::Nullable(Box::new(Type::String)), &values[..])
+            .await
+            .unwrap()
     );
 }
 
@@ -345,10 +473,16 @@ async fn roundtrip_null_string() {
 async fn roundtrip_object() {
     let obj = "{\"a\":\"a\"}";
     let values = &[Value::string(obj)];
-    assert_eq!(&values[..], roundtrip_values(&Type::String, &values[..]).await.unwrap());
+    assert_eq!(
+        &values[..],
+        roundtrip_values(&Type::String, &values[..]).await.unwrap()
+    );
 
     let values = &[Value::Object(obj.as_bytes().to_vec())];
-    assert_eq!(&values[..], roundtrip_values(&Type::Object, &values[..]).await.unwrap());
+    assert_eq!(
+        &values[..],
+        roundtrip_values(&Type::Object, &values[..]).await.unwrap()
+    );
 }
 
 #[tokio::test]
@@ -358,25 +492,41 @@ async fn roundtrip_uuid() {
         Value::Uuid(Uuid::from_u128(1)),
         Value::Uuid(Uuid::from_u128(456_345_634_563_456)),
     ];
-    assert_eq!(&values[..], roundtrip_values(&Type::Uuid, &values[..]).await.unwrap());
+    assert_eq!(
+        &values[..],
+        roundtrip_values(&Type::Uuid, &values[..]).await.unwrap()
+    );
 }
 
 #[tokio::test]
 async fn roundtrip_ipv4() {
     let values = &[Value::Ipv4(Ipv4Addr::UNSPECIFIED.into())];
-    assert_eq!(&values[..], roundtrip_values(&Type::Ipv4, &values[..]).await.unwrap());
+    assert_eq!(
+        &values[..],
+        roundtrip_values(&Type::Ipv4, &values[..]).await.unwrap()
+    );
 }
 
 #[tokio::test]
 async fn roundtrip_ipv6() {
     let values = &[Value::Ipv6(Ipv6Addr::UNSPECIFIED.into())];
-    assert_eq!(&values[..], roundtrip_values(&Type::Ipv6, &values[..]).await.unwrap());
+    assert_eq!(
+        &values[..],
+        roundtrip_values(&Type::Ipv6, &values[..]).await.unwrap()
+    );
 }
 
 #[tokio::test]
 async fn roundtrip_date() {
-    let values = &[Value::Date(Date(0)), Value::Date(Date(3234)), Value::Date(Date(45345))];
-    assert_eq!(&values[..], roundtrip_values(&Type::Date, &values[..]).await.unwrap());
+    let values = &[
+        Value::Date(Date(0)),
+        Value::Date(Date(3234)),
+        Value::Date(Date(45345)),
+    ];
+    assert_eq!(
+        &values[..],
+        roundtrip_values(&Type::Date, &values[..]).await.unwrap()
+    );
 }
 
 #[tokio::test]
@@ -388,7 +538,9 @@ async fn roundtrip_datetime() {
     ];
     assert_eq!(
         &values[..],
-        roundtrip_values(&Type::DateTime(chrono_tz::UTC), &values[..]).await.unwrap()
+        roundtrip_values(&Type::DateTime(chrono_tz::UTC), &values[..])
+            .await
+            .unwrap()
     );
 }
 
@@ -401,7 +553,9 @@ async fn roundtrip_datetime64() {
     ];
     assert_eq!(
         &values[..],
-        roundtrip_values(&Type::DateTime64(3, chrono_tz::UTC), &values[..]).await.unwrap()
+        roundtrip_values(&Type::DateTime64(3, chrono_tz::UTC), &values[..])
+            .await
+            .unwrap()
     );
 }
 
@@ -409,14 +563,20 @@ async fn roundtrip_datetime64() {
 async fn roundtrip_enum8() {
     let type_ = Type::Enum8(vec![("hello".into(), 0)]);
     let values = &[Value::Enum8("hello".into(), 0)];
-    assert_eq!(&values[..], roundtrip_values(&type_, &values[..]).await.unwrap());
+    assert_eq!(
+        &values[..],
+        roundtrip_values(&type_, &values[..]).await.unwrap()
+    );
 }
 
 #[tokio::test]
 async fn roundtrip_enum16() {
     let type_ = Type::Enum16(vec![("hello".into(), 0)]);
     let values = &[Value::Enum16("hello".into(), 0)];
-    assert_eq!(&values[..], roundtrip_values(&type_, &values[..]).await.unwrap());
+    assert_eq!(
+        &values[..],
+        roundtrip_values(&type_, &values[..]).await.unwrap()
+    );
 }
 
 #[tokio::test]
@@ -428,7 +588,9 @@ async fn roundtrip_array() {
     ];
     assert_eq!(
         &values[..],
-        roundtrip_values(&Type::Array(Box::new(Type::UInt32)), &values[..]).await.unwrap()
+        roundtrip_values(&Type::Array(Box::new(Type::UInt32)), &values[..])
+            .await
+            .unwrap()
     );
 }
 
@@ -449,9 +611,12 @@ async fn roundtrip_array2() {
     ];
     assert_eq!(
         &values[..],
-        roundtrip_values(&Type::Array(Box::new(Type::Array(Box::new(Type::UInt32)))), &values[..])
-            .await
-            .unwrap()
+        roundtrip_values(
+            &Type::Array(Box::new(Type::Array(Box::new(Type::UInt32)))),
+            &values[..]
+        )
+        .await
+        .unwrap()
     );
 }
 
@@ -464,9 +629,12 @@ async fn roundtrip_tuple() {
     ];
     assert_eq!(
         &values[..],
-        roundtrip_values(&Type::tuple_anon(vec![Type::UInt32, Type::UInt16]), &values[..])
-            .await
-            .unwrap()
+        roundtrip_values(
+            &Type::tuple_anon(vec![Type::UInt32, Type::UInt16]),
+            &values[..]
+        )
+        .await
+        .unwrap()
     );
 }
 
@@ -525,8 +693,14 @@ async fn roundtrip_array_tuple() {
 async fn roundtrip_tuple_array() {
     let values = &[
         Value::Tuple(vec![Value::Array(vec![]), Value::Array(vec![])]),
-        Value::Tuple(vec![Value::Array(vec![Value::UInt32(1)]), Value::Array(vec![])]),
-        Value::Tuple(vec![Value::Array(vec![]), Value::Array(vec![Value::UInt16(2)])]),
+        Value::Tuple(vec![
+            Value::Array(vec![Value::UInt32(1)]),
+            Value::Array(vec![]),
+        ]),
+        Value::Tuple(vec![
+            Value::Array(vec![]),
+            Value::Array(vec![Value::UInt16(2)]),
+        ]),
         Value::Tuple(vec![
             Value::Array(vec![Value::UInt32(3)]),
             Value::Array(vec![Value::UInt16(4)]),
@@ -582,16 +756,19 @@ async fn roundtrip_map() {
     let values = &[
         Value::Map(vec![], vec![]),
         Value::Map(vec![Value::UInt32(1)], vec![Value::UInt16(2)]),
-        Value::Map(vec![Value::UInt32(5), Value::UInt32(3)], vec![
-            Value::UInt16(6),
-            Value::UInt16(4),
-        ]),
+        Value::Map(
+            vec![Value::UInt32(5), Value::UInt32(3)],
+            vec![Value::UInt16(6), Value::UInt16(4)],
+        ),
     ];
     assert_eq!(
         &values[..],
-        roundtrip_values(&Type::Map(Box::new(Type::UInt32), Box::new(Type::UInt16)), &values[..])
-            .await
-            .unwrap()
+        roundtrip_values(
+            &Type::Map(Box::new(Type::UInt32), Box::new(Type::UInt16)),
+            &values[..]
+        )
+        .await
+        .unwrap()
     );
 }
 
@@ -741,9 +918,9 @@ async fn roundtrip_low_cardinality_array_null() {
     assert_eq!(
         &values[..],
         roundtrip_values(
-            &Type::Array(Box::new(Type::LowCardinality(Box::new(Type::Nullable(Box::new(
-                Type::String
-            )))))),
+            &Type::Array(Box::new(Type::LowCardinality(Box::new(Type::Nullable(
+                Box::new(Type::String)
+            ))))),
             &values[..]
         )
         .await
@@ -753,7 +930,11 @@ async fn roundtrip_low_cardinality_array_null() {
 
 #[tokio::test]
 async fn roundtrip_nullable_low_cardinality() {
-    let values = &[Value::String("active".into()), Value::Null, Value::String("inactive".into())];
+    let values = &[
+        Value::String("active".into()),
+        Value::Null,
+        Value::String("inactive".into()),
+    ];
     assert_eq!(
         &values[..],
         roundtrip_values(
@@ -803,19 +984,36 @@ async fn roundtrip_geo() {
     // Points
     let point = |x| Point([x, x + 2.0]);
     let values = &[Value::Point(point(1.0)), Value::Point(point(3.0))];
-    assert_eq!(&values[..], roundtrip_values(&Type::Point, &values[..]).await.unwrap());
+    assert_eq!(
+        &values[..],
+        roundtrip_values(&Type::Point, &values[..]).await.unwrap()
+    );
     // Ring
     let ring = |x| Ring(vec![point(x), point(2.0 * x)]);
     let values = &[Value::Ring(ring(1.0)), Value::Ring(ring(3.0))];
-    assert_eq!(&values[..], roundtrip_values(&Type::Ring, &values[..]).await.unwrap());
+    assert_eq!(
+        &values[..],
+        roundtrip_values(&Type::Ring, &values[..]).await.unwrap()
+    );
     // Polygon
     let polygon = |x| Polygon(vec![ring(x), ring(2.0 * x)]);
     let values = &[Value::Polygon(polygon(1.0)), Value::Polygon(polygon(3.0))];
-    assert_eq!(&values[..], roundtrip_values(&Type::Polygon, &values[..]).await.unwrap());
+    assert_eq!(
+        &values[..],
+        roundtrip_values(&Type::Polygon, &values[..]).await.unwrap()
+    );
     // Multipolygon
     let multipolygon = |x| MultiPolygon(vec![polygon(x), polygon(2.0 * x)]);
-    let values = &[Value::MultiPolygon(multipolygon(1.0)), Value::MultiPolygon(multipolygon(3.0))];
-    assert_eq!(&values[..], roundtrip_values(&Type::MultiPolygon, &values[..]).await.unwrap());
+    let values = &[
+        Value::MultiPolygon(multipolygon(1.0)),
+        Value::MultiPolygon(multipolygon(3.0)),
+    ];
+    assert_eq!(
+        &values[..],
+        roundtrip_values(&Type::MultiPolygon, &values[..])
+            .await
+            .unwrap()
+    );
 }
 
 #[test]
@@ -833,13 +1031,23 @@ fn test_type_methods() {
     assert!(Type::String.unwrap_map().is_err());
 
     let t = Type::tuple_anon(vec![Type::String]);
-    assert_eq!(t.untuple().unwrap().iter().map(|(_, type_)| type_).collect::<Vec<_>>(), vec![
-        &Type::String
-    ]);
+    assert_eq!(
+        t.untuple()
+            .unwrap()
+            .iter()
+            .map(|(_, type_)| type_)
+            .collect::<Vec<_>>(),
+        vec![&Type::String]
+    );
     assert!(Type::String.untuple().is_none());
-    assert_eq!(t.unwrap_tuple().unwrap().iter().map(|(_, type_)| type_).collect::<Vec<_>>(), vec![
-        &Type::String
-    ]);
+    assert_eq!(
+        t.unwrap_tuple()
+            .unwrap()
+            .iter()
+            .map(|(_, type_)| type_)
+            .collect::<Vec<_>>(),
+        vec![&Type::String]
+    );
     assert!(Type::String.unwrap_tuple().is_err());
 
     let t = Type::Nullable(Box::new(Type::String));
@@ -890,14 +1098,23 @@ fn test_type_display_core_variants() {
             Type::Enum16(vec![("small".to_string(), 100), ("large".to_string(), 200)]),
             "Enum16('small' = 100,'large' = 200)",
         ),
-        (Type::LowCardinality(Box::new(Type::String)), "LowCardinality(String)"),
+        (
+            Type::LowCardinality(Box::new(Type::String)),
+            "LowCardinality(String)",
+        ),
         (Type::Array(Box::new(Type::Int32)), "Array(Int32)"),
         (
-            Type::Tuple(vec![(Some("x".to_string()), Type::UInt8), (None, Type::String)]),
+            Type::Tuple(vec![
+                (Some("x".to_string()), Type::UInt8),
+                (None, Type::String),
+            ]),
             "Tuple(x UInt8,String)",
         ),
         (Type::Nullable(Box::new(Type::UInt32)), "Nullable(UInt32)"),
-        (Type::Map(Box::new(Type::String), Box::new(Type::UInt32)), "Map(String,UInt32)"),
+        (
+            Type::Map(Box::new(Type::String), Box::new(Type::UInt32)),
+            "Map(String,UInt32)",
+        ),
         (Type::Object, "JSON"),
     ];
 
@@ -910,7 +1127,10 @@ fn test_type_display_core_variants() {
 #[test]
 fn test_type_display_extended_variants() {
     let cases = vec![
-        (Type::Variant(vec![Type::UInt8, Type::String]), "Variant(UInt8,String)"),
+        (
+            Type::Variant(vec![Type::UInt8, Type::String]),
+            "Variant(UInt8,String)",
+        ),
         (Type::Dynamic { max_types: 32 }, "Dynamic"),
         (Type::Dynamic { max_types: 8 }, "Dynamic(max_types=8)"),
         (
@@ -923,24 +1143,30 @@ fn test_type_display_extended_variants() {
         (Type::BFloat16, "BFloat16"),
         (Type::Time, "Time"),
         (Type::Time64(6), "Time64(6)"),
-        (Type::QBit { element_type: Box::new(Type::Float32), dimension: 4 }, "QBit(Float32,4)"),
+        (
+            Type::QBit {
+                element_type: Box::new(Type::Float32),
+                dimension: 4,
+            },
+            "QBit(Float32,4)",
+        ),
         (
             Type::AggregateFunction {
-                name:       "sumState".to_string(),
+                name: "sumState".to_string(),
                 parameters: vec![],
-                types:      vec![Type::UInt64],
-                version:    0,
+                types: vec![Type::UInt64],
+                version: 0,
             },
             "AggregateFunction(sumState,UInt64)",
         ),
         (
             Type::SimpleAggregateFunction {
-                name:       "quantiles".to_string(),
+                name: "quantiles".to_string(),
                 parameters: vec![
                     AggregateParameter::Float64(0.5_f64.to_bits()),
                     AggregateParameter::String("hi".to_string()),
                 ],
-                types:      vec![Type::UInt64],
+                types: vec![Type::UInt64],
             },
             "SimpleAggregateFunction(quantiles(0.5,'hi'),UInt64)",
         ),
@@ -969,24 +1195,48 @@ fn test_type_default_value_core_variants() {
         (Type::Uuid, Value::Uuid(Uuid::from_u128(0))),
         (Type::Date, Value::Date(Date(0))),
         (Type::Date32, Value::Date32(Date32(0))),
-        (Type::DateTime(Tz::UTC), Value::DateTime(DateTime(Tz::UTC, 0))),
-        (Type::DateTime64(3, Tz::UTC), Value::DateTime64(DynDateTime64(Tz::UTC, 0, 3))),
+        (
+            Type::DateTime(Tz::UTC),
+            Value::DateTime(DateTime(Tz::UTC, 0)),
+        ),
+        (
+            Type::DateTime64(3, Tz::UTC),
+            Value::DateTime64(DynDateTime64(Tz::UTC, 0, 3)),
+        ),
         (Type::Ipv4, Value::Ipv4(Ipv4::default())),
         (Type::Ipv6, Value::Ipv6(Ipv6::default())),
-        (Type::Enum8(vec![("x".to_string(), 1)]), Value::Enum8(String::new(), 0)),
-        (Type::Enum16(vec![("x".to_string(), 1)]), Value::Enum16(String::new(), 0)),
-        (Type::LowCardinality(Box::new(Type::String)), Value::String(vec![])),
+        (
+            Type::Enum8(vec![("x".to_string(), 1)]),
+            Value::Enum8(String::new(), 0),
+        ),
+        (
+            Type::Enum16(vec![("x".to_string(), 1)]),
+            Value::Enum16(String::new(), 0),
+        ),
+        (
+            Type::LowCardinality(Box::new(Type::String)),
+            Value::String(vec![]),
+        ),
         (Type::Array(Box::new(Type::UInt8)), Value::Array(vec![])),
         (
-            Type::Tuple(vec![(Some("x".to_string()), Type::UInt8), (None, Type::String)]),
+            Type::Tuple(vec![
+                (Some("x".to_string()), Type::UInt8),
+                (None, Type::String),
+            ]),
             Value::Tuple(vec![Value::UInt8(0), Value::String(vec![])]),
         ),
         (Type::Nullable(Box::new(Type::UInt32)), Value::Null),
-        (Type::Map(Box::new(Type::String), Box::new(Type::UInt32)), Value::Map(vec![], vec![])),
+        (
+            Type::Map(Box::new(Type::String), Box::new(Type::UInt32)),
+            Value::Map(vec![], vec![]),
+        ),
         (Type::Point, Value::Point(Point::default())),
         (Type::Ring, Value::Ring(Ring::default())),
         (Type::Polygon, Value::Polygon(Polygon::default())),
-        (Type::MultiPolygon, Value::MultiPolygon(MultiPolygon::default())),
+        (
+            Type::MultiPolygon,
+            Value::MultiPolygon(MultiPolygon::default()),
+        ),
         (Type::Object, Value::Object("{}".as_bytes().to_vec())),
     ];
 
@@ -1014,29 +1264,35 @@ fn test_type_default_value_extended_variants() {
         (Type::BFloat16, Value::UInt16(0)),
         (Type::Time, Value::UInt32(0)),
         (Type::Time64(6), Value::Int64(0)),
-        (Type::QBit { element_type: Box::new(Type::Float32), dimension: 4 }, Value::Array(vec![])),
+        (
+            Type::QBit {
+                element_type: Box::new(Type::Float32),
+                dimension: 4,
+            },
+            Value::Array(vec![]),
+        ),
         (
             Type::AggregateFunction {
-                name:       "sumState".to_string(),
+                name: "sumState".to_string(),
                 parameters: vec![],
-                types:      vec![Type::UInt64],
-                version:    0,
+                types: vec![Type::UInt64],
+                version: 0,
             },
             Value::String(vec![]),
         ),
         (
             Type::SimpleAggregateFunction {
-                name:       "sum".to_string(),
+                name: "sum".to_string(),
                 parameters: vec![],
-                types:      vec![Type::UInt64],
+                types: vec![Type::UInt64],
             },
             Value::UInt64(0),
         ),
         (
             Type::SimpleAggregateFunction {
-                name:       "sum".to_string(),
+                name: "sum".to_string(),
                 parameters: vec![],
-                types:      vec![],
+                types: vec![],
             },
             Value::Null,
         ),
@@ -1053,12 +1309,32 @@ fn test_type_validate() {
     assert!(Type::Decimal128(100).validate().is_err());
     assert!(Type::Decimal256(100).validate().is_err());
     assert!(Type::DateTime64(100, Tz::UTC).validate().is_err());
-    assert!(Type::LowCardinality(Box::new(Type::MultiPolygon)).validate().is_err());
-    assert!(Type::LowCardinality(Box::new(Type::String)).validate().is_ok());
+    assert!(
+        Type::LowCardinality(Box::new(Type::MultiPolygon))
+            .validate()
+            .is_err()
+    );
+    assert!(
+        Type::LowCardinality(Box::new(Type::String))
+            .validate()
+            .is_ok()
+    );
     assert!(Type::tuple_anon(vec![Type::String]).validate().is_ok());
-    assert!(Type::Nullable(Box::new(Type::Nullable(Box::new(Type::String)))).validate().is_err());
-    assert!(Type::Map(Box::new(Type::String), Box::new(Type::String)).validate().is_ok());
-    assert!(Type::Map(Box::new(Type::Ipv4), Box::new(Type::String)).validate().is_err());
+    assert!(
+        Type::Nullable(Box::new(Type::Nullable(Box::new(Type::String))))
+            .validate()
+            .is_err()
+    );
+    assert!(
+        Type::Map(Box::new(Type::String), Box::new(Type::String))
+            .validate()
+            .is_ok()
+    );
+    assert!(
+        Type::Map(Box::new(Type::Ipv4), Box::new(Type::String))
+            .validate()
+            .is_err()
+    );
 
     #[cfg(feature = "extended-types")]
     {
@@ -1068,19 +1344,34 @@ fn test_type_validate() {
         assert!(Type::Dynamic { max_types: 254 }.validate().is_ok());
         assert!(Type::Time64(10).validate().is_err());
         assert!(
-            Type::QBit { element_type: Box::new(Type::String), dimension: 1 }.validate().is_err()
+            Type::QBit {
+                element_type: Box::new(Type::String),
+                dimension: 1
+            }
+            .validate()
+            .is_err()
         );
         assert!(
-            Type::QBit { element_type: Box::new(Type::Float32), dimension: 0 }.validate().is_err()
+            Type::QBit {
+                element_type: Box::new(Type::Float32),
+                dimension: 0
+            }
+            .validate()
+            .is_err()
         );
         assert!(
-            Type::QBit { element_type: Box::new(Type::BFloat16), dimension: 8 }.validate().is_ok()
+            Type::QBit {
+                element_type: Box::new(Type::BFloat16),
+                dimension: 8
+            }
+            .validate()
+            .is_ok()
         );
         assert!(
             Type::SimpleAggregateFunction {
-                name:       "sum".to_string(),
+                name: "sum".to_string(),
                 parameters: vec![],
-                types:      vec![],
+                types: vec![],
             }
             .validate()
             .is_err()
@@ -1102,8 +1393,14 @@ fn test_aggregate_parameter_display_variants() {
     assert_eq!(AggregateParameter::Bool(true).to_string(), "true");
     assert_eq!(AggregateParameter::UInt64(42).to_string(), "42");
     assert_eq!(AggregateParameter::Int64(-7).to_string(), "-7");
-    assert_eq!(AggregateParameter::Float64(f64::INFINITY.to_bits()).to_string(), "inf");
-    assert_eq!(AggregateParameter::Float64(f64::NEG_INFINITY.to_bits()).to_string(), "-inf");
+    assert_eq!(
+        AggregateParameter::Float64(f64::INFINITY.to_bits()).to_string(),
+        "inf"
+    );
+    assert_eq!(
+        AggregateParameter::Float64(f64::NEG_INFINITY.to_bits()).to_string(),
+        "-inf"
+    );
     assert_eq!(
         AggregateParameter::String("'\n\r\t\\\0".to_string()).to_string(),
         "'''\\n\\r\\t\\\\\\0'"
@@ -1129,7 +1426,10 @@ fn test_type_validate_value_core_variants() {
     );
     assert!(
         Type::tuple_anon(vec![Type::UInt8, Type::String])
-            .validate_value(&Value::Tuple(vec![Value::UInt8(1), Value::String(b"x".to_vec())]))
+            .validate_value(&Value::Tuple(vec![
+                Value::UInt8(1),
+                Value::String(b"x".to_vec())
+            ]))
             .is_ok()
     );
     assert!(
@@ -1139,14 +1439,18 @@ fn test_type_validate_value_core_variants() {
     );
     assert!(
         Type::Map(Box::new(Type::UInt8), Box::new(Type::String))
-            .validate_value(&Value::Map(vec![Value::UInt8(1)], vec![Value::String(b"x".to_vec())]))
+            .validate_value(&Value::Map(
+                vec![Value::UInt8(1)],
+                vec![Value::String(b"x".to_vec())]
+            ))
             .is_ok()
     );
     assert!(
         Type::Map(Box::new(Type::UInt8), Box::new(Type::String))
-            .validate_value(&Value::Map(vec![Value::String(b"x".to_vec())], vec![Value::String(
-                b"x".to_vec()
-            )],))
+            .validate_value(&Value::Map(
+                vec![Value::String(b"x".to_vec())],
+                vec![Value::String(b"x".to_vec())],
+            ))
             .is_err()
     );
 }
@@ -1157,27 +1461,42 @@ fn test_type_validate_value_extended_variants() {
     assert!(Type::BFloat16.validate_value(&Value::UInt16(0)).is_ok());
     assert!(Type::Time.validate_value(&Value::UInt32(0)).is_ok());
     assert!(Type::Time64(3).validate_value(&Value::Int64(0)).is_ok());
-    assert!(Type::Variant(vec![Type::UInt8, Type::String]).validate_value(&Value::Null).is_ok());
+    assert!(
+        Type::Variant(vec![Type::UInt8, Type::String])
+            .validate_value(&Value::Null)
+            .is_ok()
+    );
     assert!(
         Type::Variant(vec![Type::UInt8, Type::String])
             .validate_value(&Value::String(b"x".to_vec()))
             .is_ok()
     );
-    assert!(Type::Dynamic { max_types: 8 }.validate_value(&Value::Map(vec![], vec![])).is_ok());
     assert!(
-        Type::QBit { element_type: Box::new(Type::BFloat16), dimension: 2 }
-            .validate_value(&Value::Array(vec![Value::UInt16(1), Value::Float32(2.0)]))
+        Type::Dynamic { max_types: 8 }
+            .validate_value(&Value::Map(vec![], vec![]))
             .is_ok()
     );
     assert!(
-        Type::QBit { element_type: Box::new(Type::Float64), dimension: 2 }
-            .validate_value(&Value::Array(vec![Value::Float64(1.0)]))
-            .is_err()
+        Type::QBit {
+            element_type: Box::new(Type::BFloat16),
+            dimension: 2
+        }
+        .validate_value(&Value::Array(vec![Value::UInt16(1), Value::Float32(2.0)]))
+        .is_ok()
     );
     assert!(
-        Type::Nested(
-            vec![("name".to_string(), Type::String), ("score".to_string(), Type::UInt32),]
-        )
+        Type::QBit {
+            element_type: Box::new(Type::Float64),
+            dimension: 2
+        }
+        .validate_value(&Value::Array(vec![Value::Float64(1.0)]))
+        .is_err()
+    );
+    assert!(
+        Type::Nested(vec![
+            ("name".to_string(), Type::String),
+            ("score".to_string(), Type::UInt32),
+        ])
         .validate_value(&Value::Tuple(vec![
             Value::Array(vec![Value::String(b"a".to_vec())]),
             Value::Array(vec![Value::UInt32(1)]),
@@ -1191,19 +1510,19 @@ fn test_type_validate_value_extended_variants() {
     );
     assert!(
         Type::AggregateFunction {
-            name:       "sumState".to_string(),
+            name: "sumState".to_string(),
             parameters: vec![],
-            types:      vec![Type::UInt64],
-            version:    0,
+            types: vec![Type::UInt64],
+            version: 0,
         }
         .validate_value(&Value::String(vec![]))
         .is_ok()
     );
     assert!(
         Type::SimpleAggregateFunction {
-            name:       "sum".to_string(),
+            name: "sum".to_string(),
             parameters: vec![],
-            types:      vec![Type::UInt64],
+            types: vec![Type::UInt64],
         }
         .validate_value(&Value::UInt64(1))
         .is_ok()
@@ -1218,7 +1537,10 @@ fn test_type_estimate_capacity_core_variants() {
     assert_eq!(Type::DateTime64(3, Tz::UTC).estimate_capacity(), 8);
     assert_eq!(Type::FixedSizedString(5).estimate_capacity(), 5);
     assert_eq!(Type::Array(Box::new(Type::UInt16)).estimate_capacity(), 48);
-    assert_eq!(Type::Map(Box::new(Type::UInt8), Box::new(Type::String)).estimate_capacity(), 37);
+    assert_eq!(
+        Type::Map(Box::new(Type::UInt8), Box::new(Type::String)).estimate_capacity(),
+        37
+    );
     assert_eq!(
         Type::tuple_anon(vec![Type::UInt8, Type::String, Type::UInt16]).estimate_capacity(),
         35
@@ -1231,55 +1553,75 @@ fn test_type_estimate_capacity_extended_variants() {
     assert_eq!(Type::BFloat16.estimate_capacity(), 2);
     assert_eq!(Type::Time.estimate_capacity(), 4);
     assert_eq!(Type::Time64(3).estimate_capacity(), 8);
-    assert_eq!(Type::Variant(vec![Type::UInt8, Type::String]).estimate_capacity(), 2);
+    assert_eq!(
+        Type::Variant(vec![Type::UInt8, Type::String]).estimate_capacity(),
+        2
+    );
     assert_eq!(Type::Dynamic { max_types: 8 }.estimate_capacity(), 64);
     assert_eq!(
-        Type::QBit { element_type: Box::new(Type::BFloat16), dimension: 4 }.estimate_capacity(),
+        Type::QBit {
+            element_type: Box::new(Type::BFloat16),
+            dimension: 4
+        }
+        .estimate_capacity(),
         8
     );
     assert_eq!(
-        Type::QBit { element_type: Box::new(Type::Float32), dimension: 4 }.estimate_capacity(),
+        Type::QBit {
+            element_type: Box::new(Type::Float32),
+            dimension: 4
+        }
+        .estimate_capacity(),
         16
     );
     assert_eq!(
-        Type::QBit { element_type: Box::new(Type::Float64), dimension: 4 }.estimate_capacity(),
+        Type::QBit {
+            element_type: Box::new(Type::Float64),
+            dimension: 4
+        }
+        .estimate_capacity(),
         32
     );
     assert_eq!(
-        Type::QBit { element_type: Box::new(Type::String), dimension: 4 }.estimate_capacity(),
+        Type::QBit {
+            element_type: Box::new(Type::String),
+            dimension: 4
+        }
+        .estimate_capacity(),
         0
     );
     assert_eq!(
-        Type::Nested(
-            vec![("name".to_string(), Type::String), ("score".to_string(), Type::UInt32),]
-        )
+        Type::Nested(vec![
+            ("name".to_string(), Type::String),
+            ("score".to_string(), Type::UInt32),
+        ])
         .estimate_capacity(),
         288
     );
     assert_eq!(
         Type::AggregateFunction {
-            name:       "sumState".to_string(),
+            name: "sumState".to_string(),
             parameters: vec![],
-            types:      vec![Type::UInt64],
-            version:    0,
+            types: vec![Type::UInt64],
+            version: 0,
         }
         .estimate_capacity(),
         64
     );
     assert_eq!(
         Type::SimpleAggregateFunction {
-            name:       "sum".to_string(),
+            name: "sum".to_string(),
             parameters: vec![],
-            types:      vec![Type::UInt64],
+            types: vec![Type::UInt64],
         }
         .estimate_capacity(),
         8
     );
     assert_eq!(
         Type::SimpleAggregateFunction {
-            name:       "sum".to_string(),
+            name: "sum".to_string(),
             parameters: vec![],
-            types:      vec![],
+            types: vec![],
         }
         .estimate_capacity(),
         64
@@ -1288,118 +1630,209 @@ fn test_type_estimate_capacity_extended_variants() {
 
 #[cfg(feature = "extended-types")]
 #[tokio::test]
+#[cfg_attr(feature = "extended-types", expect(clippy::too_many_lines))]
 async fn test_native_extended_type_dispatch_paths() {
     let nested = Type::Nested(vec![("name".to_string(), Type::String)]);
     let simple_agg = Type::SimpleAggregateFunction {
-        name:       "sum".to_string(),
+        name: "sum".to_string(),
         parameters: vec![],
-        types:      vec![Type::UInt64],
+        types: vec![Type::UInt64],
     };
     let simple_agg_empty = Type::SimpleAggregateFunction {
-        name:       "sum".to_string(),
+        name: "sum".to_string(),
         parameters: vec![],
-        types:      vec![],
+        types: vec![],
     };
 
     let mut reader = Cursor::new(vec![]);
     let mut deser_state = DeserializerState::default();
-    assert!(nested.deserialize_column(&mut reader, 0, &mut deser_state).await.is_ok());
+    assert!(
+        nested
+            .deserialize_column(&mut reader, 0, &mut deser_state)
+            .await
+            .is_ok()
+    );
 
     let mut reader = Cursor::new(vec![]);
     let mut deser_state = DeserializerState::default();
-    assert!(simple_agg.deserialize_column(&mut reader, 0, &mut deser_state).await.is_ok());
+    assert!(
+        simple_agg
+            .deserialize_column(&mut reader, 0, &mut deser_state)
+            .await
+            .is_ok()
+    );
 
     let mut reader = Cursor::new(vec![]);
     let mut deser_state = DeserializerState::default();
-    assert!(simple_agg_empty.deserialize_column(&mut reader, 0, &mut deser_state).await.is_err());
+    assert!(
+        simple_agg_empty
+            .deserialize_column(&mut reader, 0, &mut deser_state)
+            .await
+            .is_err()
+    );
 
     for unsupported in [
         Type::Variant(vec![Type::UInt8]),
         Type::Dynamic { max_types: 8 },
-        Type::QBit { element_type: Box::new(Type::Float32), dimension: 2 },
+        Type::QBit {
+            element_type: Box::new(Type::Float32),
+            dimension: 2,
+        },
         Type::AggregateFunction {
-            name:       "sumState".to_string(),
+            name: "sumState".to_string(),
             parameters: vec![],
-            types:      vec![Type::UInt64],
-            version:    0,
+            types: vec![Type::UInt64],
+            version: 0,
         },
     ] {
         let mut reader = Cursor::new(vec![]);
         let mut deser_state = DeserializerState::default();
-        assert!(unsupported.deserialize_column(&mut reader, 0, &mut deser_state).await.is_err());
+        assert!(
+            unsupported
+                .deserialize_column(&mut reader, 0, &mut deser_state)
+                .await
+                .is_err()
+        );
     }
 
     let mut writer = vec![];
     let mut ser_state = SerializerState::default();
-    assert!(nested.serialize_column(vec![], &mut writer, &mut ser_state).await.is_ok());
+    assert!(
+        nested
+            .serialize_column(vec![], &mut writer, &mut ser_state)
+            .await
+            .is_ok()
+    );
 
     let mut writer = vec![];
     let mut ser_state = SerializerState::default();
-    assert!(simple_agg.serialize_column(vec![], &mut writer, &mut ser_state).await.is_ok());
+    assert!(
+        simple_agg
+            .serialize_column(vec![], &mut writer, &mut ser_state)
+            .await
+            .is_ok()
+    );
 
     let mut writer = vec![];
     let mut ser_state = SerializerState::default();
-    assert!(simple_agg_empty.serialize_column(vec![], &mut writer, &mut ser_state).await.is_err());
+    assert!(
+        simple_agg_empty
+            .serialize_column(vec![], &mut writer, &mut ser_state)
+            .await
+            .is_err()
+    );
 
     let unsupported_sync = [
         Type::Variant(vec![Type::UInt8]),
         Type::Dynamic { max_types: 8 },
-        Type::QBit { element_type: Box::new(Type::Float32), dimension: 2 },
+        Type::QBit {
+            element_type: Box::new(Type::Float32),
+            dimension: 2,
+        },
         Type::AggregateFunction {
-            name:       "sumState".to_string(),
+            name: "sumState".to_string(),
             parameters: vec![],
-            types:      vec![Type::UInt64],
-            version:    0,
+            types: vec![Type::UInt64],
+            version: 0,
         },
     ];
 
     for unsupported in unsupported_sync {
         let mut writer = vec![];
         let mut ser_state = SerializerState::default();
-        assert!(unsupported.serialize_column(vec![], &mut writer, &mut ser_state).await.is_err());
+        assert!(
+            unsupported
+                .serialize_column(vec![], &mut writer, &mut ser_state)
+                .await
+                .is_err()
+        );
 
         let mut writer = vec![];
         let mut ser_state = SerializerState::default();
-        assert!(unsupported.serialize_column_sync(vec![], &mut writer, &mut ser_state).is_err());
+        assert!(
+            unsupported
+                .serialize_column_sync(vec![], &mut writer, &mut ser_state)
+                .is_err()
+        );
     }
 
     let mut writer = vec![];
     let mut ser_state = SerializerState::default();
-    assert!(nested.serialize_column_sync(vec![], &mut writer, &mut ser_state).is_ok());
+    assert!(
+        nested
+            .serialize_column_sync(vec![], &mut writer, &mut ser_state)
+            .is_ok()
+    );
 
     let mut writer = vec![];
     let mut ser_state = SerializerState::default();
-    assert!(simple_agg.serialize_column_sync(vec![], &mut writer, &mut ser_state).is_ok());
+    assert!(
+        simple_agg
+            .serialize_column_sync(vec![], &mut writer, &mut ser_state)
+            .is_ok()
+    );
 
     let mut writer = vec![];
     let mut ser_state = SerializerState::default();
-    assert!(simple_agg_empty.serialize_column_sync(vec![], &mut writer, &mut ser_state).is_err());
+    assert!(
+        simple_agg_empty
+            .serialize_column_sync(vec![], &mut writer, &mut ser_state)
+            .is_err()
+    );
 }
 
 // Sync tests for sized deserializer coverage
 #[test]
 fn roundtrip_sized_int_types_sync() {
     let test_cases = vec![
-        (Type::Int8, vec![Value::Int8(-128), Value::Int8(0), Value::Int8(127)]),
-        (Type::Int16, vec![Value::Int16(-32768), Value::Int16(0), Value::Int16(32767)]),
-        (Type::Int32, vec![
-            Value::Int32(-2_147_483_648),
-            Value::Int32(0),
-            Value::Int32(2_147_483_647),
-        ]),
-        (Type::Int64, vec![Value::Int64(i64::MIN), Value::Int64(0), Value::Int64(i64::MAX)]),
-        (Type::UInt8, vec![Value::UInt8(0), Value::UInt8(128), Value::UInt8(255)]),
-        (Type::UInt16, vec![Value::UInt16(0), Value::UInt16(32768), Value::UInt16(65535)]),
-        (Type::UInt32, vec![
-            Value::UInt32(0),
-            Value::UInt32(2_147_483_648),
-            Value::UInt32(u32::MAX),
-        ]),
-        (Type::UInt64, vec![
-            Value::UInt64(0),
-            Value::UInt64(u64::from(u32::MAX) + 1),
-            Value::UInt64(u64::MAX),
-        ]),
+        (
+            Type::Int8,
+            vec![Value::Int8(-128), Value::Int8(0), Value::Int8(127)],
+        ),
+        (
+            Type::Int16,
+            vec![Value::Int16(-32768), Value::Int16(0), Value::Int16(32767)],
+        ),
+        (
+            Type::Int32,
+            vec![
+                Value::Int32(-2_147_483_648),
+                Value::Int32(0),
+                Value::Int32(2_147_483_647),
+            ],
+        ),
+        (
+            Type::Int64,
+            vec![
+                Value::Int64(i64::MIN),
+                Value::Int64(0),
+                Value::Int64(i64::MAX),
+            ],
+        ),
+        (
+            Type::UInt8,
+            vec![Value::UInt8(0), Value::UInt8(128), Value::UInt8(255)],
+        ),
+        (
+            Type::UInt16,
+            vec![Value::UInt16(0), Value::UInt16(32768), Value::UInt16(65535)],
+        ),
+        (
+            Type::UInt32,
+            vec![
+                Value::UInt32(0),
+                Value::UInt32(2_147_483_648),
+                Value::UInt32(u32::MAX),
+            ],
+        ),
+        (
+            Type::UInt64,
+            vec![
+                Value::UInt64(0),
+                Value::UInt64(u64::from(u32::MAX) + 1),
+                Value::UInt64(u64::MAX),
+            ],
+        ),
     ];
 
     for (type_, values) in test_cases {
@@ -1412,10 +1845,32 @@ fn roundtrip_sized_int_types_sync() {
 #[test]
 fn roundtrip_sized_large_int_types_sync() {
     let test_cases = vec![
-        (Type::Int128, vec![Value::Int128(-1), Value::Int128(0), Value::Int128(i128::MAX)]),
-        (Type::Int256, vec![Value::Int256(i256([0u8; 32])), Value::Int256(i256([255u8; 32]))]),
-        (Type::UInt128, vec![Value::UInt128(0), Value::UInt128(u128::MAX)]),
-        (Type::UInt256, vec![Value::UInt256(u256([0u8; 32])), Value::UInt256(u256([255u8; 32]))]),
+        (
+            Type::Int128,
+            vec![
+                Value::Int128(-1),
+                Value::Int128(0),
+                Value::Int128(i128::MAX),
+            ],
+        ),
+        (
+            Type::Int256,
+            vec![
+                Value::Int256(i256([0u8; 32])),
+                Value::Int256(i256([255u8; 32])),
+            ],
+        ),
+        (
+            Type::UInt128,
+            vec![Value::UInt128(0), Value::UInt128(u128::MAX)],
+        ),
+        (
+            Type::UInt256,
+            vec![
+                Value::UInt256(u256([0u8; 32])),
+                Value::UInt256(u256([255u8; 32])),
+            ],
+        ),
     ];
 
     for (type_, values) in test_cases {
@@ -1428,22 +1883,28 @@ fn roundtrip_sized_large_int_types_sync() {
 #[test]
 fn roundtrip_sized_float_types_sync() {
     let test_cases = vec![
-        (Type::Float32, vec![
-            Value::Float32(0.0),
-            Value::Float32(3.15),
-            Value::Float32(-1.0),
-            Value::Float32(f32::NAN),
-            Value::Float32(f32::INFINITY),
-            Value::Float32(f32::NEG_INFINITY),
-        ]),
-        (Type::Float64, vec![
-            Value::Float64(0.0),
-            Value::Float64(3.15),
-            Value::Float64(-1.0),
-            Value::Float64(f64::NAN),
-            Value::Float64(f64::INFINITY),
-            Value::Float64(f64::NEG_INFINITY),
-        ]),
+        (
+            Type::Float32,
+            vec![
+                Value::Float32(0.0),
+                Value::Float32(3.15),
+                Value::Float32(-1.0),
+                Value::Float32(f32::NAN),
+                Value::Float32(f32::INFINITY),
+                Value::Float32(f32::NEG_INFINITY),
+            ],
+        ),
+        (
+            Type::Float64,
+            vec![
+                Value::Float64(0.0),
+                Value::Float64(3.15),
+                Value::Float64(-1.0),
+                Value::Float64(f64::NAN),
+                Value::Float64(f64::INFINITY),
+                Value::Float64(f64::NEG_INFINITY),
+            ],
+        ),
     ];
 
     for (type_, values) in test_cases {
@@ -1456,25 +1917,37 @@ fn roundtrip_sized_float_types_sync() {
 #[test]
 fn roundtrip_sized_decimal_types_sync() {
     let test_cases = vec![
-        (Type::Decimal32(2), vec![
-            Value::Decimal32(2, -12345),
-            Value::Decimal32(2, 0),
-            Value::Decimal32(2, 12345),
-        ]),
-        (Type::Decimal64(4), vec![
-            Value::Decimal64(4, -123_456_789),
-            Value::Decimal64(4, 0),
-            Value::Decimal64(4, 123_456_789),
-        ]),
-        (Type::Decimal128(6), vec![
-            Value::Decimal128(6, -123_456_789_012_345),
-            Value::Decimal128(6, 0),
-            Value::Decimal128(6, 123_456_789_012_345),
-        ]),
-        (Type::Decimal256(8), vec![
-            Value::Decimal256(8, i256([0u8; 32])),
-            Value::Decimal256(8, i256([1u8; 32])),
-        ]),
+        (
+            Type::Decimal32(2),
+            vec![
+                Value::Decimal32(2, -12345),
+                Value::Decimal32(2, 0),
+                Value::Decimal32(2, 12345),
+            ],
+        ),
+        (
+            Type::Decimal64(4),
+            vec![
+                Value::Decimal64(4, -123_456_789),
+                Value::Decimal64(4, 0),
+                Value::Decimal64(4, 123_456_789),
+            ],
+        ),
+        (
+            Type::Decimal128(6),
+            vec![
+                Value::Decimal128(6, -123_456_789_012_345),
+                Value::Decimal128(6, 0),
+                Value::Decimal128(6, 123_456_789_012_345),
+            ],
+        ),
+        (
+            Type::Decimal256(8),
+            vec![
+                Value::Decimal256(8, i256([0u8; 32])),
+                Value::Decimal256(8, i256([1u8; 32])),
+            ],
+        ),
     ];
 
     for (type_, values) in test_cases {
@@ -1488,17 +1961,29 @@ fn roundtrip_sized_decimal_types_sync() {
 fn roundtrip_sized_date_time_types_sync() {
     use chrono_tz::UTC;
     let test_cases = vec![
-        (Type::Date, vec![Value::Date(Date(0)), Value::Date(Date(18262))]), /* 1970-01-01 to
-                                                                             * 2020-01-01 */
-        (Type::Date32, vec![Value::Date32(Date32(0)), Value::Date32(Date32(-719_163))]), /* 1900-01-01 */
-        (Type::DateTime(UTC), vec![
-            Value::DateTime(DateTime(UTC, 0)),
-            Value::DateTime(DateTime(UTC, 1_577_836_800)),
-        ]), /* 1970-01-01 to 2020-01-01 */
-        (Type::DateTime64(3, UTC), vec![
-            Value::DateTime64(DynDateTime64(UTC, 0, 3)),
-            Value::DateTime64(DynDateTime64(UTC, 1_577_836_800_000, 3)),
-        ]),
+        (
+            Type::Date,
+            vec![Value::Date(Date(0)), Value::Date(Date(18262))],
+        ), /* 1970-01-01 to
+            * 2020-01-01 */
+        (
+            Type::Date32,
+            vec![Value::Date32(Date32(0)), Value::Date32(Date32(-719_163))],
+        ), /* 1900-01-01 */
+        (
+            Type::DateTime(UTC),
+            vec![
+                Value::DateTime(DateTime(UTC, 0)),
+                Value::DateTime(DateTime(UTC, 1_577_836_800)),
+            ],
+        ), /* 1970-01-01 to 2020-01-01 */
+        (
+            Type::DateTime64(3, UTC),
+            vec![
+                Value::DateTime64(DynDateTime64(UTC, 0, 3)),
+                Value::DateTime64(DynDateTime64(UTC, 1_577_836_800_000, 3)),
+            ],
+        ),
     ];
 
     for (type_, values) in test_cases {
@@ -1512,15 +1997,21 @@ fn roundtrip_sized_date_time_types_sync() {
 fn roundtrip_sized_network_types_sync() {
     use crate::{Ipv4, Ipv6};
     let test_cases = vec![
-        (Type::Ipv4, vec![
-            Value::Ipv4(Ipv4(Ipv4Addr::UNSPECIFIED)),
-            Value::Ipv4(Ipv4(Ipv4Addr::new(192, 168, 1, 1))),
-            Value::Ipv4(Ipv4(Ipv4Addr::BROADCAST)),
-        ]),
-        (Type::Ipv6, vec![
-            Value::Ipv6(Ipv6(Ipv6Addr::UNSPECIFIED)),
-            Value::Ipv6(Ipv6(Ipv6Addr::new(0x2001, 0xdb8, 0, 0, 0, 0, 0, 1))),
-        ]),
+        (
+            Type::Ipv4,
+            vec![
+                Value::Ipv4(Ipv4(Ipv4Addr::UNSPECIFIED)),
+                Value::Ipv4(Ipv4(Ipv4Addr::new(192, 168, 1, 1))),
+                Value::Ipv4(Ipv4(Ipv4Addr::BROADCAST)),
+            ],
+        ),
+        (
+            Type::Ipv6,
+            vec![
+                Value::Ipv6(Ipv6(Ipv6Addr::UNSPECIFIED)),
+                Value::Ipv6(Ipv6(Ipv6Addr::new(0x2001, 0xdb8, 0, 0, 0, 0, 0, 1))),
+            ],
+        ),
     ];
 
     for (type_, values) in test_cases {
@@ -1543,8 +2034,11 @@ fn roundtrip_sized_uuid_sync() {
 
 #[test]
 fn roundtrip_sized_enum_types_sync() {
-    let enum8_values =
-        vec![("red".to_string(), 1i8), ("green".to_string(), 2i8), ("blue".to_string(), 3i8)];
+    let enum8_values = vec![
+        ("red".to_string(), 1i8),
+        ("green".to_string(), 2i8),
+        ("blue".to_string(), 3i8),
+    ];
     let enum16_values = vec![
         ("small".to_string(), 100i16),
         ("medium".to_string(), 200i16),
@@ -1552,16 +2046,22 @@ fn roundtrip_sized_enum_types_sync() {
     ];
 
     let test_cases = vec![
-        (Type::Enum8(enum8_values.clone()), vec![
-            Value::Enum8("red".to_string(), 1),
-            Value::Enum8("green".to_string(), 2),
-            Value::Enum8("blue".to_string(), 3),
-        ]),
-        (Type::Enum16(enum16_values.clone()), vec![
-            Value::Enum16("small".to_string(), 100),
-            Value::Enum16("medium".to_string(), 200),
-            Value::Enum16("large".to_string(), 300),
-        ]),
+        (
+            Type::Enum8(enum8_values.clone()),
+            vec![
+                Value::Enum8("red".to_string(), 1),
+                Value::Enum8("green".to_string(), 2),
+                Value::Enum8("blue".to_string(), 3),
+            ],
+        ),
+        (
+            Type::Enum16(enum16_values.clone()),
+            vec![
+                Value::Enum16("small".to_string(), 100),
+                Value::Enum16("medium".to_string(), 200),
+                Value::Enum16("large".to_string(), 300),
+            ],
+        ),
     ];
 
     for (type_, values) in test_cases {
@@ -1572,6 +2072,10 @@ fn roundtrip_sized_enum_types_sync() {
 }
 
 #[tokio::test]
+#[expect(
+    clippy::too_many_lines,
+    reason = "Default encodings for the complete type matrix"
+)]
 async fn test_write_default() {
     let mut writer = Cursor::new(Vec::new());
 
@@ -1600,14 +2104,34 @@ async fn test_write_default() {
     // Test string and binary types
     assert!(Type::String.write_default(&mut writer).await.is_ok());
     assert!(Type::Binary.write_default(&mut writer).await.is_ok());
-    assert!(Type::FixedSizedString(10).write_default(&mut writer).await.is_ok());
-    assert!(Type::FixedSizedBinary(16).write_default(&mut writer).await.is_ok());
+    assert!(
+        Type::FixedSizedString(10)
+            .write_default(&mut writer)
+            .await
+            .is_ok()
+    );
+    assert!(
+        Type::FixedSizedBinary(16)
+            .write_default(&mut writer)
+            .await
+            .is_ok()
+    );
 
     // Test date/time types
     assert!(Type::Date.write_default(&mut writer).await.is_ok());
     assert!(Type::Date32.write_default(&mut writer).await.is_ok());
-    assert!(Type::DateTime(chrono_tz::UTC).write_default(&mut writer).await.is_ok());
-    assert!(Type::DateTime64(3, chrono_tz::UTC).write_default(&mut writer).await.is_ok());
+    assert!(
+        Type::DateTime(chrono_tz::UTC)
+            .write_default(&mut writer)
+            .await
+            .is_ok()
+    );
+    assert!(
+        Type::DateTime64(3, chrono_tz::UTC)
+            .write_default(&mut writer)
+            .await
+            .is_ok()
+    );
 
     // Test network types
     assert!(Type::Ipv4.write_default(&mut writer).await.is_ok());
@@ -1615,11 +2139,26 @@ async fn test_write_default() {
     assert!(Type::Uuid.write_default(&mut writer).await.is_ok());
 
     // Test enum types
-    assert!(Type::Enum8(vec![("test".to_string(), 1)]).write_default(&mut writer).await.is_ok());
-    assert!(Type::Enum16(vec![("test".to_string(), 1)]).write_default(&mut writer).await.is_ok());
+    assert!(
+        Type::Enum8(vec![("test".to_string(), 1)])
+            .write_default(&mut writer)
+            .await
+            .is_ok()
+    );
+    assert!(
+        Type::Enum16(vec![("test".to_string(), 1)])
+            .write_default(&mut writer)
+            .await
+            .is_ok()
+    );
 
     // Test collection types
-    assert!(Type::Array(Box::new(Type::UInt8)).write_default(&mut writer).await.is_ok());
+    assert!(
+        Type::Array(Box::new(Type::UInt8))
+            .write_default(&mut writer)
+            .await
+            .is_ok()
+    );
     assert!(
         Type::Map(Box::new(Type::String), Box::new(Type::UInt32))
             .write_default(&mut writer)
@@ -1629,11 +2168,19 @@ async fn test_write_default() {
 
     // Test tuple type
     assert!(
-        Type::tuple_anon(vec![Type::Int32, Type::String]).write_default(&mut writer).await.is_ok()
+        Type::tuple_anon(vec![Type::Int32, Type::String])
+            .write_default(&mut writer)
+            .await
+            .is_ok()
     );
 
     // Test low cardinality
-    assert!(Type::LowCardinality(Box::new(Type::String)).write_default(&mut writer).await.is_ok());
+    assert!(
+        Type::LowCardinality(Box::new(Type::String))
+            .write_default(&mut writer)
+            .await
+            .is_ok()
+    );
 
     // Test geo/object aliases
     assert!(Type::Point.write_default(&mut writer).await.is_ok());
@@ -1648,35 +2195,51 @@ async fn test_write_default() {
         assert!(Type::Time.write_default(&mut writer).await.is_ok());
         assert!(Type::Time64(3).write_default(&mut writer).await.is_ok());
         assert!(
-            Type::QBit { element_type: Box::new(Type::Float32), dimension: 4 }
-                .write_default(&mut writer)
-                .await
-                .is_ok()
-        );
-        assert!(
-            Type::SimpleAggregateFunction {
-                name:       "sum".to_string(),
-                parameters: vec![],
-                types:      vec![Type::UInt64],
+            Type::QBit {
+                element_type: Box::new(Type::Float32),
+                dimension: 4
             }
             .write_default(&mut writer)
             .await
             .is_ok()
         );
         assert!(
-            Type::Nested(vec![("x".to_string(), Type::UInt32), ("y".to_string(), Type::String)])
+            Type::SimpleAggregateFunction {
+                name: "sum".to_string(),
+                parameters: vec![],
+                types: vec![Type::UInt64],
+            }
+            .write_default(&mut writer)
+            .await
+            .is_ok()
+        );
+        assert!(
+            Type::Nested(vec![
+                ("x".to_string(), Type::UInt32),
+                ("y".to_string(), Type::String)
+            ])
+            .write_default(&mut writer)
+            .await
+            .is_ok()
+        );
+        assert!(
+            Type::Variant(vec![Type::UInt8])
                 .write_default(&mut writer)
                 .await
-                .is_ok()
+                .is_err()
         );
-        assert!(Type::Variant(vec![Type::UInt8]).write_default(&mut writer).await.is_err());
-        assert!(Type::Dynamic { max_types: 32 }.write_default(&mut writer).await.is_err());
+        assert!(
+            Type::Dynamic { max_types: 32 }
+                .write_default(&mut writer)
+                .await
+                .is_err()
+        );
         assert!(
             Type::AggregateFunction {
-                name:       "sumState".to_string(),
+                name: "sumState".to_string(),
                 parameters: vec![],
-                types:      vec![Type::UInt64],
-                version:    0,
+                types: vec![Type::UInt64],
+                version: 0,
             }
             .write_default(&mut writer)
             .await
@@ -1686,6 +2249,10 @@ async fn test_write_default() {
 }
 
 #[test]
+#[expect(
+    clippy::too_many_lines,
+    reason = "Default encodings for the complete type matrix"
+)]
 fn test_put_default() {
     let mut writer = Vec::new();
 
@@ -1720,8 +2287,16 @@ fn test_put_default() {
     // Test date/time types
     assert!(Type::Date.put_default(&mut writer).is_ok());
     assert!(Type::Date32.put_default(&mut writer).is_ok());
-    assert!(Type::DateTime(chrono_tz::UTC).put_default(&mut writer).is_ok());
-    assert!(Type::DateTime64(3, chrono_tz::UTC).put_default(&mut writer).is_ok());
+    assert!(
+        Type::DateTime(chrono_tz::UTC)
+            .put_default(&mut writer)
+            .is_ok()
+    );
+    assert!(
+        Type::DateTime64(3, chrono_tz::UTC)
+            .put_default(&mut writer)
+            .is_ok()
+    );
 
     // Test network types
     assert!(Type::Ipv4.put_default(&mut writer).is_ok());
@@ -1729,20 +2304,42 @@ fn test_put_default() {
     assert!(Type::Uuid.put_default(&mut writer).is_ok());
 
     // Test enum types
-    assert!(Type::Enum8(vec![("test".to_string(), 1)]).put_default(&mut writer).is_ok());
-    assert!(Type::Enum16(vec![("test".to_string(), 1)]).put_default(&mut writer).is_ok());
+    assert!(
+        Type::Enum8(vec![("test".to_string(), 1)])
+            .put_default(&mut writer)
+            .is_ok()
+    );
+    assert!(
+        Type::Enum16(vec![("test".to_string(), 1)])
+            .put_default(&mut writer)
+            .is_ok()
+    );
 
     // Test collection types
-    assert!(Type::Array(Box::new(Type::UInt8)).put_default(&mut writer).is_ok());
     assert!(
-        Type::Map(Box::new(Type::String), Box::new(Type::UInt32)).put_default(&mut writer).is_ok()
+        Type::Array(Box::new(Type::UInt8))
+            .put_default(&mut writer)
+            .is_ok()
+    );
+    assert!(
+        Type::Map(Box::new(Type::String), Box::new(Type::UInt32))
+            .put_default(&mut writer)
+            .is_ok()
     );
 
     // Test tuple type
-    assert!(Type::tuple_anon(vec![Type::Int32, Type::String]).put_default(&mut writer).is_ok());
+    assert!(
+        Type::tuple_anon(vec![Type::Int32, Type::String])
+            .put_default(&mut writer)
+            .is_ok()
+    );
 
     // Test low cardinality
-    assert!(Type::LowCardinality(Box::new(Type::String)).put_default(&mut writer).is_ok());
+    assert!(
+        Type::LowCardinality(Box::new(Type::String))
+            .put_default(&mut writer)
+            .is_ok()
+    );
 
     // Test geo/object aliases
     assert!(Type::Point.put_default(&mut writer).is_ok());
@@ -1757,35 +2354,49 @@ fn test_put_default() {
         assert!(Type::Time.put_default(&mut writer).is_ok());
         assert!(Type::Time64(3).put_default(&mut writer).is_ok());
         assert!(
-            Type::QBit { element_type: Box::new(Type::Float32), dimension: 4 }
-                .put_default(&mut writer)
-                .is_ok()
+            Type::QBit {
+                element_type: Box::new(Type::Float32),
+                dimension: 4
+            }
+            .put_default(&mut writer)
+            .is_ok()
         );
-        assert!(Type::Variant(vec![Type::UInt8]).put_default(&mut writer).is_err());
-        assert!(Type::Dynamic { max_types: 32 }.put_default(&mut writer).is_err());
+        assert!(
+            Type::Variant(vec![Type::UInt8])
+                .put_default(&mut writer)
+                .is_err()
+        );
+        assert!(
+            Type::Dynamic { max_types: 32 }
+                .put_default(&mut writer)
+                .is_err()
+        );
         assert!(
             Type::AggregateFunction {
-                name:       "sumState".to_string(),
+                name: "sumState".to_string(),
                 parameters: vec![],
-                types:      vec![Type::UInt64],
-                version:    0,
+                types: vec![Type::UInt64],
+                version: 0,
             }
             .put_default(&mut writer)
             .is_err()
         );
         assert!(
             Type::SimpleAggregateFunction {
-                name:       "sum".to_string(),
+                name: "sum".to_string(),
                 parameters: vec![],
-                types:      vec![Type::UInt64],
+                types: vec![Type::UInt64],
             }
             .put_default(&mut writer)
             .is_ok()
         );
         assert!(
-            Type::Nested(vec![("x".to_string(), Type::UInt32), ("y".to_string(), Type::String)])
-                .put_default(&mut writer)
-                .is_ok()
+            Type::Nested(vec![
+                ("x".to_string(), Type::UInt32),
+                ("y".to_string(), Type::String)
+            ])
+            .put_default(&mut writer)
+            .is_ok()
         );
     }
 }

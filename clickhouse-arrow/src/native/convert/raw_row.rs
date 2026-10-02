@@ -10,9 +10,13 @@ pub struct RawRow(Vec<Option<(String, Type, Value)>>);
 impl Row for RawRow {
     const COLUMN_COUNT: Option<usize> = None;
 
-    fn column_names() -> Option<Vec<Cow<'static, str>>> { None }
+    fn column_names() -> Option<Vec<Cow<'static, str>>> {
+        None
+    }
 
-    fn to_schema() -> Option<Vec<(String, Type, Option<Value>)>> { None }
+    fn to_schema() -> Option<Vec<(String, Type, Option<Value>)>> {
+        None
+    }
 
     fn deserialize_row(map: Vec<(&str, &Type, Value)>) -> Result<Self> {
         Ok(Self(
@@ -60,16 +64,23 @@ impl<T: RowIndex + ?Sized> RowIndex for &T {
 
 impl RawRow {
     /// Determines if the row contains no values.
-    pub fn is_empty(&self) -> bool { self.0.is_empty() }
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
 
     /// Returns the number of values in the row.
-    pub fn len(&self) -> usize { self.0.len() }
+    pub fn len(&self) -> usize {
+        self.0.len()
+    }
 
     /// # Panics
     ///
     /// Panics if any of the values are `None`
     pub fn into_values(self) -> Vec<(Type, Value)> {
-        self.0.into_iter().map(|x| x.map(|(_, t, v)| (t, v)).unwrap()).collect()
+        self.0
+            .into_iter()
+            .map(|x| x.map(|(_, t, v)| (t, v)).unwrap())
+            .collect()
     }
 
     /// Like [`RawRow::get`], but returns a [`Result`] rather than panicking.
@@ -86,7 +97,12 @@ impl RawRow {
         let index = index
             .get(self.0.iter().map(|x| x.as_ref().map_or("", |x| &*x.0)))
             .ok_or(Error::OutOfBounds)?;
-        let (_, type_, value) = self.0.get_mut(index).unwrap().take().ok_or(Error::DoubleFetch)?;
+        let (_, type_, value) = self
+            .0
+            .get_mut(index)
+            .unwrap()
+            .take()
+            .ok_or(Error::DoubleFetch)?;
         T::from_sql(&type_, value)
     }
 
@@ -119,8 +135,11 @@ impl RawRow {
         let value = value.to_sql(type_.as_ref())?;
         let type_ = type_.unwrap_or_else(|| value.guess_type());
 
-        let current_position =
-            self.0.iter().map(|x| x.as_ref().map_or("", |x| &*x.0)).position(|x| x == &*name);
+        let current_position = self
+            .0
+            .iter()
+            .map(|x| x.as_ref().map_or("", |x| &*x.0))
+            .position(|x| x == &*name);
 
         if let Some(current_position) = current_position {
             self.0[current_position].as_mut().unwrap().1 = type_;
@@ -154,7 +173,8 @@ impl RawRow {
     ///
     /// Panics on type conversion failure
     pub fn set_typed(&mut self, name: &impl ToString, type_: Option<Type>, value: impl ToSql) {
-        self.try_set_typed(name, type_, value).expect("failed to convert column");
+        self.try_set_typed(name, type_, value)
+            .expect("failed to convert column");
     }
 }
 
@@ -196,11 +216,13 @@ mod tests {
         assert_eq!(row.len(), 1);
 
         // Test try_set_typed
-        row.try_set_typed(&"str_col", Some(Type::String), "test").unwrap();
+        row.try_set_typed(&"str_col", Some(Type::String), "test")
+            .unwrap();
         assert_eq!(row.len(), 2);
 
         // Test updating existing column
-        row.try_set_typed(&"int_col", Some(Type::Int32), 456i32).unwrap();
+        row.try_set_typed(&"int_col", Some(Type::Int32), 456i32)
+            .unwrap();
         assert_eq!(row.len(), 2); // Should still be 2, not 3
     }
 
@@ -305,7 +327,11 @@ mod tests {
     fn test_raw_row_deserialize() {
         let map = vec![
             ("col1", &Type::Int32, Value::Int32(42)),
-            ("col2", &Type::String, Value::String("test".to_string().into_bytes())),
+            (
+                "col2",
+                &Type::String,
+                Value::String("test".to_string().into_bytes()),
+            ),
         ];
 
         let row = RawRow::deserialize_row(map).unwrap();

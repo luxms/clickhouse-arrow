@@ -40,7 +40,7 @@ impl LowCardinalityKeyBuilder {
 }
 
 pub(crate) struct LowCardinalityBuilder {
-    pub(crate) key_builder:   LowCardinalityKeyBuilder,
+    pub(crate) key_builder: LowCardinalityKeyBuilder,
     pub(crate) value_builder: Box<TypedBuilder>,
 }
 
@@ -56,7 +56,10 @@ impl LowCardinalityBuilder {
 
         let key_builder = LowCardinalityKeyBuilder::try_new(key_type)?;
         let value_builder = Box::new(TypedBuilder::try_new(type_, value_type)?);
-        Ok(LowCardinalityBuilder { key_builder, value_builder })
+        Ok(LowCardinalityBuilder {
+            key_builder,
+            value_builder,
+        })
     }
 }
 
@@ -152,7 +155,10 @@ mod tests {
         let type_ = Type::String;
 
         let builder = LowCardinalityBuilder::try_new(&type_, &data_type).unwrap();
-        assert!(matches!(builder.key_builder, LowCardinalityKeyBuilder::UInt32(_)));
+        assert!(matches!(
+            builder.key_builder,
+            LowCardinalityKeyBuilder::UInt32(_)
+        ));
     }
 
     #[test]
@@ -163,7 +169,10 @@ mod tests {
         let type_ = Type::Nullable(Box::new(Type::String));
 
         let builder = LowCardinalityBuilder::try_new(&type_, &data_type).unwrap();
-        assert!(matches!(builder.key_builder, LowCardinalityKeyBuilder::UInt8(_)));
+        assert!(matches!(
+            builder.key_builder,
+            LowCardinalityKeyBuilder::UInt8(_)
+        ));
     }
 
     #[test]

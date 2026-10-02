@@ -9,9 +9,13 @@ pub struct UnitValue<T: FromSql + ToSql>(pub T);
 impl<T: FromSql + ToSql> Row for UnitValue<T> {
     const COLUMN_COUNT: Option<usize> = Some(1);
 
-    fn column_names() -> Option<Vec<Cow<'static, str>>> { None }
+    fn column_names() -> Option<Vec<Cow<'static, str>>> {
+        None
+    }
 
-    fn to_schema() -> Option<Vec<(String, Type, Option<Value>)>> { None }
+    fn to_schema() -> Option<Vec<(String, Type, Option<Value>)>> {
+        None
+    }
 
     fn deserialize_row(map: Vec<(&str, &Type, Value)>) -> Result<Self> {
         if map.is_empty() {
@@ -25,7 +29,10 @@ impl<T: FromSql + ToSql> Row for UnitValue<T> {
         self,
         type_hints: &[(String, Type)],
     ) -> Result<Vec<(Cow<'static, str>, Value)>> {
-        Ok(vec![(Cow::Borrowed("_"), self.0.to_sql(type_hints.iter().map(|(_, t)| t).next())?)])
+        Ok(vec![(
+            Cow::Borrowed("_"),
+            self.0.to_sql(type_hints.iter().map(|(_, t)| t).next())?,
+        )])
     }
 }
 
@@ -112,7 +119,11 @@ mod tests {
 
     #[test]
     fn test_unit_value_deserialize_string() {
-        let map = vec![("col", &Type::String, Value::String("test".to_string().into_bytes()))];
+        let map = vec![(
+            "col",
+            &Type::String,
+            Value::String("test".to_string().into_bytes()),
+        )];
         let unit: UnitValue<String> = UnitValue::deserialize_row(map).unwrap();
         assert_eq!(unit.0, "test");
     }

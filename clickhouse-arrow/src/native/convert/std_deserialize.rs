@@ -197,9 +197,10 @@ impl<T: FromSql + 'static> FromSql for Vec<T> {
                 assert_eq!(size_of::<T>(), 1);
                 Ok(unsafe { std::mem::transmute::<Vec<u8>, Vec<T>>(x) })
             }
-            Value::Array(x) => {
-                Ok(x.into_iter().map(|x| T::from_sql(subtype, x)).collect::<Result<Vec<_>>>()?)
-            }
+            Value::Array(x) => Ok(x
+                .into_iter()
+                .map(|x| T::from_sql(subtype, x))
+                .collect::<Result<Vec<_>>>()?),
             _ => Err(unexpected_type(type_)),
         }
     }
@@ -210,9 +211,10 @@ impl<T: FromSql + Hash + Eq, Y: FromSql, S: ::std::hash::BuildHasher + Default> 
 {
     fn from_sql(type_: &Type, value: Value) -> Result<Self> {
         let (x_type, y_type) = match type_ {
-            Type::Map(x_type, y_type) => {
-                (x_type.strip_low_cardinality(), y_type.strip_low_cardinality())
-            }
+            Type::Map(x_type, y_type) => (
+                x_type.strip_low_cardinality(),
+                y_type.strip_low_cardinality(),
+            ),
             x => return Err(unexpected_type(x)),
         };
         match value {
@@ -231,9 +233,10 @@ impl<T: FromSql + Hash + Eq, Y: FromSql, S: ::std::hash::BuildHasher + Default> 
 impl<T: FromSql + Ord, Y: FromSql> FromSql for BTreeMap<T, Y> {
     fn from_sql(type_: &Type, value: Value) -> Result<Self> {
         let (x_type, y_type) = match type_ {
-            Type::Map(x_type, y_type) => {
-                (x_type.strip_low_cardinality(), y_type.strip_low_cardinality())
-            }
+            Type::Map(x_type, y_type) => (
+                x_type.strip_low_cardinality(),
+                y_type.strip_low_cardinality(),
+            ),
             x => return Err(unexpected_type(x)),
         };
         match value {
@@ -254,9 +257,10 @@ impl<T: FromSql + Hash + Eq, Y: FromSql, S: ::std::hash::BuildHasher + Default> 
 {
     fn from_sql(type_: &Type, value: Value) -> Result<Self> {
         let (x_type, y_type) = match type_ {
-            Type::Map(x_type, y_type) => {
-                (x_type.strip_low_cardinality(), y_type.strip_low_cardinality())
-            }
+            Type::Map(x_type, y_type) => (
+                x_type.strip_low_cardinality(),
+                y_type.strip_low_cardinality(),
+            ),
             x => return Err(unexpected_type(x)),
         };
         match value {

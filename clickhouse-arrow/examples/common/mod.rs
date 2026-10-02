@@ -38,7 +38,12 @@ pub(crate) fn print_banner(text: &str, width: Option<usize>) {
     let left_padding = total_padding / 2;
     let right_padding = total_padding - left_padding;
 
-    let middle = format!("║{}{}{}║", " ".repeat(left_padding), text, " ".repeat(right_padding));
+    let middle = format!(
+        "║{}{}{}║",
+        " ".repeat(left_padding),
+        text,
+        " ".repeat(right_padding)
+    );
 
     eprintln!("{top}");
     eprintln!("{middle}");

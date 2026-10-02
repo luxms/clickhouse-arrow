@@ -76,8 +76,14 @@ fn dict_insert_value(
     if let Some(&index) = dict_index.get(value) {
         index
     } else {
-        #[expect(clippy::cast_possible_wrap, reason = "dictionary size must fit i32 keys")]
-        #[expect(clippy::cast_possible_truncation, reason = "dictionary size must fit i32 keys")]
+        #[expect(
+            clippy::cast_possible_wrap,
+            reason = "dictionary size must fit i32 keys"
+        )]
+        #[expect(
+            clippy::cast_possible_truncation,
+            reason = "dictionary size must fit i32 keys"
+        )]
         let index = dict.len() as i32;
         let owned = value.to_vec();
         let _ = dict_index.insert(owned.clone(), index);
@@ -167,7 +173,9 @@ pub(super) async fn serialize_async<W: ClickHouseWrite>(
             }
         },
         _ => {
-            return Err(Error::ArrowSerialize(format!("Unsupported data type: {type_hint:?}")));
+            return Err(Error::ArrowSerialize(format!(
+                "Unsupported data type: {type_hint:?}"
+            )));
         }
     }
 
@@ -229,7 +237,9 @@ pub(super) fn serialize<W: ClickHouseBytesWrite>(
             }
         },
         _ => {
-            return Err(Error::ArrowSerialize(format!("Unsupported data type: {type_hint:?}")));
+            return Err(Error::ArrowSerialize(format!(
+                "Unsupported data type: {type_hint:?}"
+            )));
         }
     }
 
@@ -252,9 +262,13 @@ pub(super) fn serialize<W: ClickHouseBytesWrite>(
 /// A `Result` indicating success or a `Error` if serialization fails.
 macro_rules! write_dictionary_keys {
     ($writer:expr, $flags:expr, $keys:expr, $key_type:ty, $nullable:expr) => {{
-        let keys = $keys.as_any().downcast_ref::<$key_type>().ok_or(Error::ArrowSerialize(
-            format!("Failed to downcast keys to {}", stringify!($key_type)),
-        ))?;
+        let keys = $keys
+            .as_any()
+            .downcast_ref::<$key_type>()
+            .ok_or(Error::ArrowSerialize(format!(
+                "Failed to downcast keys to {}",
+                stringify!($key_type)
+            )))?;
 
         #[allow(clippy::cast_sign_loss)]
         #[allow(clippy::cast_lossless)]
@@ -275,9 +289,13 @@ macro_rules! write_dictionary_keys {
 
 macro_rules! put_dictionary_keys {
     ($writer:expr, $flags:expr, $keys:expr, $key_type:ty, $nullable:expr) => {{
-        let keys = $keys.as_any().downcast_ref::<$key_type>().ok_or(Error::ArrowSerialize(
-            format!("Failed to downcast keys to {}", stringify!($key_type)),
-        ))?;
+        let keys = $keys
+            .as_any()
+            .downcast_ref::<$key_type>()
+            .ok_or(Error::ArrowSerialize(format!(
+                "Failed to downcast keys to {}",
+                stringify!($key_type)
+            )))?;
 
         #[allow(clippy::cast_sign_loss)]
         #[allow(clippy::cast_lossless)]
@@ -324,10 +342,13 @@ async fn write_values<W: ClickHouseWrite, K: ArrowDictionaryKeyType>(
     writer: &mut W,
     state: &mut SerializerState,
 ) -> Result<()> {
-    let array = values
-        .as_any()
-        .downcast_ref::<DictionaryArray<K>>()
-        .ok_or(Error::ArrowSerialize("Failed to downcast to DictionaryArray".to_string()))?;
+    let array =
+        values
+            .as_any()
+            .downcast_ref::<DictionaryArray<K>>()
+            .ok_or(Error::ArrowSerialize(
+                "Failed to downcast to DictionaryArray".to_string(),
+            ))?;
 
     if array.is_empty() {
         return Ok(());
@@ -398,10 +419,13 @@ fn put_values<W: ClickHouseBytesWrite, K: ArrowDictionaryKeyType>(
     writer: &mut W,
     state: &mut SerializerState,
 ) -> Result<()> {
-    let array = values
-        .as_any()
-        .downcast_ref::<DictionaryArray<K>>()
-        .ok_or(Error::ArrowSerialize("Failed to downcast to DictionaryArray".to_string()))?;
+    let array =
+        values
+            .as_any()
+            .downcast_ref::<DictionaryArray<K>>()
+            .ok_or(Error::ArrowSerialize(
+                "Failed to downcast to DictionaryArray".to_string(),
+            ))?;
 
     if array.is_empty() {
         return Ok(());
@@ -444,7 +468,9 @@ fn put_values<W: ClickHouseBytesWrite, K: ArrowDictionaryKeyType>(
     }
 
     // Serialize dictionary values
-    inner_type.strip_null().serialize(writer, dictionary, value_data_type, state)?;
+    inner_type
+        .strip_null()
+        .serialize(writer, dictionary, value_data_type, state)?;
 
     // Write keys
     writer.put_u64_le(keys.len() as u64);
@@ -496,14 +522,21 @@ async fn write_string_values<W: ClickHouseWrite>(
 
     macro_rules! handle_string_array {
         ($array_ty:ty) => {{
-            let array = values.as_any().downcast_ref::<$array_ty>().expect("Verified below");
+            let array = values
+                .as_any()
+                .downcast_ref::<$array_ty>()
+                .expect("Verified below");
             for i in 0..array.len() {
                 if array.is_null(i) {
                     debug_assert!(nullable, "Null encountered in non-nullable array");
                     keys.push(0);
                 } else {
                     let value = array.value(i);
-                    keys.push(dict_insert_value(value.as_ref(), &mut dict, &mut dict_index));
+                    keys.push(dict_insert_value(
+                        value.as_ref(),
+                        &mut dict,
+                        &mut dict_index,
+                    ));
                 };
             }
         }};
@@ -511,7 +544,10 @@ async fn write_string_values<W: ClickHouseWrite>(
 
     macro_rules! handle_binary_array {
         ($array_ty:ty) => {{
-            let array = values.as_any().downcast_ref::<$array_ty>().expect("Verified below");
+            let array = values
+                .as_any()
+                .downcast_ref::<$array_ty>()
+                .expect("Verified below");
             for i in 0..array.len() {
                 if array.is_null(i) {
                     debug_assert!(nullable, "Null encountered in non-nullable array");
@@ -532,7 +568,9 @@ async fn write_string_values<W: ClickHouseWrite>(
         DataType::BinaryView => handle_binary_array!(BinaryViewArray),
         DataType::LargeBinary => handle_binary_array!(LargeBinaryArray),
         dt => {
-            return Err(Error::ArrowSerialize(format!("Expected string-like array, got {dt}")));
+            return Err(Error::ArrowSerialize(format!(
+                "Expected string-like array, got {dt}"
+            )));
         }
     }
 
@@ -552,7 +590,9 @@ async fn write_string_values<W: ClickHouseWrite>(
     writer.write_u64_le(dict_size as u64).await?;
 
     let values_array = Arc::new(BinaryArray::from_iter_values(dict)) as ArrayRef;
-    Type::Binary.serialize_async(writer, &values_array, &DataType::Binary, state).await?;
+    Type::Binary
+        .serialize_async(writer, &values_array, &DataType::Binary, state)
+        .await?;
 
     // Write keys
     writer.write_u64_le(keys.len() as u64).await?;
@@ -589,14 +629,21 @@ fn put_string_values<W: ClickHouseBytesWrite>(
 
     macro_rules! handle_string_array {
         ($array_ty:ty) => {{
-            let array = values.as_any().downcast_ref::<$array_ty>().expect("Verified below");
+            let array = values
+                .as_any()
+                .downcast_ref::<$array_ty>()
+                .expect("Verified below");
             for i in 0..array.len() {
                 if array.is_null(i) {
                     debug_assert!(nullable, "Null encountered in non-nullable array");
                     keys.push(0);
                 } else {
                     let value = array.value(i);
-                    keys.push(dict_insert_value(value.as_ref(), &mut dict, &mut dict_index));
+                    keys.push(dict_insert_value(
+                        value.as_ref(),
+                        &mut dict,
+                        &mut dict_index,
+                    ));
                 };
             }
         }};
@@ -604,7 +651,10 @@ fn put_string_values<W: ClickHouseBytesWrite>(
 
     macro_rules! handle_binary_array {
         ($array_ty:ty) => {{
-            let array = values.as_any().downcast_ref::<$array_ty>().expect("Verified below");
+            let array = values
+                .as_any()
+                .downcast_ref::<$array_ty>()
+                .expect("Verified below");
             for i in 0..array.len() {
                 if array.is_null(i) {
                     debug_assert!(nullable, "Null encountered in non-nullable array");
@@ -625,7 +675,9 @@ fn put_string_values<W: ClickHouseBytesWrite>(
         DataType::BinaryView => handle_binary_array!(BinaryViewArray),
         DataType::LargeBinary => handle_binary_array!(LargeBinaryArray),
         dt => {
-            return Err(Error::ArrowSerialize(format!("Expected string-like array, got {dt}")));
+            return Err(Error::ArrowSerialize(format!(
+                "Expected string-like array, got {dt}"
+            )));
         }
     }
 
@@ -692,7 +744,9 @@ mod tests {
         let mut writer = MockWriter::new();
         let mut state = SerializerState::default()
             .with_arrow_options(ArrowOptions::default().with_strings_as_strings(true));
-        serialize_async(type_, &mut writer, array, data_type, &mut state).await.unwrap();
+        serialize_async(type_, &mut writer, array, data_type, &mut state)
+            .await
+            .unwrap();
         assert_eq!(*writer, expected);
     }
 
@@ -806,7 +860,9 @@ mod tests {
         let array = Arc::new(
             DictionaryArray::<Int32Type>::try_new(
                 Int32Array::from(vec![Some(0), Some(3), Some(1), None, Some(2)]),
-                Arc::new(StringArray::from(vec!["active", "inactive", "pending", "absent"])),
+                Arc::new(StringArray::from(vec![
+                    "active", "inactive", "pending", "absent",
+                ])),
             )
             .unwrap(),
         ) as ArrayRef;
@@ -989,19 +1045,29 @@ mod tests {
             (
                 Type::LowCardinality(Box::new(Type::String)),
                 &DataType::Binary,
-                Arc::new(BinaryArray::from_opt_vec(vec![Some(b"a"), None, Some(b"a")])) as ArrayRef,
+                Arc::new(BinaryArray::from_opt_vec(vec![
+                    Some(b"a"),
+                    None,
+                    Some(b"a"),
+                ])) as ArrayRef,
             ),
             (
                 Type::LowCardinality(Box::new(Type::String)),
                 &DataType::BinaryView,
-                Arc::new(BinaryViewArray::from(vec![Some(b"a" as &[u8]), None, Some(b"a")]))
-                    as ArrayRef,
+                Arc::new(BinaryViewArray::from(vec![
+                    Some(b"a" as &[u8]),
+                    None,
+                    Some(b"a"),
+                ])) as ArrayRef,
             ),
             (
                 Type::LowCardinality(Box::new(Type::String)),
                 &DataType::LargeBinary,
-                Arc::new(LargeBinaryArray::from_opt_vec(vec![Some(b"a"), None, Some(b"a")]))
-                    as ArrayRef,
+                Arc::new(LargeBinaryArray::from_opt_vec(vec![
+                    Some(b"a"),
+                    None,
+                    Some(b"a"),
+                ])) as ArrayRef,
             ),
         ];
 
@@ -1027,7 +1093,9 @@ mod tests {
         let array = Arc::new(
             DictionaryArray::<Int32Type>::try_new(
                 Int32Array::from(vec![Some(0), Some(3), Some(1), None, Some(2)]),
-                Arc::new(StringArray::from(vec!["active", "inactive", "pending", "absent"])),
+                Arc::new(StringArray::from(vec![
+                    "active", "inactive", "pending", "absent",
+                ])),
             )
             .unwrap(),
         ) as ArrayRef;
@@ -1098,8 +1166,14 @@ mod tests {
         let array = Arc::new(Int8Array::from(vec![1, 2, 1])) as ArrayRef;
         let mut writer = MockWriter::new();
         let mut state = SerializerState::default();
-        let result =
-            serialize_async(&Type::String, &mut writer, &array, &DataType::Int8, &mut state).await;
+        let result = serialize_async(
+            &Type::String,
+            &mut writer,
+            &array,
+            &DataType::Int8,
+            &mut state,
+        )
+        .await;
         assert!(matches!(
             result,
             Err(Error::ArrowSerialize(msg))
@@ -1193,17 +1267,27 @@ mod tests {
             ),
             (
                 &DataType::Binary,
-                Arc::new(BinaryArray::from_opt_vec(vec![Some(b"a"), None, Some(b"a")])) as ArrayRef,
+                Arc::new(BinaryArray::from_opt_vec(vec![
+                    Some(b"a"),
+                    None,
+                    Some(b"a"),
+                ])) as ArrayRef,
             ),
             (
                 &DataType::BinaryView,
-                Arc::new(BinaryViewArray::from(vec![Some(b"a" as &[u8]), None, Some(b"a")]))
-                    as ArrayRef,
+                Arc::new(BinaryViewArray::from(vec![
+                    Some(b"a" as &[u8]),
+                    None,
+                    Some(b"a"),
+                ])) as ArrayRef,
             ),
             (
                 &DataType::LargeBinary,
-                Arc::new(LargeBinaryArray::from_opt_vec(vec![Some(b"a"), None, Some(b"a")]))
-                    as ArrayRef,
+                Arc::new(LargeBinaryArray::from_opt_vec(vec![
+                    Some(b"a"),
+                    None,
+                    Some(b"a"),
+                ])) as ArrayRef,
             ),
         ];
 
@@ -1240,7 +1324,13 @@ mod tests {
         let array = Arc::new(Int8Array::from(vec![1, 2, 1])) as ArrayRef;
         let mut writer = MockWriter::new();
         let mut state = SerializerState::default();
-        let result = serialize(&Type::String, &mut writer, &array, &DataType::Int8, &mut state);
+        let result = serialize(
+            &Type::String,
+            &mut writer,
+            &array,
+            &DataType::Int8,
+            &mut state,
+        );
         assert!(matches!(
             result,
             Err(Error::ArrowSerialize(msg)) if msg.contains("Unsupported data type")

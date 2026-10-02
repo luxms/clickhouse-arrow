@@ -17,7 +17,9 @@ impl Serializer for DynamicSerializer {
                 Error::serialize("Dynamic prefix metadata is required for serialization")
             })?;
             writer.write_u64_le(prefix.serialization_version).await?;
-            writer.write_var_uint(prefix.flattened_types.len() as u64).await?;
+            writer
+                .write_var_uint(prefix.flattened_types.len() as u64)
+                .await?;
             for type_ in &prefix.flattened_types {
                 writer.write_string(type_.to_string()).await?;
             }
@@ -87,7 +89,9 @@ impl Serializer for DynamicSerializer {
         _writer: &mut W,
         _state: &mut SerializerState,
     ) -> Result<()> {
-        Err(Error::serialize("Dynamic native value serialization is not implemented"))
+        Err(Error::serialize(
+            "Dynamic native value serialization is not implemented",
+        ))
     }
 
     fn write_sync(
@@ -96,7 +100,9 @@ impl Serializer for DynamicSerializer {
         _writer: &mut impl ClickHouseBytesWrite,
         _state: &mut SerializerState,
     ) -> Result<()> {
-        Err(Error::serialize("Dynamic native value serialization is not implemented"))
+        Err(Error::serialize(
+            "Dynamic native value serialization is not implemented",
+        ))
     }
 }
 
@@ -110,7 +116,7 @@ mod tests {
     fn dynamic_prefix() -> DynamicPrefixState {
         DynamicPrefixState {
             serialization_version: 3,
-            flattened_types:       vec![Type::UInt8, Type::String],
+            flattened_types: vec![Type::UInt8, Type::String],
         }
     }
 
@@ -118,7 +124,9 @@ mod tests {
     async fn write_prefix_async_is_noop_for_non_dynamic_type() {
         let mut writer = Cursor::new(Vec::new());
         let mut state = SerializerState::default();
-        DynamicSerializer::write_prefix(&Type::UInt8, &mut writer, &mut state).await.unwrap();
+        DynamicSerializer::write_prefix(&Type::UInt8, &mut writer, &mut state)
+            .await
+            .unwrap();
         assert!(writer.into_inner().is_empty());
     }
 

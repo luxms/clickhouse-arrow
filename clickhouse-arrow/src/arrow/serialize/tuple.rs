@@ -43,7 +43,9 @@ pub(super) async fn serialize_async<W: ClickHouseWrite>(
 
     // Validate field count
     let DataType::Struct(fields) = struct_array.data_type() else {
-        return Err(Error::ArrowSerialize("StructArray must have Struct data type".into()));
+        return Err(Error::ArrowSerialize(
+            "StructArray must have Struct data type".into(),
+        ));
     };
 
     if fields.len() != inner_types.len() {
@@ -57,7 +59,9 @@ pub(super) async fn serialize_async<W: ClickHouseWrite>(
     // Serialize each field as a column
     for (i, ((_, inner_type), field)) in inner_types.iter().zip(fields.iter()).enumerate() {
         let column = struct_array.column(i);
-        inner_type.serialize_async(writer, column, field.data_type(), state).await?;
+        inner_type
+            .serialize_async(writer, column, field.data_type(), state)
+            .await?;
     }
 
     Ok(())
@@ -79,7 +83,9 @@ pub(super) fn serialize<W: ClickHouseBytesWrite>(
 
     // Validate field count
     let DataType::Struct(fields) = struct_array.data_type() else {
-        return Err(Error::ArrowSerialize("StructArray must have Struct data type".into()));
+        return Err(Error::ArrowSerialize(
+            "StructArray must have Struct data type".into(),
+        ));
     };
 
     if fields.len() != inner_types.len() {
@@ -113,17 +119,27 @@ mod tests {
 
     type MockWriter = Vec<u8>;
 
-    fn wrap_tuple(inner: Vec<Type>) -> Type { Type::tuple_anon(inner) }
+    fn wrap_tuple(inner: Vec<Type>) -> Type {
+        Type::tuple_anon(inner)
+    }
 
     #[tokio::test]
     async fn test_serialize_tuple_int32_string() {
         let data = vec![
             (
-                Arc::new(Field::new(format!("{TUPLE_FIELD_NAME_PREFIX}1"), DataType::Int32, false)),
+                Arc::new(Field::new(
+                    format!("{TUPLE_FIELD_NAME_PREFIX}1"),
+                    DataType::Int32,
+                    false,
+                )),
                 Arc::new(Int32Array::from(vec![1, 2, 3])) as ArrayRef,
             ),
             (
-                Arc::new(Field::new(format!("{TUPLE_FIELD_NAME_PREFIX}2"), DataType::Utf8, false)),
+                Arc::new(Field::new(
+                    format!("{TUPLE_FIELD_NAME_PREFIX}2"),
+                    DataType::Utf8,
+                    false,
+                )),
                 Arc::new(StringArray::from(vec!["a", "b", "c"])) as ArrayRef,
             ),
         ];
@@ -132,7 +148,9 @@ mod tests {
         let mut writer = MockWriter::new();
         let mut state = SerializerState::default();
 
-        serialize_async(&type_hint, &mut writer, &struct_array, &mut state).await.unwrap();
+        serialize_async(&type_hint, &mut writer, &struct_array, &mut state)
+            .await
+            .unwrap();
         let expected = vec![
             // Int32 column: [1, 2, 3]
             1, 0, 0, 0, 2, 0, 0, 0, 3, 0, 0, 0, // String column: ["a", "b", "c"]
@@ -144,7 +162,11 @@ mod tests {
     #[tokio::test]
     async fn test_serialize_tuple_empty() {
         let fields = vec![
-            Field::new(format!("{TUPLE_FIELD_NAME_PREFIX}1"), DataType::Int32, false),
+            Field::new(
+                format!("{TUPLE_FIELD_NAME_PREFIX}1"),
+                DataType::Int32,
+                false,
+            ),
             Field::new(format!("{TUPLE_FIELD_NAME_PREFIX}2"), DataType::Utf8, false),
         ]
         .into_iter()
@@ -155,13 +177,18 @@ mod tests {
             Arc::new(StringArray::from(Vec::<String>::new())) as ArrayRef,
         ];
         let struct_array = Arc::new(StructArray::from(
-            fields.into_iter().zip(arrays.into_iter()).collect::<Vec<(FieldRef, ArrayRef)>>(),
+            fields
+                .into_iter()
+                .zip(arrays.into_iter())
+                .collect::<Vec<(FieldRef, ArrayRef)>>(),
         )) as ArrayRef;
         let type_hint = wrap_tuple(vec![Type::Int32, Type::String]);
         let mut writer = MockWriter::new();
         let mut state = SerializerState::default();
 
-        serialize_async(&type_hint, &mut writer, &struct_array, &mut state).await.unwrap();
+        serialize_async(&type_hint, &mut writer, &struct_array, &mut state)
+            .await
+            .unwrap();
         assert!(writer.is_empty());
     }
 
@@ -179,7 +206,10 @@ mod tests {
             Arc::new(StringArray::from(vec![Some("a"), None, Some("c")])),
         ];
         let struct_array = Arc::new(StructArray::from(
-            fields.into_iter().zip(arrays.into_iter()).collect::<Vec<(FieldRef, ArrayRef)>>(),
+            fields
+                .into_iter()
+                .zip(arrays.into_iter())
+                .collect::<Vec<(FieldRef, ArrayRef)>>(),
         )) as ArrayRef;
         let type_hint = wrap_tuple(vec![
             Type::Nullable(Box::new(Type::Int32)),
@@ -188,7 +218,9 @@ mod tests {
         let mut writer = MockWriter::new();
         let mut state = SerializerState::default();
 
-        serialize_async(&type_hint, &mut writer, &struct_array, &mut state).await.unwrap();
+        serialize_async(&type_hint, &mut writer, &struct_array, &mut state)
+            .await
+            .unwrap();
         let expected = vec![
             0, 1, 0, // Nullable(Int32) column: [1, null, 3]
             1, 0, 0, 0, 0, 0, 0, 0, 3, 0, 0, 0, // Nullable(String) column: ["a", null, "c"]
@@ -218,7 +250,11 @@ mod tests {
                 .collect::<Vec<(FieldRef, ArrayRef)>>(),
         ));
         let outer_fields = vec![
-            Field::new(format!("{TUPLE_FIELD_NAME_PREFIX}1"), DataType::Int32, false),
+            Field::new(
+                format!("{TUPLE_FIELD_NAME_PREFIX}1"),
+                DataType::Int32,
+                false,
+            ),
             Field::new(
                 format!("{TUPLE_FIELD_NAME_PREFIX}2"),
                 DataType::Struct(inner_fields.into()),
@@ -236,12 +272,16 @@ mod tests {
                 .zip(outer_arrays.into_iter())
                 .collect::<Vec<(FieldRef, ArrayRef)>>(),
         )) as ArrayRef;
-        let type_hint =
-            wrap_tuple(vec![Type::Int32, Type::tuple_anon(vec![Type::String, Type::Int8])]);
+        let type_hint = wrap_tuple(vec![
+            Type::Int32,
+            Type::tuple_anon(vec![Type::String, Type::Int8]),
+        ]);
         let mut writer = MockWriter::new();
         let mut state = SerializerState::default();
 
-        serialize_async(&type_hint, &mut writer, &struct_array, &mut state).await.unwrap();
+        serialize_async(&type_hint, &mut writer, &struct_array, &mut state)
+            .await
+            .unwrap();
         let expected = vec![
             // Int32 column: [1, 2]
             1, 0, 0, 0, 2, 0, 0, 0,
@@ -256,7 +296,11 @@ mod tests {
     #[tokio::test]
     async fn test_serialize_single_element_tuple() {
         let fields = vec![(
-            Arc::new(Field::new(format!("{TUPLE_FIELD_NAME_PREFIX}1"), DataType::Float64, false)),
+            Arc::new(Field::new(
+                format!("{TUPLE_FIELD_NAME_PREFIX}1"),
+                DataType::Float64,
+                false,
+            )),
             Arc::new(Float64Array::from(vec![1.5, 2.5])) as ArrayRef,
         )];
         let struct_array = Arc::new(StructArray::from(fields.clone())) as ArrayRef;
@@ -264,7 +308,9 @@ mod tests {
         let mut writer = MockWriter::new();
         let mut state = SerializerState::default();
 
-        serialize_async(&type_hint, &mut writer, &struct_array, &mut state).await.unwrap();
+        serialize_async(&type_hint, &mut writer, &struct_array, &mut state)
+            .await
+            .unwrap();
         let expected = vec![
             // Float64 column: [1.5, 2.5]
             0, 0, 0, 0, 0, 0, 248, 63, // 1.5 (0x3FF8000000000000)
@@ -291,7 +337,11 @@ mod tests {
     #[tokio::test]
     async fn test_serialize_mismatched_field_count() {
         let fields = vec![(
-            Arc::new(Field::new(format!("{TUPLE_FIELD_NAME_PREFIX}1"), DataType::Int32, false)),
+            Arc::new(Field::new(
+                format!("{TUPLE_FIELD_NAME_PREFIX}1"),
+                DataType::Int32,
+                false,
+            )),
             Arc::new(Int32Array::from(vec![1, 2])) as ArrayRef,
         )];
         let struct_array = Arc::new(StructArray::from(fields)) as ArrayRef;
@@ -311,11 +361,19 @@ mod tests {
     fn test_serialize_tuple_int32_string_sync() {
         let data = vec![
             (
-                Arc::new(Field::new(format!("{TUPLE_FIELD_NAME_PREFIX}1"), DataType::Int32, false)),
+                Arc::new(Field::new(
+                    format!("{TUPLE_FIELD_NAME_PREFIX}1"),
+                    DataType::Int32,
+                    false,
+                )),
                 Arc::new(Int32Array::from(vec![1, 2, 3])) as ArrayRef,
             ),
             (
-                Arc::new(Field::new(format!("{TUPLE_FIELD_NAME_PREFIX}2"), DataType::Utf8, false)),
+                Arc::new(Field::new(
+                    format!("{TUPLE_FIELD_NAME_PREFIX}2"),
+                    DataType::Utf8,
+                    false,
+                )),
                 Arc::new(StringArray::from(vec!["a", "b", "c"])) as ArrayRef,
             ),
         ];
@@ -347,7 +405,11 @@ mod tests {
     #[test]
     fn test_serialize_tuple_mismatched_field_count_sync() {
         let fields = vec![(
-            Arc::new(Field::new(format!("{TUPLE_FIELD_NAME_PREFIX}1"), DataType::Int32, false)),
+            Arc::new(Field::new(
+                format!("{TUPLE_FIELD_NAME_PREFIX}1"),
+                DataType::Int32,
+                false,
+            )),
             Arc::new(Int32Array::from(vec![1, 2])) as ArrayRef,
         )];
         let struct_array = Arc::new(StructArray::from(fields)) as ArrayRef;

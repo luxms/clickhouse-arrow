@@ -177,42 +177,40 @@ samply example *args='': (release-debug example)
 # Check all feature combinations
 check-features *ARGS=features:
     @echo "Checking no features..."
-    cargo clippy --no-default-features --all-targets
+    cargo clippy --no-default-features --all-targets -- -D warnings
     @echo "Building no features..."
     cargo check --no-default-features --all-targets
     @echo "Checking default features..."
-    cargo clippy --all-targets
+    cargo clippy --all-targets -- -D warnings
     @echo "Building default features..."
     cargo check --all-targets
     @echo "Checking all features..."
-    cargo clippy --all-features --all-targets
+    cargo clippy --all-features --all-targets -- -D warnings
     @echo "Building all features..."
     cargo check --all-features --all-targets
     @echo "Checking each feature..."
-    @for feature in {{ ARGS }}; do \
+    @set -e; for feature in {{ ARGS }}; do \
         echo "Checking & Building feature: $feature"; \
-        cargo clippy --no-default-features --features $feature --all-targets; \
+        cargo clippy --no-default-features --features $feature --all-targets -- -D warnings; \
         cargo check --no-default-features --features $feature --all-targets; \
     done
     @echo "Checking each feature with defaults..."
-    @for feature in {{ ARGS }}; do \
+    @set -e; for feature in {{ ARGS }}; do \
         echo "Checking feature (with defaults): $feature"; \
-        cargo clippy --features $feature --all-targets; \
+        cargo clippy --features $feature --all-targets -- -D warnings; \
         cargo check --features $feature --all-targets; \
     done
     @echo "Checking all provided features..."
-    cargo clippy --no-default-features --features "{{ ARGS }}" --all-targets
+    cargo clippy --no-default-features --features "{{ ARGS }}" --all-targets -- -D warnings
     cargo check --no-default-features --features "{{ ARGS }}" --all-targets
 
 fmt:
     @echo "Running rustfmt..."
-    # cd clickhouse-arrow && cargo +nightly fmt --all --check
-    cargo +nightly fmt --check -- --config-path ./rustfmt.toml
+    cargo fmt --check -- --config-path ./rustfmt.toml
 
 fmt-fix:
     @echo "Running rustfmt..."
-    # cd clickhouse-arrow && cargo +nightly fmt --all --check
-    cargo +nightly fmt -- --config-path ./rustfmt.toml
+    cargo fmt -- --config-path ./rustfmt.toml
 
 fix:
     cargo clippy --fix --all-features --all-targets --allow-dirty
@@ -221,9 +219,8 @@ fix:
 
 # Run checks CI will, excluding coverage so CI can parallelize test/lint and coverage jobs.
 checks-no-coverage:
-    cargo +nightly fmt --check -- --config-path ./rustfmt.toml
-    cargo +nightly clippy --all-features --all-targets
-    cargo +stable clippy --all-features --all-targets -- -D warnings
+    cargo fmt --check -- --config-path ./rustfmt.toml
+    cargo clippy --all-features --all-targets -- -D warnings
     just -f {{ justfile() }} test-all
 
 # Commit-readiness gate. This is the authoritative local truth.

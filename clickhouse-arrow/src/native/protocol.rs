@@ -120,29 +120,29 @@ pub(crate) enum QueryProcessingStage {
 #[repr(u64)]
 #[derive(Clone, Copy, Debug)]
 pub(crate) enum ClientPacketId {
-    Hello                     = 0, // Name, version, revision, default DB
+    Hello = 0, // Name, version, revision, default DB
     // Query id, query settings, stage up to which the query must be executed, whether the
     // compression must be used, query text (without data for INSERTs).
-    Query                     = 1,
-    Data                      = 2, // A block of data (compressed or not).
-    Cancel                    = 3, // Cancel the query execution.
-    Ping                      = 4, // Check that connection to the server is alive.
-    TablesStatusRequest       = 5, // Check status of tables on the server.
-    KeepAlive                 = 6, // Keep the connection alive
-    Scalar                    = 7, // A block of data (compressed or not).
-    IgnoredPartUUIDs          = 8, // List of unique parts ids to exclude from query processing
-    ReadTaskResponse          = 9, // A filename to read from s3 (used in s3Cluster)
+    Query = 1,
+    Data = 2,                // A block of data (compressed or not).
+    Cancel = 3,              // Cancel the query execution.
+    Ping = 4,                // Check that connection to the server is alive.
+    TablesStatusRequest = 5, // Check status of tables on the server.
+    KeepAlive = 6,           // Keep the connection alive
+    Scalar = 7,              // A block of data (compressed or not).
+    IgnoredPartUUIDs = 8,    // List of unique parts ids to exclude from query processing
+    ReadTaskResponse = 9,    // A filename to read from s3 (used in s3Cluster)
     //Coordinator's decision with a modified set of mark ranges allowed to read
     MergeTreeReadTaskResponse = 10,
-    SSHChallengeRequest       = 11, // Request SSH signature challenge
-    SSHChallengeResponse      = 12, // Reply to SSH signature challenge
-    QueryPlan                 = 13, // Query plan
+    SSHChallengeRequest = 11,  // Request SSH signature challenge
+    SSHChallengeResponse = 12, // Reply to SSH signature challenge
+    QueryPlan = 13,            // Query plan
 }
 
 pub(crate) struct ClientHello {
     pub(crate) default_database: String,
-    pub(crate) username:         String,
-    pub(crate) password:         String,
+    pub(crate) username: String,
+    pub(crate) password: String,
 }
 
 /// `ServerPacketId` is the packet id read from `ClickHouse`.
@@ -151,25 +151,25 @@ pub(crate) struct ClientHello {
 #[repr(u64)]
 #[derive(Clone, Copy, Debug, AsRefStr)]
 pub(crate) enum ServerPacketId {
-    Hello                          = 0,
-    Data                           = 1,
-    Exception                      = 2,
-    Progress                       = 3,
-    Pong                           = 4,
-    EndOfStream                    = 5,
-    ProfileInfo                    = 6,
-    Totals                         = 7,
-    Extremes                       = 8,
-    TablesStatusResponse           = 9,
-    Log                            = 10,
-    TableColumns                   = 11,
-    PartUUIDs                      = 12,
-    ReadTaskRequest                = 13,
-    ProfileEvents                  = 14,
+    Hello = 0,
+    Data = 1,
+    Exception = 2,
+    Progress = 3,
+    Pong = 4,
+    EndOfStream = 5,
+    ProfileInfo = 6,
+    Totals = 7,
+    Extremes = 8,
+    TablesStatusResponse = 9,
+    Log = 10,
+    TableColumns = 11,
+    PartUUIDs = 12,
+    ReadTaskRequest = 13,
+    ProfileEvents = 14,
     MergeTreeAllRangesAnnouncement = 15,
-    MergeTreeReadTaskRequest       = 16, // Request from a MergeTree replica to a coordinator
-    TimezoneUpdate                 = 17, // Receive server's (session-wide) default timezone
-    SSHChallenge                   = 18, // Return challenge for SSH signature signing
+    MergeTreeReadTaskRequest = 16, // Request from a MergeTree replica to a coordinator
+    TimezoneUpdate = 17,           // Receive server's (session-wide) default timezone
+    SSHChallenge = 18,             // Return challenge for SSH signature signing
 }
 
 impl ServerPacketId {
@@ -232,20 +232,23 @@ pub(crate) enum ServerPacket<T = Block> {
 
 #[cfg_attr(
     not(test),
-    expect(dead_code, reason = "Protocol fields kept for wire compatibility across packets")
+    expect(
+        dead_code,
+        reason = "Protocol fields kept for wire compatibility across packets"
+    )
 )]
 #[derive(Debug, Clone, Default)]
 pub(crate) struct ServerHello {
-    pub(crate) server_name:      String,
-    pub(crate) version:          (u64, u64, u64),
+    pub(crate) server_name: String,
+    pub(crate) version: (u64, u64, u64),
     pub(crate) revision_version: u64,
     #[expect(unused)]
-    pub(crate) timezone:         Option<String>,
+    pub(crate) timezone: Option<String>,
     #[expect(unused)]
-    pub(crate) display_name:     Option<String>,
-    pub(crate) settings:         Option<Settings>,
-    pub(crate) chunked_send:     ChunkedProtocolMode,
-    pub(crate) chunked_recv:     ChunkedProtocolMode,
+    pub(crate) display_name: Option<String>,
+    pub(crate) settings: Option<Settings>,
+    pub(crate) chunked_send: ChunkedProtocolMode,
+    pub(crate) chunked_recv: ChunkedProtocolMode,
 }
 
 impl ServerHello {
@@ -271,51 +274,62 @@ pub(crate) struct ServerData<T> {
 
 #[cfg_attr(
     not(test),
-    expect(dead_code, reason = "Protocol field retained for nested exception compatibility")
+    expect(
+        dead_code,
+        reason = "Protocol field retained for nested exception compatibility"
+    )
 )]
 #[derive(Debug, Clone)]
 pub(crate) struct ServerException {
-    pub(crate) code:        i32,
-    pub(crate) name:        String,
-    pub(crate) message:     String,
+    pub(crate) code: i32,
+    pub(crate) name: String,
+    pub(crate) message: String,
     pub(crate) stack_trace: String,
-    pub(crate) has_nested:  bool,
+    pub(crate) has_nested: bool,
 }
 
 impl ServerException {
-    pub(crate) fn emit(self) -> ServerError { map_exception_to_error(self) }
+    pub(crate) fn emit(self) -> ServerError {
+        map_exception_to_error(self)
+    }
 }
 
 #[expect(unused)]
 #[derive(Debug, Clone)]
 pub(crate) struct ProfileInfo {
-    pub(crate) rows:                         u64,
-    pub(crate) blocks:                       u64,
-    pub(crate) bytes:                        u64,
-    pub(crate) applied_limit:                bool,
-    pub(crate) rows_before_limit:            u64,
+    pub(crate) rows: u64,
+    pub(crate) blocks: u64,
+    pub(crate) bytes: u64,
+    pub(crate) applied_limit: bool,
+    pub(crate) rows_before_limit: u64,
     pub(crate) calculated_rows_before_limit: bool,
-    pub(crate) applied_aggregation:          bool,
-    pub(crate) rows_before_aggregation:      u64,
+    pub(crate) applied_aggregation: bool,
+    pub(crate) rows_before_aggregation: u64,
 }
 
 #[cfg_attr(
     not(test),
-    expect(dead_code, reason = "Protocol fields retained for response shape completeness")
+    expect(
+        dead_code,
+        reason = "Protocol fields retained for response shape completeness"
+    )
 )]
 #[derive(Debug, Clone)]
 pub(crate) struct TableColumns {
-    pub(crate) name:        String,
+    pub(crate) name: String,
     pub(crate) description: String,
 }
 
 #[cfg_attr(
     not(test),
-    expect(dead_code, reason = "Protocol fields retained for response shape completeness")
+    expect(
+        dead_code,
+        reason = "Protocol fields retained for response shape completeness"
+    )
 )]
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct TableStatus {
-    pub(crate) is_replicated:  bool,
+    pub(crate) is_replicated: bool,
     pub(crate) absolute_delay: u32,
 }
 
@@ -326,14 +340,14 @@ pub(crate) struct TablesStatusResponse {
 
 #[derive(Debug, Clone, Default)]
 pub(crate) struct LogData {
-    pub(crate) time:       String,
+    pub(crate) time: String,
     pub(crate) time_micro: u32,
-    pub(crate) host_name:  String,
-    pub(crate) query_id:   String,
-    pub(crate) thread_id:  u64,
-    pub(crate) priority:   i8,
-    pub(crate) source:     String,
-    pub(crate) text:       String,
+    pub(crate) host_name: String,
+    pub(crate) query_id: String,
+    pub(crate) thread_id: u64,
+    pub(crate) priority: i8,
+    pub(crate) source: String,
+    pub(crate) text: String,
 }
 
 impl LogData {
@@ -371,12 +385,12 @@ impl LogData {
 /// Emitted by `ClickHouse` during operations.
 #[derive(Debug, Clone, Default)]
 pub struct ProfileEvent {
-    pub(crate) host_name:    String,
+    pub(crate) host_name: String,
     pub(crate) current_time: String,
-    pub(crate) thread_id:    u64,
-    pub(crate) type_code:    i8,
-    pub(crate) name:         String,
-    pub(crate) value:        i64,
+    pub(crate) thread_id: u64,
+    pub(crate) type_code: i8,
+    pub(crate) name: String,
+    pub(crate) value: i64,
 }
 
 impl ProfileEvent {
@@ -401,9 +415,11 @@ impl ProfileEvent {
         for (name, type_) in &block.column_types {
             for (i, value) in column_data.drain(..rows).enumerate() {
                 if let Some(profile) = profile_events.get_mut(i) {
-                    profile.update_value(name, value, type_).inspect_err(|error| {
-                        error!(?error, "profile event update failed");
-                    })?;
+                    profile
+                        .update_value(name, value, type_)
+                        .inspect_err(|error| {
+                            error!(?error, "profile event update failed");
+                        })?;
                 }
             }
         }
@@ -456,8 +472,16 @@ impl ChunkedProtocolMode {
             return Err(Error::Protocol(format!(
                 "Incompatible protocol: {} set to {}, server requires {}",
                 direction,
-                if client_chunked { "chunked" } else { "notchunked" },
-                if server_chunked { "chunked" } else { "notchunked" }
+                if client_chunked {
+                    "chunked"
+                } else {
+                    "notchunked"
+                },
+                if server_chunked {
+                    "chunked"
+                } else {
+                    "notchunked"
+                }
             )));
         } else {
             server_chunked
@@ -620,7 +644,10 @@ mod tests {
         .unwrap_err();
         assert!(matches!(err, Error::Protocol(msg) if msg.contains("Incompatible protocol")));
 
-        assert_eq!(ChunkedProtocolMode::from_str("chunked").unwrap(), ChunkedProtocolMode::Chunked);
+        assert_eq!(
+            ChunkedProtocolMode::from_str("chunked").unwrap(),
+            ChunkedProtocolMode::Chunked
+        );
         assert_eq!(
             ChunkedProtocolMode::from_str("chunked_optional").unwrap(),
             ChunkedProtocolMode::ChunkedOptional
@@ -652,19 +679,25 @@ mod tests {
         assert_eq!(CompressionMethod::None.to_string(), "None");
         assert_eq!(CompressionMethod::LZ4.as_ref(), "LZ4");
 
-        assert_eq!(CompressionMethod::from_str("lz4").unwrap(), CompressionMethod::LZ4);
-        assert_eq!(CompressionMethod::from_str("ZSTD").unwrap(), CompressionMethod::ZSTD);
+        assert_eq!(
+            CompressionMethod::from_str("lz4").unwrap(),
+            CompressionMethod::LZ4
+        );
+        assert_eq!(
+            CompressionMethod::from_str("ZSTD").unwrap(),
+            CompressionMethod::ZSTD
+        );
         assert!(CompressionMethod::from_str("none").is_err());
     }
 
     #[test]
     fn server_exception_emit_preserves_fields() {
         let exception = ServerException {
-            code:        43,
-            name:        "DB::Exception".to_string(),
-            message:     "bad argument".to_string(),
+            code: 43,
+            name: "DB::Exception".to_string(),
+            message: "bad argument".to_string(),
             stack_trace: "stack".to_string(),
-            has_nested:  false,
+            has_nested: false,
         };
         let emitted = exception.emit();
         assert_eq!(emitted.code, 43);
@@ -676,8 +709,8 @@ mod tests {
     #[test]
     fn log_data_from_block_maps_columns_by_name() {
         let block = Block {
-            info:         BlockInfo::default(),
-            rows:         2,
+            info: BlockInfo::default(),
+            rows: 2,
             column_types: vec![
                 ("time".to_string(), Type::String),
                 ("time_micro".to_string(), Type::UInt32),
@@ -689,7 +722,7 @@ mod tests {
                 ("text".to_string(), Type::String),
                 ("ignored".to_string(), Type::Int32),
             ],
-            column_data:  vec![
+            column_data: vec![
                 Value::String(b"2024-01-01".to_vec()),
                 Value::String(b"2024-01-02".to_vec()),
                 Value::UInt32(11),
@@ -724,8 +757,8 @@ mod tests {
     #[test]
     fn profile_event_from_block_maps_columns_by_name() {
         let block = Block {
-            info:         BlockInfo::default(),
-            rows:         2,
+            info: BlockInfo::default(),
+            rows: 2,
             column_types: vec![
                 ("host_name".to_string(), Type::String),
                 ("current_time".to_string(), Type::String),
@@ -734,7 +767,7 @@ mod tests {
                 ("name".to_string(), Type::String),
                 ("value".to_string(), Type::Int64),
             ],
-            column_data:  vec![
+            column_data: vec![
                 Value::String(b"host-a".to_vec()),
                 Value::String(b"host-b".to_vec()),
                 Value::String(b"ts-a".to_vec()),

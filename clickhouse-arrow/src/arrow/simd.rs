@@ -84,7 +84,11 @@ unsafe fn expand_null_bitmap_avx2(bitmap: &[u8], output: &mut [u8], len: usize) 
 
     let remaining = len - (full_chunks * 32);
     if remaining > 0 {
-        expand_null_bitmap_scalar(&bitmap[full_chunks * 4..], &mut output[out_idx..], remaining);
+        expand_null_bitmap_scalar(
+            &bitmap[full_chunks * 4..],
+            &mut output[out_idx..],
+            remaining,
+        );
     }
 }
 
@@ -126,7 +130,11 @@ unsafe fn expand_null_bitmap_neon(bitmap: &[u8], output: &mut [u8], len: usize) 
 
     let remaining = len - (full_chunks * 32);
     if remaining > 0 {
-        expand_null_bitmap_scalar(&bitmap[full_chunks * 4..], &mut output[out_idx..], remaining);
+        expand_null_bitmap_scalar(
+            &bitmap[full_chunks * 4..],
+            &mut output[out_idx..],
+            remaining,
+        );
     }
 }
 

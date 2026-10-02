@@ -41,7 +41,9 @@ pub(super) async fn deserialize<R: ClickHouseRead>(
     };
 
     if variants.is_empty() {
-        return Err(Error::ArrowDeserialize("Variant requires at least one nested type".into()));
+        return Err(Error::ArrowDeserialize(
+            "Variant requires at least one nested type".into(),
+        ));
     }
 
     if union_schema_fields.len() != variants.len() + 1 {
@@ -76,7 +78,9 @@ pub(super) async fn deserialize<R: ClickHouseRead>(
     let null_field_idx = variants.len();
     let discriminator_mode = ctx
         .variant_prefix()
-        .map_or(VARIANT_DISCRIMINATOR_MODE_BASIC, |state| state.discriminator_mode);
+        .map_or(VARIANT_DISCRIMINATOR_MODE_BASIC, |state| {
+            state.discriminator_mode
+        });
     if discriminator_mode != VARIANT_DISCRIMINATOR_MODE_BASIC
         && discriminator_mode != VARIANT_DISCRIMINATOR_MODE_COMPACT
     {
@@ -95,7 +99,12 @@ pub(super) async fn deserialize<R: ClickHouseRead>(
     let mut compact_granule_discriminator = 0_u8;
     let mut compact_granule_remaining_rows = 0_usize;
 
-    for outer_null in nulls.iter().copied().chain(std::iter::repeat(0_u8)).take(rows) {
+    for outer_null in nulls
+        .iter()
+        .copied()
+        .chain(std::iter::repeat(0_u8))
+        .take(rows)
+    {
         let discriminator = if discriminator_mode == VARIANT_DISCRIMINATOR_MODE_BASIC {
             reader.read_u8().await?
         } else {
@@ -107,7 +116,9 @@ pub(super) async fn deserialize<R: ClickHouseRead>(
                         )
                     })?;
                 if granule_rows == 0 {
-                    return Err(Error::deserialize("Variant compact discriminator granule 0 rows"));
+                    return Err(Error::deserialize(
+                        "Variant compact discriminator granule 0 rows",
+                    ));
                 }
 
                 compact_granule_remaining_rows = granule_rows;
@@ -177,7 +188,9 @@ pub(super) async fn deserialize<R: ClickHouseRead>(
     let mut children = Vec::with_capacity(union_schema_fields.len());
     for (source_idx, source_type) in variants.iter().enumerate() {
         let source_rows = source_counts[source_idx];
-        let keep_mask = source_keep_mask.as_ref().and_then(|m| m[source_idx].as_deref());
+        let keep_mask = source_keep_mask
+            .as_ref()
+            .and_then(|m| m[source_idx].as_deref());
         let source_array = {
             let (child_data_type, child_builder) =
                 union_builder.child_parts_mut(source_idx, source_type)?;
@@ -203,7 +216,11 @@ pub(super) async fn deserialize<R: ClickHouseRead>(
                             keep_mask.len()
                         )));
                     }
-                    let keep = keep_mask.iter().copied().map(Some).collect::<BooleanArray>();
+                    let keep = keep_mask
+                        .iter()
+                        .copied()
+                        .map(Some)
+                        .collect::<BooleanArray>();
                     filter(source_array.as_ref(), &keep)?
                 } else {
                     source_array
@@ -255,16 +272,22 @@ mod tests {
 
     fn variant_data_type() -> DataType {
         DataType::Union(
-            UnionFields::new([0_i8, 1_i8, 2_i8], vec![
-                Field::new("Int32", DataType::Int32, false),
-                Field::new("String", DataType::Utf8, false),
-                Field::new("Nothing", DataType::Null, false),
-            ]),
+            UnionFields::try_new(
+                [0_i8, 1_i8, 2_i8],
+                vec![
+                    Field::new("Int32", DataType::Int32, false),
+                    Field::new("String", DataType::Utf8, false),
+                    Field::new("Nothing", DataType::Null, false),
+                ],
+            )
+            .unwrap(),
             UnionMode::Dense,
         )
     }
 
-    fn variant_type() -> Type { Type::Variant(vec![Type::Int32, Type::String]) }
+    fn variant_type() -> Type {
+        Type::Variant(vec![Type::Int32, Type::String])
+    }
 
     fn ctx(row_buffer: &mut Vec<u8>, discriminator_mode: u8) -> ArrowFieldCtx<'_> {
         ArrowFieldCtx::new(row_buffer)
@@ -297,13 +320,27 @@ mod tests {
         .unwrap();
 
         let union = array.as_any().downcast_ref::<UnionArray>().unwrap();
-        assert_eq!((0..4).map(|i| union.type_id(i)).collect::<Vec<_>>(), vec![0, 1, 2, 0]);
-        assert_eq!((0..4).map(|i| union.value_offset(i)).collect::<Vec<_>>(), vec![0, 0, 0, 1]);
+        assert_eq!(
+            (0..4).map(|i| union.type_id(i)).collect::<Vec<_>>(),
+            vec![0, 1, 2, 0]
+        );
+        assert_eq!(
+            (0..4).map(|i| union.value_offset(i)).collect::<Vec<_>>(),
+            vec![0, 0, 0, 1]
+        );
 
-        let ints = union.child(0).as_any().downcast_ref::<Int32Array>().unwrap();
+        let ints = union
+            .child(0)
+            .as_any()
+            .downcast_ref::<Int32Array>()
+            .unwrap();
         assert_eq!(ints, &Int32Array::from(vec![10, 20]));
 
-        let strings = union.child(1).as_any().downcast_ref::<StringArray>().unwrap();
+        let strings = union
+            .child(1)
+            .as_any()
+            .downcast_ref::<StringArray>()
+            .unwrap();
         assert_eq!(strings, &StringArray::from(vec!["a"]));
 
         let nulls = union.child(2).as_any().downcast_ref::<NullArray>().unwrap();
@@ -340,8 +377,14 @@ mod tests {
         .unwrap();
 
         let union = array.as_any().downcast_ref::<UnionArray>().unwrap();
-        assert_eq!((0..4).map(|i| union.type_id(i)).collect::<Vec<_>>(), vec![0, 1, 2, 0]);
-        assert_eq!((0..4).map(|i| union.value_offset(i)).collect::<Vec<_>>(), vec![0, 0, 0, 1]);
+        assert_eq!(
+            (0..4).map(|i| union.type_id(i)).collect::<Vec<_>>(),
+            vec![0, 1, 2, 0]
+        );
+        assert_eq!(
+            (0..4).map(|i| union.value_offset(i)).collect::<Vec<_>>(),
+            vec![0, 0, 0, 1]
+        );
     }
 
     #[tokio::test]
@@ -394,7 +437,8 @@ mod tests {
     async fn test_deserialize_variant_rejects_empty_variants() {
         let type_hint = Type::Variant(vec![]);
         let data_type = DataType::Union(
-            UnionFields::new([0_i8], vec![Field::new("Nothing", DataType::Null, false)]),
+            UnionFields::try_new([0_i8], vec![Field::new("Nothing", DataType::Null, false)])
+                .unwrap(),
             UnionMode::Dense,
         );
         let mut builder = TypedBuilder::try_new(&type_hint, &data_type).unwrap();
@@ -413,17 +457,25 @@ mod tests {
         .await
         .unwrap_err();
 
-        assert!(error.to_string().contains("requires at least one nested type"));
+        assert!(
+            error
+                .to_string()
+                .contains("requires at least one nested type")
+        );
     }
 
     #[tokio::test]
     async fn test_deserialize_variant_rejects_union_child_count_mismatch() {
         let type_hint = variant_type();
         let data_type = DataType::Union(
-            UnionFields::new([0_i8, 1_i8], vec![
-                Field::new("Int32", DataType::Int32, false),
-                Field::new("String", DataType::Utf8, false),
-            ]),
+            UnionFields::try_new(
+                [0_i8, 1_i8],
+                vec![
+                    Field::new("Int32", DataType::Int32, false),
+                    Field::new("String", DataType::Utf8, false),
+                ],
+            )
+            .unwrap(),
             UnionMode::Dense,
         );
         let mut builder = TypedBuilder::try_new(&type_hint, &data_type).unwrap();
@@ -465,7 +517,11 @@ mod tests {
         .await
         .unwrap_err();
 
-        assert!(error.to_string().contains("outer null mask length mismatch"));
+        assert!(
+            error
+                .to_string()
+                .contains("outer null mask length mismatch")
+        );
     }
 
     #[tokio::test]
@@ -511,7 +567,11 @@ mod tests {
         .await
         .unwrap_err();
 
-        assert!(error.to_string().contains("unsupported Variant discriminator mode"));
+        assert!(
+            error
+                .to_string()
+                .contains("unsupported Variant discriminator mode")
+        );
     }
 
     #[tokio::test]
@@ -557,7 +617,11 @@ mod tests {
         .await
         .unwrap_err();
 
-        assert!(error.to_string().contains("unsupported Variant compact granule format"));
+        assert!(
+            error
+                .to_string()
+                .contains("unsupported Variant compact granule format")
+        );
     }
 
     #[tokio::test]
@@ -636,9 +700,17 @@ mod tests {
         assert_eq!(union.type_id(0), 2);
         assert_eq!(union.type_id(1), 1);
 
-        let ints = union.child(0).as_any().downcast_ref::<Int32Array>().unwrap();
+        let ints = union
+            .child(0)
+            .as_any()
+            .downcast_ref::<Int32Array>()
+            .unwrap();
         assert_eq!(ints.len(), 0);
-        let strings = union.child(1).as_any().downcast_ref::<StringArray>().unwrap();
+        let strings = union
+            .child(1)
+            .as_any()
+            .downcast_ref::<StringArray>()
+            .unwrap();
         assert_eq!(strings, &StringArray::from(vec!["z"]));
     }
 
@@ -647,10 +719,14 @@ mod tests {
         let type_hint = variant_type();
         let data_type = variant_data_type();
         let builder_data_type = DataType::Union(
-            UnionFields::new([0_i8, 1_i8], vec![
-                Field::new("Int32", DataType::Int32, false),
-                Field::new("String", DataType::Utf8, false),
-            ]),
+            UnionFields::try_new(
+                [0_i8, 1_i8],
+                vec![
+                    Field::new("Int32", DataType::Int32, false),
+                    Field::new("String", DataType::Utf8, false),
+                ],
+            )
+            .unwrap(),
             UnionMode::Dense,
         );
         let mut builder = TypedBuilder::try_new(&type_hint, &builder_data_type).unwrap();
@@ -669,6 +745,10 @@ mod tests {
         .await
         .unwrap_err();
 
-        assert!(error.to_string().contains("builder/schema child count mismatch"));
+        assert!(
+            error
+                .to_string()
+                .contains("builder/schema child count mismatch")
+        );
     }
 }

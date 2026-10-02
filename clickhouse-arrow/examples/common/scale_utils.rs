@@ -121,7 +121,11 @@ pub(crate) async fn insert_concurrent(
                 let this_batch_size = rows_remaining.min(batch_size);
 
                 // Create batch with unique IDs if enabled
-                let id_offset = if config.unique_id { Some(rows_inserted_so_far) } else { None };
+                let id_offset = if config.unique_id {
+                    Some(rows_inserted_so_far)
+                } else {
+                    None
+                };
                 let batch = arrow_tests::create_test_batch_with_config_offset(
                     this_batch_size,
                     &config,
@@ -152,8 +156,14 @@ pub(crate) fn print_schema_config(config: &BatchConfig) {
     eprintln!("Schema Configuration:");
 
     // Always show boolean flags
-    eprintln!("  INCLUDE_ID={}   (Int64 'id' column for ORDER BY)", config.include_id);
-    eprintln!("  UNIQUE_ID={}    (unique IDs across batches)", config.unique_id);
+    eprintln!(
+        "  INCLUDE_ID={}   (Int64 'id' column for ORDER BY)",
+        config.include_id
+    );
+    eprintln!(
+        "  UNIQUE_ID={}    (unique IDs across batches)",
+        config.unique_id
+    );
 
     // Build list of non-zero integer fields
     let mut fields = Vec::new();

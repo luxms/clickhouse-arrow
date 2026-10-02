@@ -103,20 +103,20 @@ pub enum Type {
     #[cfg(feature = "extended-types")]
     QBit {
         element_type: Box<Type>,
-        dimension:    usize,
+        dimension: usize,
     },
     #[cfg(feature = "extended-types")]
     AggregateFunction {
-        name:       String,
+        name: String,
         parameters: Vec<AggregateParameter>,
-        types:      Vec<Type>,
-        version:    u64,
+        types: Vec<Type>,
+        version: u64,
     },
     #[cfg(feature = "extended-types")]
     SimpleAggregateFunction {
-        name:       String,
+        name: String,
         parameters: Vec<AggregateParameter>,
-        types:      Vec<Type>,
+        types: Vec<Type>,
     },
 }
 
@@ -191,7 +191,9 @@ impl Type {
         }
     }
 
-    pub fn is_nullable(&self) -> bool { matches!(self, Type::Nullable(_)) }
+    pub fn is_nullable(&self) -> bool {
+        matches!(self, Type::Nullable(_))
+    }
 
     pub fn strip_low_cardinality(&self) -> &Type {
         match self {
@@ -246,9 +248,12 @@ impl Type {
             Type::Enum16(_) => Value::Enum16(String::new(), 0),
             Type::LowCardinality(x) => x.default_value(),
             Type::Array(_) => Value::Array(vec![]),
-            Type::Tuple(types) => {
-                Value::Tuple(types.iter().map(|(_, type_)| type_.default_value()).collect())
-            }
+            Type::Tuple(types) => Value::Tuple(
+                types
+                    .iter()
+                    .map(|(_, type_)| type_.default_value())
+                    .collect(),
+            ),
             Type::Nullable(_) => Value::Null,
             Type::Map(_, _) => Value::Map(vec![], vec![]),
             Type::Point => Value::Point(Point::default()),
@@ -261,7 +266,10 @@ impl Type {
             Type::Variant(_) | Type::Dynamic { .. } => Value::Null,
             #[cfg(feature = "extended-types")]
             Type::Nested(fields) => Value::Tuple(
-                fields.iter().map(|(_, inner)| Value::Array(vec![inner.default_value()])).collect(),
+                fields
+                    .iter()
+                    .map(|(_, inner)| Value::Array(vec![inner.default_value()]))
+                    .collect(),
             ),
             #[cfg(feature = "extended-types")]
             Type::BFloat16 => Value::UInt16(0),
@@ -373,7 +381,11 @@ impl Display for Type {
             Type::Variant(types) => write!(
                 f,
                 "Variant({})",
-                types.iter().map(ToString::to_string).collect::<Vec<_>>().join(",")
+                types
+                    .iter()
+                    .map(ToString::to_string)
+                    .collect::<Vec<_>>()
+                    .join(",")
             ),
             #[cfg(feature = "extended-types")]
             Type::Dynamic { max_types } => {
@@ -400,16 +412,32 @@ impl Display for Type {
             #[cfg(feature = "extended-types")]
             Type::Time64(precision) => write!(f, "Time64({precision})"),
             #[cfg(feature = "extended-types")]
-            Type::QBit { element_type, dimension } => write!(f, "QBit({element_type},{dimension})"),
+            Type::QBit {
+                element_type,
+                dimension,
+            } => write!(f, "QBit({element_type},{dimension})"),
             #[cfg(feature = "extended-types")]
-            t @ (Type::SimpleAggregateFunction { name, parameters, types }
-            | Type::AggregateFunction { name, parameters, types, .. }) => {
+            t @ (Type::SimpleAggregateFunction {
+                name,
+                parameters,
+                types,
+            }
+            | Type::AggregateFunction {
+                name,
+                parameters,
+                types,
+                ..
+            }) => {
                 let function = if parameters.is_empty() {
                     name.clone()
                 } else {
                     format!(
                         "{name}({})",
-                        parameters.iter().map(ToString::to_string).collect::<Vec<_>>().join(",")
+                        parameters
+                            .iter()
+                            .map(ToString::to_string)
+                            .collect::<Vec<_>>()
+                            .join(",")
                     )
                 };
                 let func_type = if matches!(t, Type::AggregateFunction { .. }) {
@@ -425,7 +453,11 @@ impl Display for Type {
                     } else {
                         format!(
                             ",{}",
-                            types.iter().map(ToString::to_string).collect::<Vec<_>>().join(",")
+                            types
+                                .iter()
+                                .map(ToString::to_string)
+                                .collect::<Vec<_>>()
+                                .join(",")
                         )
                     }
                 )
@@ -510,7 +542,10 @@ impl Type {
                 #[cfg(feature = "extended-types")]
                 Type::Nested(fields) => {
                     let tuple_type = Type::tuple_anon(
-                        fields.iter().map(|(_, t)| Type::Array(Box::new(t.clone()))).collect(),
+                        fields
+                            .iter()
+                            .map(|(_, t)| Type::Array(Box::new(t.clone())))
+                            .collect(),
                     );
                     tuple_type.deserialize_column(reader, rows, state).await?
                 }
@@ -620,7 +655,10 @@ impl Type {
                 #[cfg(feature = "extended-types")]
                 Type::Nested(fields) => {
                     let tuple_type = Type::tuple_anon(
-                        fields.iter().map(|(_, t)| Type::Array(Box::new(t.clone()))).collect(),
+                        fields
+                            .iter()
+                            .map(|(_, t)| Type::Array(Box::new(t.clone())))
+                            .collect(),
                     );
                     tuple_type.serialize_column(values, writer, state).await?;
                 }
@@ -723,7 +761,10 @@ impl Type {
             #[cfg(feature = "extended-types")]
             Type::Nested(fields) => {
                 let tuple_type = Type::tuple_anon(
-                    fields.iter().map(|(_, t)| Type::Array(Box::new(t.clone()))).collect(),
+                    fields
+                        .iter()
+                        .map(|(_, t)| Type::Array(Box::new(t.clone())))
+                        .collect(),
                 );
                 tuple_type.serialize_column_sync(values, writer, state)?;
             }
@@ -804,7 +845,10 @@ impl Type {
                 )));
             }
             #[cfg(feature = "extended-types")]
-            Type::QBit { element_type, dimension } => {
+            Type::QBit {
+                element_type,
+                dimension,
+            } => {
                 if *dimension == 0 {
                     return Err(Error::TypeParse("QBit dims must be greater than 0".into()));
                 }
@@ -861,7 +905,9 @@ impl Type {
                 | Type::LowCardinality(_)
                 | Type::Tuple(_)
                 | Type::Nullable(_) => {
-                    Err(Error::TypeParse(format!("nullable composite type '{inner:?}'")))?;
+                    Err(Error::TypeParse(format!(
+                        "nullable composite type '{inner:?}'"
+                    )))?;
                 }
                 _ => inner.validate()?,
             },
@@ -919,7 +965,9 @@ impl Type {
             #[cfg(feature = "extended-types")]
             Type::Nested(fields) => {
                 if fields.is_empty() {
-                    return Err(Error::TypeParse("Nested requires at least one field".to_string()));
+                    return Err(Error::TypeParse(
+                        "Nested requires at least one field".to_string(),
+                    ));
                 }
                 for (_, type_) in fields {
                     type_.validate()?;
@@ -991,7 +1039,9 @@ impl Type {
                 usize::from(*scale1) >= *scale2
             }
             (Type::FixedSizedString(_) | Type::String, Value::Array(items))
-                if items.iter().all(|item| matches!(item, Value::UInt8(_) | Value::Int8(_))) =>
+                if items
+                    .iter()
+                    .all(|item| matches!(item, Value::UInt8(_) | Value::Int8(_))) =>
             {
                 true
             }
@@ -1027,7 +1077,13 @@ impl Type {
             #[cfg(feature = "extended-types")]
             (Type::Dynamic { .. }, _) => true,
             #[cfg(feature = "extended-types")]
-            (Type::QBit { element_type, dimension }, Value::Array(values)) => {
+            (
+                Type::QBit {
+                    element_type,
+                    dimension,
+                },
+                Value::Array(values),
+            ) => {
                 values.len() == *dimension
                     && values.iter().all(|value| match element_type.strip_null() {
                         Type::BFloat16 => {
@@ -1041,9 +1097,9 @@ impl Type {
                 fields.len() == values.len()
                     && fields.iter().zip(values.iter()).all(
                         |((_, inner_type), value)| match value {
-                            Value::Array(items) => {
-                                items.iter().all(|item| inner_type.inner_validate_value(item))
-                            }
+                            Value::Array(items) => items
+                                .iter()
+                                .all(|item| inner_type.inner_validate_value(item)),
                             _ => false,
                         },
                     )
@@ -1051,9 +1107,9 @@ impl Type {
             #[cfg(feature = "extended-types")]
             (Type::AggregateFunction { .. }, Value::String(_)) => true,
             #[cfg(feature = "extended-types")]
-            (Type::SimpleAggregateFunction { types, .. }, value) => {
-                types.first().is_some_and(|inner| inner.inner_validate_value(value))
-            }
+            (Type::SimpleAggregateFunction { types, .. }, value) => types
+                .first()
+                .is_some_and(|inner| inner.inner_validate_value(value)),
             _ => false,
         }
     }
@@ -1081,7 +1137,10 @@ impl Type {
             Type::Time64(_) => 8,
             Type::Nothing => 0,
             #[cfg(feature = "extended-types")]
-            Type::QBit { element_type, dimension } => {
+            Type::QBit {
+                element_type,
+                dimension,
+            } => {
                 let element_size = match element_type.strip_null() {
                     Type::BFloat16 => 2,
                     Type::Float32 => 4,
@@ -1097,7 +1156,10 @@ impl Type {
                 (4 + inner_data) * 8 // 4 bytes for offsets estimate 8 items per array
             }
             Type::Nullable(inner) => inner.estimate_capacity(),
-            Type::Tuple(types) => types.iter().map(|(_, type_)| type_.estimate_capacity()).sum(),
+            Type::Tuple(types) => types
+                .iter()
+                .map(|(_, type_)| type_.estimate_capacity())
+                .sum(),
             Type::Map(key, value) => {
                 let key_data = key.estimate_capacity();
                 let value_data = value.estimate_capacity();
@@ -1108,9 +1170,10 @@ impl Type {
             #[cfg(feature = "extended-types")]
             Type::Dynamic { .. } => 64,
             #[cfg(feature = "extended-types")]
-            Type::Nested(fields) => {
-                fields.iter().map(|(_, type_)| type_.estimate_capacity() * 8).sum()
-            }
+            Type::Nested(fields) => fields
+                .iter()
+                .map(|(_, type_)| type_.estimate_capacity() * 8)
+                .sum(),
             #[cfg(feature = "extended-types")]
             Type::AggregateFunction { .. } => 64,
             #[cfg(feature = "extended-types")]
@@ -1172,7 +1235,10 @@ impl Type {
             Type::Ring | Type::Polygon | Type::MultiPolygon => writer.write_var_uint(0).await?,
             Type::Object => writer.write_string("{}").await?,
             #[cfg(feature = "extended-types")]
-            Type::QBit { element_type, dimension } => {
+            Type::QBit {
+                element_type,
+                dimension,
+            } => {
                 writer.write_var_uint(*dimension as u64).await?;
                 for _ in 0..*dimension {
                     match element_type.strip_null() {
@@ -1237,6 +1303,10 @@ impl Type {
         Ok(())
     }
 
+    #[expect(
+        clippy::too_many_lines,
+        reason = "One default-value encoding arm per ClickHouse type"
+    )]
     pub(crate) fn put_default<W: ClickHouseBytesWrite>(&self, writer: &mut W) -> Result<()> {
         match self.strip_null() {
             Type::String | Type::Binary => {
@@ -1275,7 +1345,10 @@ impl Type {
             Type::Ring | Type::Polygon | Type::MultiPolygon => writer.put_var_uint(0)?,
             Type::Object => writer.put_string("{}")?,
             #[cfg(feature = "extended-types")]
-            Type::QBit { element_type, dimension } => {
+            Type::QBit {
+                element_type,
+                dimension,
+            } => {
                 writer.put_var_uint(*dimension as u64)?;
                 for _ in 0..*dimension {
                     match element_type.strip_null() {
@@ -1365,7 +1438,11 @@ impl Display for AggregateParameter {
             Self::Float64(bits) => {
                 let value = f64::from_bits(*bits);
                 if value.is_infinite() {
-                    if value.is_sign_positive() { write!(f, "inf") } else { write!(f, "-inf") }
+                    if value.is_sign_positive() {
+                        write!(f, "inf")
+                    } else {
+                        write!(f, "-inf")
+                    }
                 } else {
                     write!(f, "{value}")
                 }

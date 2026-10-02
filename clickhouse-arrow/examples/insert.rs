@@ -30,7 +30,11 @@ async fn run(ch: &'static ClickHouseContainer) -> Result<()> {
 
     // Insert data
     let mut stream = client
-        .insert(format!("INSERT INTO {table} FORMAT Native"), batch, Some(Qid::new()))
+        .insert(
+            format!("INSERT INTO {table} FORMAT Native"),
+            batch,
+            Some(Qid::new()),
+        )
         .await
         .inspect_err(|e| eprintln!("Insert error\n{e:?}"))
         .unwrap();

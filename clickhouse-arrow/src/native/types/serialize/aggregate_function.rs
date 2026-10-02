@@ -37,7 +37,9 @@ impl Serializer for AggregateFunctionSerializer {
         _writer: &mut W,
         _state: &mut SerializerState,
     ) -> Result<()> {
-        Err(Error::serialize("AggregateFunction native value serialization is not implemented"))
+        Err(Error::serialize(
+            "AggregateFunction native value serialization is not implemented",
+        ))
     }
 
     fn write_sync(
@@ -46,7 +48,9 @@ impl Serializer for AggregateFunctionSerializer {
         _writer: &mut impl ClickHouseBytesWrite,
         _state: &mut SerializerState,
     ) -> Result<()> {
-        Err(Error::serialize("AggregateFunction native value serialization is not implemented"))
+        Err(Error::serialize(
+            "AggregateFunction native value serialization is not implemented",
+        ))
     }
 }
 
@@ -58,18 +62,18 @@ mod tests {
 
     fn simple_agg() -> Type {
         Type::SimpleAggregateFunction {
-            name:       "sum".to_string(),
+            name: "sum".to_string(),
             parameters: vec![],
-            types:      vec![Type::UInt64],
+            types: vec![Type::UInt64],
         }
     }
 
     fn agg() -> Type {
         Type::AggregateFunction {
-            name:       "sumState".to_string(),
+            name: "sumState".to_string(),
             parameters: vec![],
-            types:      vec![Type::UInt64],
-            version:    0,
+            types: vec![Type::UInt64],
+            version: 0,
         }
     }
 
@@ -87,7 +91,9 @@ mod tests {
     async fn write_prefix_async_ignores_non_simple_aggregate() {
         let mut writer = Cursor::new(Vec::new());
         let mut state = SerializerState::default();
-        AggregateFunctionSerializer::write_prefix(&agg(), &mut writer, &mut state).await.unwrap();
+        AggregateFunctionSerializer::write_prefix(&agg(), &mut writer, &mut state)
+            .await
+            .unwrap();
         assert!(writer.into_inner().is_empty());
     }
 

@@ -195,7 +195,9 @@ mod tests {
     // Helper to create a mock reader
     type MockReader = Cursor<Vec<u8>>;
 
-    fn test_ctx(row_buffer: &mut Vec<u8>) -> ArrowFieldCtx<'_> { ArrowFieldCtx::new(row_buffer) }
+    fn test_ctx(row_buffer: &mut Vec<u8>) -> ArrowFieldCtx<'_> {
+        ArrowFieldCtx::new(row_buffer)
+    }
 
     #[tokio::test]
     async fn test_deserialize_enum8() {
@@ -211,8 +213,9 @@ mod tests {
         let mut builder = TypedBuilder::try_new(&type_, &data_type).unwrap();
         let mut row_buffer = Vec::new();
         let mut ctx = test_ctx(&mut row_buffer);
-        let array =
-            deserialize_async(&type_, &mut builder, &mut reader, 3, &[], &mut ctx).await.unwrap();
+        let array = deserialize_async(&type_, &mut builder, &mut reader, 3, &[], &mut ctx)
+            .await
+            .unwrap();
         let values = Arc::new(StringArray::from(vec!["a", "b"])) as ArrayRef;
         let expected = Arc::new(
             DictionaryArray::<Int8Type>::try_new(Int8Array::from(vec![0, 1, 0]), values).unwrap(),
@@ -234,8 +237,9 @@ mod tests {
         let mut builder = TypedBuilder::try_new(&type_, &data_type).unwrap();
         let mut row_buffer = Vec::new();
         let mut ctx = test_ctx(&mut row_buffer);
-        let array =
-            deserialize_async(&type_, &mut builder, &mut reader, 3, &[], &mut ctx).await.unwrap();
+        let array = deserialize_async(&type_, &mut builder, &mut reader, 3, &[], &mut ctx)
+            .await
+            .unwrap();
         let values = Arc::new(StringArray::from(vec!["x", "y"])) as ArrayRef;
         let expected = Arc::new(
             DictionaryArray::<Int16Type>::try_new(Int16Array::from(vec![0, 1, 0]), values).unwrap(),
@@ -286,8 +290,9 @@ mod tests {
         let mut builder = TypedBuilder::try_new(&type_, &data_type).unwrap();
         let mut row_buffer = Vec::new();
         let mut ctx = test_ctx(&mut row_buffer);
-        let array =
-            deserialize_async(&type_, &mut builder, &mut reader, 0, &[], &mut ctx).await.unwrap();
+        let array = deserialize_async(&type_, &mut builder, &mut reader, 0, &[], &mut ctx)
+            .await
+            .unwrap();
         let values = Arc::new(StringArray::from(vec!["a", "b"])) as ArrayRef;
         let expected = Arc::new(
             DictionaryArray::<Int8Type>::try_new(Int8Array::from(Vec::<i8>::new()), values)

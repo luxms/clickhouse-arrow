@@ -93,8 +93,8 @@ impl ClickHouseNativeDeserializer for Type {
         state: &'a mut DeserializerState<T>,
     ) -> impl Future<Output = Result<()>> + Send + 'a {
         struct Frame<'a> {
-            type_:      &'a Type,
-            node_id:    CustomPlanNodeId,
+            type_: &'a Type,
+            node_id: CustomPlanNodeId,
             next_child: usize,
         }
         async move {
@@ -112,7 +112,11 @@ impl ClickHouseNativeDeserializer for Type {
                 variant_prefix: None,
             });
 
-            let mut stack = vec![Frame { type_: self, node_id: 0, next_child: 0 }];
+            let mut stack = vec![Frame {
+                type_: self,
+                node_id: 0,
+                next_child: 0,
+            }];
             while let Some(frame) = stack.last_mut() {
                 let Type::Tuple(inner) = frame.type_ else {
                     let _ = stack.pop();
@@ -149,10 +153,18 @@ impl ClickHouseNativeDeserializer for Type {
                     Error::Protocol("too many custom children in tuple node".into())
                 })?;
                 edges.push(node_id);
-                stack.push(Frame { type_: child_type, node_id, next_child: 0 });
+                stack.push(Frame {
+                    type_: child_type,
+                    node_id,
+                    next_child: 0,
+                });
             }
 
-            drop(state.replace_custom_plan(CustomPlan { nodes, edges, root: 0 }));
+            drop(state.replace_custom_plan(CustomPlan {
+                nodes,
+                edges,
+                root: 0,
+            }));
             Ok(())
         }
         .boxed()
@@ -349,7 +361,9 @@ impl FromStr for AggregateParameter {
             return Ok(Self::Float64(value.to_bits()));
         }
 
-        Err(Error::TypeParse(format!("unsupported aggregate parameter literal '{input}'")))
+        Err(Error::TypeParse(format!(
+            "unsupported aggregate parameter literal '{input}'"
+        )))
     }
 }
 
@@ -452,7 +466,9 @@ macro_rules! parse_enum_options {
             }
 
             if input.ends_with(',') {
-                return Err(Error::TypeParse("Trailing comma in enum variants".to_string()));
+                return Err(Error::TypeParse(
+                    "Trailing comma in enum variants".to_string(),
+                ));
             }
 
             Ok(options)
@@ -480,7 +496,9 @@ impl FromStr for Type {
         let (ident, following) = eat_identifier(s);
 
         if ident.is_empty() {
-            return Err(Error::TypeParse(format!("invalid empty identifier for type: '{s}'")));
+            return Err(Error::TypeParse(format!(
+                "invalid empty identifier for type: '{s}'"
+            )));
         }
 
         let following = following.trim();
@@ -663,14 +681,18 @@ impl FromStr for Type {
                 }
                 "Tuple" => {
                     let args = parse_variable_args(following)?;
-                    let inner =
-                        args.into_iter().map(parse_tuple_field).collect::<Result<_, _>>()?;
+                    let inner = args
+                        .into_iter()
+                        .map(parse_tuple_field)
+                        .collect::<Result<_, _>>()?;
                     Type::Tuple(inner)
                 }
                 "Nullable" => {
                     let (args, count) = parse_fixed_args::<1>(following)?;
                     if count != 1 {
-                        return Err(Error::TypeParse(format!("Nullable expects 1 arg: {args:?}")));
+                        return Err(Error::TypeParse(format!(
+                            "Nullable expects 1 arg: {args:?}"
+                        )));
                     }
                     Type::Nullable(Box::new(Type::from_str(args[0])?))
                 }
@@ -709,7 +731,10 @@ impl FromStr for Type {
                     }
                     let element_type = Type::from_str(args[0])?;
                     let dimension = parse_precision(args[1])?;
-                    Type::QBit { element_type: Box::new(element_type), dimension }
+                    Type::QBit {
+                        element_type: Box::new(element_type),
+                        dimension,
+                    }
                 }
                 #[cfg(feature = "extended-types")]
                 "Variant" => {
@@ -719,7 +744,11 @@ impl FromStr for Type {
                             "Variant requires at least one inner type".to_string(),
                         ));
                     }
-                    Type::Variant(args.into_iter().map(Type::from_str).collect::<Result<Vec<_>>>()?)
+                    Type::Variant(
+                        args.into_iter()
+                            .map(Type::from_str)
+                            .collect::<Result<Vec<_>>>()?,
+                    )
                 }
                 #[cfg(feature = "extended-types")]
                 "Dynamic" => {
@@ -835,9 +864,16 @@ impl FromStr for Type {
                             .map(AggregateParameter::from_str)
                             .collect::<Result<Vec<_>>>()?
                     };
-                    let types =
-                        args.into_iter().skip(1).map(Type::from_str).collect::<Result<Vec<_>>>()?;
-                    Type::SimpleAggregateFunction { name: name.to_string(), parameters, types }
+                    let types = args
+                        .into_iter()
+                        .skip(1)
+                        .map(Type::from_str)
+                        .collect::<Result<Vec<_>>>()?;
+                    Type::SimpleAggregateFunction {
+                        name: name.to_string(),
+                        parameters,
+                        types,
+                    }
                 }
                 id => {
                     return Err(Error::TypeParse(format!(
@@ -936,14 +972,18 @@ fn parse_fixed_args<const N: usize>(input: &str) -> Result<([&str; N], usize)> {
 }
 
 /// Parse arguments into a Vec for types with variable numbers of args
-fn parse_variable_args(input: &str) -> Result<Vec<&str>> { parse_args_iter(input)?.collect() }
+fn parse_variable_args(input: &str) -> Result<Vec<&str>> {
+    parse_args_iter(input)?.collect()
+}
 
 fn parse_scale(from: &str) -> Result<u8> {
-    from.parse().map_err(|_| Error::TypeParse("couldn't parse scale".to_string()))
+    from.parse()
+        .map_err(|_| Error::TypeParse("couldn't parse scale".to_string()))
 }
 
 fn parse_precision(from: &str) -> Result<usize> {
-    from.parse().map_err(|_| Error::TypeParse("could not parse precision".to_string()))
+    from.parse()
+        .map_err(|_| Error::TypeParse("could not parse precision".to_string()))
 }
 
 /// Core iterator for parsing comma-separated arguments within parentheses
@@ -953,18 +993,26 @@ fn parse_args_iter(input: &str) -> Result<impl Iterator<Item = Result<&str, Erro
     }
     let input = input[1..input.len() - 1].trim();
     if input.ends_with(',') {
-        return Err(Error::TypeParse("Trailing comma in argument list".to_string()));
+        return Err(Error::TypeParse(
+            "Trailing comma in argument list".to_string(),
+        ));
     }
 
-    Ok(ArgsIterator { input, last_start: 0, in_parens: 0, in_quotes: false, done: false })
+    Ok(ArgsIterator {
+        input,
+        last_start: 0,
+        in_parens: 0,
+        in_quotes: false,
+        done: false,
+    })
 }
 
 struct ArgsIterator<'a> {
-    input:      &'a str,
+    input: &'a str,
     last_start: usize,
-    in_parens:  usize,
-    in_quotes:  bool,
-    done:       bool,
+    in_parens: usize,
+    in_quotes: bool,
+    done: bool,
 }
 
 impl<'a> Iterator for ArgsIterator<'a> {
@@ -1025,7 +1073,9 @@ impl<'a> Iterator for ArgsIterator<'a> {
             }
             if slice == "," {
                 self.done = true;
-                return Some(Err(Error::TypeParse("Trailing comma in argument list".to_string())));
+                return Some(Err(Error::TypeParse(
+                    "Trailing comma in argument list".to_string(),
+                )));
             }
             self.done = true;
             return Some(Ok(slice));
@@ -1047,7 +1097,10 @@ mod tests {
         assert_eq!(eat_identifier("Int8"), ("Int8", ""));
         assert_eq!(eat_identifier("Enum8('a'=1)"), ("Enum8", "('a'=1)"));
         assert_eq!(eat_identifier("DateTime('UTC')"), ("DateTime", "('UTC')"));
-        assert_eq!(eat_identifier("Map(String,Int32)"), ("Map", "(String,Int32)"));
+        assert_eq!(
+            eat_identifier("Map(String,Int32)"),
+            ("Map", "(String,Int32)")
+        );
         assert_eq!(eat_identifier(""), ("", ""));
         assert_eq!(eat_identifier("Invalid Type"), ("Invalid", " Type"));
     }
@@ -1110,12 +1163,27 @@ mod tests {
     fn test_from_str_decimals() {
         assert_eq!(Type::from_str("Decimal32(2)").unwrap(), Type::Decimal32(2));
         assert_eq!(Type::from_str("Decimal64(4)").unwrap(), Type::Decimal64(4));
-        assert_eq!(Type::from_str("Decimal128(6)").unwrap(), Type::Decimal128(6));
-        assert_eq!(Type::from_str("Decimal256(8)").unwrap(), Type::Decimal256(8));
+        assert_eq!(
+            Type::from_str("Decimal128(6)").unwrap(),
+            Type::Decimal128(6)
+        );
+        assert_eq!(
+            Type::from_str("Decimal256(8)").unwrap(),
+            Type::Decimal256(8)
+        );
         assert_eq!(Type::from_str("Decimal(9, 2)").unwrap(), Type::Decimal32(2));
-        assert_eq!(Type::from_str("Decimal(18, 4)").unwrap(), Type::Decimal64(4));
-        assert_eq!(Type::from_str("Decimal(38, 6)").unwrap(), Type::Decimal128(6));
-        assert_eq!(Type::from_str("Decimal(76, 8)").unwrap(), Type::Decimal256(8));
+        assert_eq!(
+            Type::from_str("Decimal(18, 4)").unwrap(),
+            Type::Decimal64(4)
+        );
+        assert_eq!(
+            Type::from_str("Decimal(38, 6)").unwrap(),
+            Type::Decimal128(6)
+        );
+        assert_eq!(
+            Type::from_str("Decimal(76, 8)").unwrap(),
+            Type::Decimal256(8)
+        );
 
         assert!(Type::from_str("Decimal32(0)").is_err()); // Invalid scale
         assert!(Type::from_str("Decimal(77, 8)").is_err()); // Precision too large
@@ -1127,7 +1195,10 @@ mod tests {
     fn test_from_str_strings() {
         assert_eq!(Type::from_str("String").unwrap(), Type::String);
         assert_eq!(Type::from_str("Nothing").unwrap(), Type::Nothing);
-        assert_eq!(Type::from_str("FixedString(4)").unwrap(), Type::FixedSizedString(4));
+        assert_eq!(
+            Type::from_str("FixedString(4)").unwrap(),
+            Type::FixedSizedString(4)
+        );
         assert!(Type::from_str("FixedString(0)").is_err()); // Invalid size
         assert!(Type::from_str("FixedString(a)").is_err()); // Invalid size
     }
@@ -1135,8 +1206,14 @@ mod tests {
     /// Tests `Type::from_str` for date and time types.
     #[test]
     fn test_from_str_datetime() {
-        assert_eq!(Type::from_str("DateTime").unwrap(), Type::DateTime(chrono_tz::UTC));
-        assert_eq!(Type::from_str("DateTime('UTC')").unwrap(), Type::DateTime(chrono_tz::UTC));
+        assert_eq!(
+            Type::from_str("DateTime").unwrap(),
+            Type::DateTime(chrono_tz::UTC)
+        );
+        assert_eq!(
+            Type::from_str("DateTime('UTC')").unwrap(),
+            Type::DateTime(chrono_tz::UTC)
+        );
         assert_eq!(
             Type::from_str("DateTime('America/New_York')").unwrap(),
             Type::DateTime(chrono_tz::America::New_York)
@@ -1144,7 +1221,10 @@ mod tests {
         assert!(Type::from_str("DateTime('UTC', 'extra')").is_err()); // Too many args
         assert!(Type::from_str("DateTime(UTC)").is_err()); // Unquoted timezone
 
-        assert_eq!(Type::from_str("DateTime64(3)").unwrap(), Type::DateTime64(3, chrono_tz::UTC));
+        assert_eq!(
+            Type::from_str("DateTime64(3)").unwrap(),
+            Type::DateTime64(3, chrono_tz::UTC)
+        );
         assert_eq!(
             Type::from_str("DateTime64(6, 'UTC')").unwrap(),
             Type::DateTime64(6, chrono_tz::UTC)
@@ -1162,13 +1242,19 @@ mod tests {
     #[test]
     fn test_from_str_enum8_explicit() {
         let enum8 = Type::from_str("Enum8('active' = 1, 'inactive' = 2)").unwrap();
-        assert_eq!(enum8, Type::Enum8(vec![("active".into(), 1), ("inactive".into(), 2)]));
+        assert_eq!(
+            enum8,
+            Type::Enum8(vec![("active".into(), 1), ("inactive".into(), 2)])
+        );
 
         let single = Type::from_str("Enum8('test' = -1)").unwrap();
         assert_eq!(single, Type::Enum8(vec![("test".into(), -1)]));
 
         let negative = Type::from_str("Enum8('neg' = -128, 'zero' = 0)").unwrap();
-        assert_eq!(negative, Type::Enum8(vec![("neg".into(), -128), ("zero".into(), 0)]));
+        assert_eq!(
+            negative,
+            Type::Enum8(vec![("neg".into(), -128), ("zero".into(), 0)])
+        );
     }
 
     /// Tests `Type::from_str` for Enum8 with empty variants.
@@ -1182,7 +1268,10 @@ mod tests {
     #[test]
     fn test_from_str_enum16_explicit() {
         let enum16 = Type::from_str("Enum16('high' = 1000, 'low' = -1000)").unwrap();
-        assert_eq!(enum16, Type::Enum16(vec![("high".into(), 1000), ("low".into(), -1000)]));
+        assert_eq!(
+            enum16,
+            Type::Enum16(vec![("high".into(), 1000), ("low".into(), -1000)])
+        );
 
         let single = Type::from_str("Enum16('test' = 0)").unwrap();
         assert_eq!(single, Type::Enum16(vec![("test".into(), 0)]));
@@ -1215,7 +1304,10 @@ mod tests {
             Type::from_str("LowCardinality(String)").unwrap(),
             Type::LowCardinality(Box::new(Type::String))
         );
-        assert_eq!(Type::from_str("Array(Int32)").unwrap(), Type::Array(Box::new(Type::Int32)));
+        assert_eq!(
+            Type::from_str("Array(Int32)").unwrap(),
+            Type::Array(Box::new(Type::Int32))
+        );
         assert_eq!(
             Type::from_str("Tuple(Int32, String)").unwrap(),
             Type::tuple_anon(vec![Type::Int32, Type::String])
@@ -1274,7 +1366,10 @@ mod tests {
             Type::BFloat16,
             Type::Time,
             Type::Time64(6),
-            Type::QBit { element_type: Box::new(Type::Float32), dimension: 4 },
+            Type::QBit {
+                element_type: Box::new(Type::Float32),
+                dimension: 4,
+            },
             Type::Variant(vec![Type::String, Type::UInt64]),
             Type::Dynamic { max_types: 8 },
             Type::Nested(vec![
@@ -1282,29 +1377,29 @@ mod tests {
                 ("score".to_string(), Type::Float64),
             ]),
             Type::AggregateFunction {
-                name:       "sumState".to_string(),
+                name: "sumState".to_string(),
                 parameters: vec![],
-                types:      vec![Type::UInt64],
-                version:    0,
+                types: vec![Type::UInt64],
+                version: 0,
             },
             Type::SimpleAggregateFunction {
-                name:       "sum".to_string(),
+                name: "sum".to_string(),
                 parameters: vec![],
-                types:      vec![Type::UInt64],
+                types: vec![Type::UInt64],
             },
             Type::AggregateFunction {
-                name:       "quantilesTDigest".to_string(),
+                name: "quantilesTDigest".to_string(),
                 parameters: vec![
                     AggregateParameter::Float64(0.5_f64.to_bits()),
                     AggregateParameter::Float64(0.9_f64.to_bits()),
                 ],
-                types:      vec![Type::UInt64],
-                version:    0,
+                types: vec![Type::UInt64],
+                version: 0,
             },
             Type::SimpleAggregateFunction {
-                name:       "quantile".to_string(),
+                name: "quantile".to_string(),
                 parameters: vec![AggregateParameter::Float64(0.9_f64.to_bits())],
-                types:      vec![Type::UInt64],
+                types: vec![Type::UInt64],
             },
         ]);
 
@@ -1345,22 +1440,28 @@ mod tests {
     #[test]
     fn test_from_str_aggregate_function_with_parameters() {
         let type_ = Type::from_str("AggregateFunction(quantilesTDigest(0.5,0.9),UInt64)").unwrap();
-        assert_eq!(type_, Type::AggregateFunction {
-            name:       "quantilesTDigest".to_string(),
-            parameters: vec![
-                AggregateParameter::Float64(0.5_f64.to_bits()),
-                AggregateParameter::Float64(0.9_f64.to_bits()),
-            ],
-            types:      vec![Type::UInt64],
-            version:    0,
-        });
+        assert_eq!(
+            type_,
+            Type::AggregateFunction {
+                name: "quantilesTDigest".to_string(),
+                parameters: vec![
+                    AggregateParameter::Float64(0.5_f64.to_bits()),
+                    AggregateParameter::Float64(0.9_f64.to_bits()),
+                ],
+                types: vec![Type::UInt64],
+                version: 0,
+            }
+        );
 
         let type_ = Type::from_str("SimpleAggregateFunction(quantile(0.9),UInt64)").unwrap();
-        assert_eq!(type_, Type::SimpleAggregateFunction {
-            name:       "quantile".to_string(),
-            parameters: vec![AggregateParameter::Float64(0.9_f64.to_bits())],
-            types:      vec![Type::UInt64],
-        });
+        assert_eq!(
+            type_,
+            Type::SimpleAggregateFunction {
+                name: "quantile".to_string(),
+                parameters: vec![AggregateParameter::Float64(0.9_f64.to_bits())],
+                types: vec![Type::UInt64],
+            }
+        );
     }
 
     /// Tests `parse_tuple_field` helper function.
@@ -1372,18 +1473,30 @@ mod tests {
             parse_tuple_field("Nullable(Int32)").unwrap(),
             (None, Type::Nullable(Box::new(Type::Int32)))
         );
-        assert_eq!(parse_tuple_field("s String").unwrap(), (Some("s".to_string()), Type::String));
+        assert_eq!(
+            parse_tuple_field("s String").unwrap(),
+            (Some("s".to_string()), Type::String)
+        );
         assert_eq!(
             parse_tuple_field("my_field Nullable(Int32)").unwrap(),
-            (Some("my_field".to_string()), Type::Nullable(Box::new(Type::Int32)))
+            (
+                Some("my_field".to_string()),
+                Type::Nullable(Box::new(Type::Int32))
+            )
         );
         assert_eq!(
             parse_tuple_field("my_map Map(String, Int32)").unwrap(),
-            (Some("my_map".to_string()), Type::Map(Box::new(Type::String), Box::new(Type::Int32)))
+            (
+                Some("my_map".to_string()),
+                Type::Map(Box::new(Type::String), Box::new(Type::Int32))
+            )
         );
         assert_eq!(
             parse_tuple_field("Map(String, Int32)").unwrap(),
-            (None, Type::Map(Box::new(Type::String), Box::new(Type::Int32)))
+            (
+                None,
+                Type::Map(Box::new(Type::String), Box::new(Type::Int32))
+            )
         );
     }
 
@@ -1404,7 +1517,10 @@ mod tests {
             Type::from_str("Tuple(name String, value Nullable(Int32))").unwrap(),
             Type::Tuple(vec![
                 (Some("name".to_string()), Type::String),
-                (Some("value".to_string()), Type::Nullable(Box::new(Type::Int32))),
+                (
+                    Some("value".to_string()),
+                    Type::Nullable(Box::new(Type::Int32))
+                ),
             ])
         );
 
@@ -1413,7 +1529,10 @@ mod tests {
             Type::from_str("Tuple(arr Array(String), map Map(String, Int32))").unwrap(),
             Type::Tuple(vec![
                 (Some("arr".to_string()), Type::Array(Box::new(Type::String))),
-                (Some("map".to_string()), Type::Map(Box::new(Type::String), Box::new(Type::Int32)),),
+                (
+                    Some("map".to_string()),
+                    Type::Map(Box::new(Type::String), Box::new(Type::Int32)),
+                ),
             ])
         );
 
@@ -1434,7 +1553,10 @@ mod tests {
         // Actually, ClickHouse requires all or none to be named, but we handle it gracefully
         assert_eq!(
             Type::from_str("Tuple(String, i Int64)").unwrap(),
-            Type::Tuple(vec![(None, Type::String), (Some("i".to_string()), Type::Int64)])
+            Type::Tuple(vec![
+                (None, Type::String),
+                (Some("i".to_string()), Type::Int64)
+            ])
         );
 
         // Anonymous tuples with types containing internal spaces - regression test for Codex review
@@ -1465,9 +1587,14 @@ mod tests {
         ]);
         let mut state = DeserializerState::<()>::default();
 
-        type_.deserialize_custom_serialization_prefix(&mut reader, &mut state).await.unwrap();
+        type_
+            .deserialize_custom_serialization_prefix(&mut reader, &mut state)
+            .await
+            .unwrap();
 
-        let custom = state.take_custom_plan().expect("custom serialization state missing");
+        let custom = state
+            .take_custom_plan()
+            .expect("custom serialization state missing");
         assert_eq!(custom.nodes.len(), 3);
         assert_eq!(custom.edges.len(), 2);
         assert_eq!(custom.root, 0);
@@ -1495,21 +1622,30 @@ mod tests {
             .await
             .unwrap();
 
-        let custom = state.take_custom_plan().expect("custom serialization state missing");
+        let custom = state
+            .take_custom_plan()
+            .expect("custom serialization state missing");
         assert_eq!(custom.nodes.len(), 1);
-        assert_eq!(custom.nodes[0].stack_type, CUSTOM_SERIALIZATION_KIND_STACK_COMBINATION);
-        assert_eq!(custom.nodes[0].kinds, vec![
-            CUSTOM_SERIALIZATION_KIND_DEFAULT,
-            CUSTOM_SERIALIZATION_KIND_REPLICATED
-        ]);
+        assert_eq!(
+            custom.nodes[0].stack_type,
+            CUSTOM_SERIALIZATION_KIND_STACK_COMBINATION
+        );
+        assert_eq!(
+            custom.nodes[0].kinds,
+            vec![
+                CUSTOM_SERIALIZATION_KIND_DEFAULT,
+                CUSTOM_SERIALIZATION_KIND_REPLICATED
+            ]
+        );
     }
 
     #[tokio::test]
     async fn test_deserialize_custom_serialization_prefix_invalid_stack_type() {
         let mut reader = std::io::Cursor::new(vec![255]);
         let mut state = DeserializerState::<()>::default();
-        let error =
-            Type::UInt8.deserialize_custom_serialization_prefix(&mut reader, &mut state).await;
+        let error = Type::UInt8
+            .deserialize_custom_serialization_prefix(&mut reader, &mut state)
+            .await;
         assert!(error.is_err());
     }
 
@@ -1518,17 +1654,27 @@ mod tests {
         let mut reader =
             std::io::Cursor::new(vec![CUSTOM_SERIALIZATION_KIND_STACK_COMBINATION, 1, 255]);
         let mut state = DeserializerState::<()>::default();
-        let error =
-            Type::UInt8.deserialize_custom_serialization_prefix(&mut reader, &mut state).await;
+        let error = Type::UInt8
+            .deserialize_custom_serialization_prefix(&mut reader, &mut state)
+            .await;
         assert!(error.is_err());
     }
 
     #[cfg(feature = "extended-types")]
     #[test]
     fn test_aggregate_parameter_from_str_literals() {
-        assert_eq!(AggregateParameter::from_str("NULL").unwrap(), AggregateParameter::Null);
-        assert_eq!(AggregateParameter::from_str("true").unwrap(), AggregateParameter::Bool(true));
-        assert_eq!(AggregateParameter::from_str("false").unwrap(), AggregateParameter::Bool(false));
+        assert_eq!(
+            AggregateParameter::from_str("NULL").unwrap(),
+            AggregateParameter::Null
+        );
+        assert_eq!(
+            AggregateParameter::from_str("true").unwrap(),
+            AggregateParameter::Bool(true)
+        );
+        assert_eq!(
+            AggregateParameter::from_str("false").unwrap(),
+            AggregateParameter::Bool(false)
+        );
         assert_eq!(
             AggregateParameter::from_str("inf").unwrap(),
             AggregateParameter::Float64(f64::INFINITY.to_bits())
@@ -1541,8 +1687,14 @@ mod tests {
             AggregateParameter::from_str("-inf").unwrap(),
             AggregateParameter::Float64(f64::NEG_INFINITY.to_bits())
         );
-        assert_eq!(AggregateParameter::from_str("42").unwrap(), AggregateParameter::UInt64(42));
-        assert_eq!(AggregateParameter::from_str("-42").unwrap(), AggregateParameter::Int64(-42));
+        assert_eq!(
+            AggregateParameter::from_str("42").unwrap(),
+            AggregateParameter::UInt64(42)
+        );
+        assert_eq!(
+            AggregateParameter::from_str("-42").unwrap(),
+            AggregateParameter::Int64(-42)
+        );
         assert_eq!(
             AggregateParameter::from_str("3.5").unwrap(),
             AggregateParameter::Float64(3.5_f64.to_bits())

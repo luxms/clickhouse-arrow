@@ -20,13 +20,13 @@ use crate::settings::Settings;
 
 #[derive(Debug)]
 pub(super) struct Query<'a> {
-    pub qid:      Qid,
-    pub info:     ClientInfo<'a>,
+    pub qid: Qid,
+    pub info: ClientInfo<'a>,
     pub settings: Option<Arc<Settings>>,
-    pub stage:    QueryProcessingStage,
+    pub stage: QueryProcessingStage,
     #[expect(clippy::struct_field_names)]
-    pub query:    &'a str,
-    pub params:   Option<QueryParams>,
+    pub query: &'a str,
+    pub params: Option<QueryParams>,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -37,14 +37,26 @@ pub(crate) struct Writer<W: ClickHouseWrite> {
 impl<W: ClickHouseWrite> Writer<W> {
     pub(super) async fn send_hello(writer: &mut W, params: ClientHello) -> Result<()> {
         writer.write_var_uint(ClientPacketId::Hello as u64).await?;
-        writer.write_string(format!("ClickHouseArrow Rust {}", env!("CARGO_PKG_VERSION"))).await?;
-        writer.write_var_uint(crate::constants::VERSION_MAJOR).await?;
-        writer.write_var_uint(crate::constants::VERSION_MINOR).await?;
+        writer
+            .write_string(format!(
+                "ClickHouseArrow Rust {}",
+                env!("CARGO_PKG_VERSION")
+            ))
+            .await?;
+        writer
+            .write_var_uint(crate::constants::VERSION_MAJOR)
+            .await?;
+        writer
+            .write_var_uint(crate::constants::VERSION_MINOR)
+            .await?;
         writer.write_var_uint(DBMS_TCP_PROTOCOL_VERSION).await?;
         writer.write_string(params.default_database).await?;
         writer.write_string(params.username).await?;
         writer.write_string(params.password).await?;
-        writer.flush().instrument(trace_span!("flush_hello")).await?;
+        writer
+            .flush()
+            .instrument(trace_span!("flush_hello"))
+            .await?;
         Ok(())
     }
 
@@ -67,12 +79,18 @@ impl<W: ClickHouseWrite> Writer<W> {
         // Boolean flagging that compression is used below is not enough, at least for zstd. We must
         // provide settings that indicate the compression type and optionally other related
         // settings.
-        metadata.compression_settings().encode(writer, revision).await?;
+        metadata
+            .compression_settings()
+            .encode(writer, revision)
+            .await?;
 
         // Settings
         if let Some(settings) = &params.settings {
             if let Some(ignore) = server_settings {
-                settings.as_ref().encode_with_ignore(writer, revision, ignore).await?;
+                settings
+                    .as_ref()
+                    .encode_with_ignore(writer, revision, ignore)
+                    .await?;
             } else {
                 settings.as_ref().encode(writer, revision).await?;
             }
@@ -91,7 +109,10 @@ impl<W: ClickHouseWrite> Writer<W> {
 
         writer.write_var_uint(params.stage as u64).await?;
         writer
-            .write_u8(u8::from(!matches!(metadata.compression, CompressionMethod::None)))
+            .write_u8(u8::from(!matches!(
+                metadata.compression,
+                CompressionMethod::None
+            )))
             .await?;
         writer.write_string(params.query).await?;
 
@@ -170,7 +191,9 @@ impl<W: ClickHouseWrite> Writer<W> {
         if server_hello.revision_version
             >= DBMS_MIN_REVISION_WITH_VERSIONED_PARALLEL_REPLICAS_PROTOCOL
         {
-            writer.write_var_uint(DBMS_PARALLEL_REPLICAS_PROTOCOL_VERSION).await?;
+            writer
+                .write_var_uint(DBMS_PARALLEL_REPLICAS_PROTOCOL_VERSION)
+                .await?;
         }
 
         Ok(())
@@ -186,7 +209,10 @@ impl<W: ClickHouseWrite> Writer<W> {
     #[allow(unused)]
     pub(super) async fn send_cancel(writer: &mut W) -> Result<()> {
         writer.write_var_uint(ClientPacketId::Cancel as u64).await?;
-        writer.flush().instrument(trace_span!("flush_cancel")).await?;
+        writer
+            .flush()
+            .instrument(trace_span!("flush_cancel"))
+            .await?;
         Ok(())
     }
 }
@@ -209,7 +235,9 @@ mod tests {
     use crate::native::protocol::{ClientPacketId, DBMS_TCP_PROTOCOL_VERSION};
 
     fn has_subslice(haystack: &[u8], needle: &[u8]) -> bool {
-        haystack.windows(needle.len()).any(|window| window == needle)
+        haystack
+            .windows(needle.len())
+            .any(|window| window == needle)
     }
 
     fn metadata(compression: CompressionMethod) -> ClientMetadata {
@@ -222,7 +250,7 @@ mod tests {
 
     #[derive(Default)]
     struct FlushCountingWriter {
-        bytes:       Vec<u8>,
+        bytes: Vec<u8>,
         flush_count: usize,
     }
 
@@ -252,25 +280,80 @@ mod tests {
     #[tokio::test]
     async fn send_hello_writes_expected_packet_layout() {
         let mut writer = Cursor::new(Vec::new());
-        Writer::<Cursor<Vec<u8>>>::send_hello(&mut writer, ClientHello {
-            default_database: "default".to_string(),
-            username:         "user".to_string(),
-            password:         "secret".to_string(),
-        })
+        Writer::<Cursor<Vec<u8>>>::send_hello(
+            &mut writer,
+            ClientHello {
+                default_database: "default".to_string(),
+                username: "user".to_string(),
+                password: "secret".to_string(),
+            },
+        )
         .await
         .unwrap();
 
         let mut buf = Bytes::from(writer.into_inner());
-        assert_eq!(buf.try_get_var_uint().unwrap(), ClientPacketId::Hello as u64);
+        assert_eq!(
+            buf.try_get_var_uint().unwrap(),
+            ClientPacketId::Hello as u64
+        );
         let client_name = String::from_utf8(buf.try_get_string().unwrap().to_vec()).unwrap();
         assert!(client_name.starts_with("ClickHouseArrow Rust "));
-        assert_eq!(buf.try_get_var_uint().unwrap(), crate::constants::VERSION_MAJOR);
-        assert_eq!(buf.try_get_var_uint().unwrap(), crate::constants::VERSION_MINOR);
+        assert_eq!(
+            buf.try_get_var_uint().unwrap(),
+            crate::constants::VERSION_MAJOR
+        );
+        assert_eq!(
+            buf.try_get_var_uint().unwrap(),
+            crate::constants::VERSION_MINOR
+        );
         assert_eq!(buf.try_get_var_uint().unwrap(), DBMS_TCP_PROTOCOL_VERSION);
-        assert_eq!(String::from_utf8(buf.try_get_string().unwrap().to_vec()).unwrap(), "default");
-        assert_eq!(String::from_utf8(buf.try_get_string().unwrap().to_vec()).unwrap(), "user");
-        assert_eq!(String::from_utf8(buf.try_get_string().unwrap().to_vec()).unwrap(), "secret");
+        assert_eq!(
+            String::from_utf8(buf.try_get_string().unwrap().to_vec()).unwrap(),
+            "default"
+        );
+        assert_eq!(
+            String::from_utf8(buf.try_get_string().unwrap().to_vec()).unwrap(),
+            "user"
+        );
+        assert_eq!(
+            String::from_utf8(buf.try_get_string().unwrap().to_vec()).unwrap(),
+            "secret"
+        );
         assert!(!buf.has_remaining());
+    }
+
+    #[tokio::test]
+    async fn send_query_explicitly_requests_lz4() {
+        assert_eq!(
+            metadata(CompressionMethod::None).compression_settings(),
+            Settings::default()
+        );
+        assert_eq!(
+            metadata(CompressionMethod::LZ4).compression_settings(),
+            Settings::from([("network_compression_method", "lz4")])
+        );
+        let mut writer = Cursor::new(Vec::new());
+        let query = Query {
+            qid: Qid::default(),
+            info: ClientInfo::default(),
+            settings: None,
+            stage: QueryProcessingStage::Complete,
+            query: "SELECT 1",
+            params: None,
+        };
+        Writer::<Cursor<Vec<u8>>>::send_query(
+            &mut writer,
+            query,
+            None,
+            DBMS_TCP_PROTOCOL_VERSION,
+            metadata(CompressionMethod::LZ4),
+        )
+        .await
+        .unwrap();
+        let bytes = writer.into_inner();
+        assert!(has_subslice(&bytes, b"network_compression_method"));
+        assert!(has_subslice(&bytes, b"lz4"));
+        assert!(!has_subslice(&bytes, b"network_zstd_compression_level"));
     }
 
     #[tokio::test]
@@ -304,7 +387,10 @@ mod tests {
 
         let bytes = writer.into_inner();
         let mut buf = Bytes::from(bytes.clone());
-        assert_eq!(buf.try_get_var_uint().unwrap(), ClientPacketId::Query as u64);
+        assert_eq!(
+            buf.try_get_var_uint().unwrap(),
+            ClientPacketId::Query as u64
+        );
 
         let qid_hex = qid.to_string();
         assert!(has_subslice(&bytes, qid_hex.as_bytes()));
@@ -321,12 +407,12 @@ mod tests {
     async fn send_query_skips_params_for_older_revisions() {
         let mut writer = Cursor::new(Vec::new());
         let query = Query {
-            qid:      Qid::default(),
-            info:     ClientInfo::default(),
+            qid: Qid::default(),
+            info: ClientInfo::default(),
             settings: None,
-            stage:    QueryProcessingStage::Complete,
-            query:    "SELECT 1",
-            params:   Some(QueryParams::from([("name", "alice")])),
+            stage: QueryProcessingStage::Complete,
+            query: "SELECT 1",
+            params: Some(QueryParams::from([("name", "alice")])),
         };
 
         Writer::<Cursor<Vec<u8>>>::send_query(
@@ -348,10 +434,10 @@ mod tests {
     async fn send_data_addendum_and_control_packets_encode_expected_markers() {
         let mut data_writer = Cursor::new(Vec::new());
         let block = Block {
-            info:         BlockInfo::default(),
-            rows:         0,
+            info: BlockInfo::default(),
+            rows: 0,
             column_types: vec![],
-            column_data:  vec![],
+            column_data: vec![],
         };
         let qid = Qid::from(Uuid::from_u128(0x7777));
 
@@ -367,17 +453,30 @@ mod tests {
         .unwrap();
 
         let mut data_bytes = Bytes::from(data_writer.into_inner());
-        assert_eq!(data_bytes.try_get_var_uint().unwrap(), ClientPacketId::Data as u64);
+        assert_eq!(
+            data_bytes.try_get_var_uint().unwrap(),
+            ClientPacketId::Data as u64
+        );
 
         let mut ping_writer = Cursor::new(Vec::new());
-        Writer::<Cursor<Vec<u8>>>::send_ping(&mut ping_writer).await.unwrap();
+        Writer::<Cursor<Vec<u8>>>::send_ping(&mut ping_writer)
+            .await
+            .unwrap();
         let mut ping_bytes = Bytes::from(ping_writer.into_inner());
-        assert_eq!(ping_bytes.try_get_var_uint().unwrap(), ClientPacketId::Ping as u64);
+        assert_eq!(
+            ping_bytes.try_get_var_uint().unwrap(),
+            ClientPacketId::Ping as u64
+        );
 
         let mut cancel_writer = Cursor::new(Vec::new());
-        Writer::<Cursor<Vec<u8>>>::send_cancel(&mut cancel_writer).await.unwrap();
+        Writer::<Cursor<Vec<u8>>>::send_cancel(&mut cancel_writer)
+            .await
+            .unwrap();
         let mut cancel_bytes = Bytes::from(cancel_writer.into_inner());
-        assert_eq!(cancel_bytes.try_get_var_uint().unwrap(), ClientPacketId::Cancel as u64);
+        assert_eq!(
+            cancel_bytes.try_get_var_uint().unwrap(),
+            ClientPacketId::Cancel as u64
+        );
 
         let mut addendum_writer = Cursor::new(Vec::new());
         let server_hello = ServerHello {
@@ -396,7 +495,10 @@ mod tests {
         addendum_writer.flush().await.unwrap();
 
         let mut addendum = Bytes::from(addendum_writer.into_inner());
-        assert_eq!(String::from_utf8(addendum.try_get_string().unwrap().to_vec()).unwrap(), "");
+        assert_eq!(
+            String::from_utf8(addendum.try_get_string().unwrap().to_vec()).unwrap(),
+            ""
+        );
         assert_eq!(
             String::from_utf8(addendum.try_get_string().unwrap().to_vec()).unwrap(),
             "chunked"
@@ -405,7 +507,10 @@ mod tests {
             String::from_utf8(addendum.try_get_string().unwrap().to_vec()).unwrap(),
             "notchunked"
         );
-        assert_eq!(addendum.try_get_var_uint().unwrap(), DBMS_PARALLEL_REPLICAS_PROTOCOL_VERSION);
+        assert_eq!(
+            addendum.try_get_var_uint().unwrap(),
+            DBMS_PARALLEL_REPLICAS_PROTOCOL_VERSION
+        );
 
         let mut old_writer = Cursor::new(Vec::new());
         let old_hello = ServerHello {
@@ -426,10 +531,10 @@ mod tests {
     #[tokio::test]
     async fn send_data_no_flush_skips_flush() {
         let block = Block {
-            info:         BlockInfo::default(),
-            rows:         0,
+            info: BlockInfo::default(),
+            rows: 0,
             column_types: vec![],
-            column_data:  vec![],
+            column_data: vec![],
         };
         let qid = Qid::from(Uuid::from_u128(0x8888));
 

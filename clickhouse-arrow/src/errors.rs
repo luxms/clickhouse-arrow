@@ -114,9 +114,13 @@ impl Error {
         }
     }
 
-    pub fn serialize(message: impl Into<String>) -> Self { Error::Serialize(message.into()) }
+    pub fn serialize(message: impl Into<String>) -> Self {
+        Error::Serialize(message.into())
+    }
 
-    pub fn deserialize(message: impl Into<String>) -> Self { Error::Deserialize(message.into()) }
+    pub fn deserialize(message: impl Into<String>) -> Self {
+        Error::Deserialize(message.into())
+    }
 }
 
 pub type Result<T, E = Error> = std::result::Result<T, E>;

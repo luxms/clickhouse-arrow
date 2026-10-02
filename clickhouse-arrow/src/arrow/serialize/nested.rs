@@ -31,7 +31,9 @@ pub(super) async fn serialize_async<W: ClickHouseWrite>(
         .ok_or_else(|| Error::ArrowSerialize("Expected StructArray for Nested type".into()))?;
 
     let DataType::Struct(arrow_fields) = data_type else {
-        return Err(Error::ArrowSerialize("Expected Struct data type for Nested type".into()));
+        return Err(Error::ArrowSerialize(
+            "Expected Struct data type for Nested type".into(),
+        ));
     };
 
     if fields.len() != arrow_fields.len() {
@@ -65,12 +67,15 @@ pub(super) async fn serialize_async<W: ClickHouseWrite>(
         let nested_column = struct_array.column(i);
         let (offsets, values) = match arrow_field.data_type() {
             DataType::List(_item) => {
-                let list = nested_column.as_any().downcast_ref::<ListArray>().ok_or_else(|| {
-                    Error::ArrowSerialize(format!(
-                        "Nested field '{nested_name}' expected ListArray, found {:?}",
-                        nested_column.data_type()
-                    ))
-                })?;
+                let list = nested_column
+                    .as_any()
+                    .downcast_ref::<ListArray>()
+                    .ok_or_else(|| {
+                        Error::ArrowSerialize(format!(
+                            "Nested field '{nested_name}' expected ListArray, found {:?}",
+                            nested_column.data_type()
+                        ))
+                    })?;
                 if list.len() != rows {
                     return Err(Error::ArrowSerialize(format!(
                         "Nested field '{nested_name}' row count mismatch: {} != {rows}",
@@ -84,13 +89,18 @@ pub(super) async fn serialize_async<W: ClickHouseWrite>(
                     )));
                 }
                 (
-                    list.value_offsets().iter().map(|offset| *offset as u64).collect::<Vec<_>>(),
+                    list.value_offsets()
+                        .iter()
+                        .map(|offset| *offset as u64)
+                        .collect::<Vec<_>>(),
                     Arc::clone(list.values()),
                 )
             }
             DataType::LargeList(_item) => {
-                let list =
-                    nested_column.as_any().downcast_ref::<LargeListArray>().ok_or_else(|| {
+                let list = nested_column
+                    .as_any()
+                    .downcast_ref::<LargeListArray>()
+                    .ok_or_else(|| {
                         Error::ArrowSerialize(format!(
                             "Nested field '{nested_name}' expected LargeListArray, found {:?}",
                             nested_column.data_type()
@@ -175,7 +185,9 @@ pub(super) async fn serialize_async<W: ClickHouseWrite>(
                 )));
             }
         };
-        inner_type.serialize_async(writer, &values, item_type, state).await?;
+        inner_type
+            .serialize_async(writer, &values, item_type, state)
+            .await?;
     }
 
     Ok(())
@@ -203,7 +215,9 @@ pub(super) fn serialize<W: ClickHouseBytesWrite>(
         .ok_or_else(|| Error::ArrowSerialize("Expected StructArray for Nested type".into()))?;
 
     let DataType::Struct(arrow_fields) = data_type else {
-        return Err(Error::ArrowSerialize("Expected Struct data type for Nested type".into()));
+        return Err(Error::ArrowSerialize(
+            "Expected Struct data type for Nested type".into(),
+        ));
     };
 
     if fields.len() != arrow_fields.len() {
@@ -237,12 +251,15 @@ pub(super) fn serialize<W: ClickHouseBytesWrite>(
         let nested_column = struct_array.column(i);
         let (offsets, values) = match arrow_field.data_type() {
             DataType::List(_item) => {
-                let list = nested_column.as_any().downcast_ref::<ListArray>().ok_or_else(|| {
-                    Error::ArrowSerialize(format!(
-                        "Nested field '{nested_name}' expected ListArray, found {:?}",
-                        nested_column.data_type()
-                    ))
-                })?;
+                let list = nested_column
+                    .as_any()
+                    .downcast_ref::<ListArray>()
+                    .ok_or_else(|| {
+                        Error::ArrowSerialize(format!(
+                            "Nested field '{nested_name}' expected ListArray, found {:?}",
+                            nested_column.data_type()
+                        ))
+                    })?;
                 if list.len() != rows {
                     return Err(Error::ArrowSerialize(format!(
                         "Nested field '{nested_name}' row count mismatch: {} != {rows}",
@@ -256,13 +273,18 @@ pub(super) fn serialize<W: ClickHouseBytesWrite>(
                     )));
                 }
                 (
-                    list.value_offsets().iter().map(|offset| *offset as u64).collect::<Vec<_>>(),
+                    list.value_offsets()
+                        .iter()
+                        .map(|offset| *offset as u64)
+                        .collect::<Vec<_>>(),
                     Arc::clone(list.values()),
                 )
             }
             DataType::LargeList(_item) => {
-                let list =
-                    nested_column.as_any().downcast_ref::<LargeListArray>().ok_or_else(|| {
+                let list = nested_column
+                    .as_any()
+                    .downcast_ref::<LargeListArray>()
+                    .ok_or_else(|| {
                         Error::ArrowSerialize(format!(
                             "Nested field '{nested_name}' expected LargeListArray, found {:?}",
                             nested_column.data_type()
@@ -366,7 +388,10 @@ mod tests {
     use crate::formats::SerializerState;
 
     fn nested_type() -> Type {
-        Type::Nested(vec![("name".to_string(), Type::String), ("score".to_string(), Type::Int32)])
+        Type::Nested(vec![
+            ("name".to_string(), Type::String),
+            ("score".to_string(), Type::Int32),
+        ])
     }
 
     fn nested_data_type() -> DataType {
@@ -477,9 +502,13 @@ mod tests {
         Arc::new(StructArray::new(fields, vec![names, scores], None)) as ArrayRef
     }
 
-    fn empty_nested_type() -> Type { Type::Nested(vec![]) }
+    fn empty_nested_type() -> Type {
+        Type::Nested(vec![])
+    }
 
-    fn empty_nested_data_type() -> DataType { DataType::Struct(Fields::from(Vec::<Field>::new())) }
+    fn empty_nested_data_type() -> DataType {
+        DataType::Struct(Fields::from(Vec::<Field>::new()))
+    }
 
     fn empty_nested_column() -> ArrayRef {
         Arc::new(StructArray::new_empty_fields(0, None)) as ArrayRef

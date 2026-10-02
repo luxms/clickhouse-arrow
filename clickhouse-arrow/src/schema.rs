@@ -87,15 +87,15 @@ impl std::fmt::Display for ClickHouseEngine {
 #[derive(Debug, Default, Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct CreateOptions {
-    pub engine:                String,
-    pub order_by:              Vec<String>,
-    pub primary_keys:          Vec<String>,
-    pub partition_by:          Option<String>,
-    pub sampling:              Option<String>,
-    pub settings:              Settings,
-    pub ttl:                   Option<String>,
-    pub schema_conversions:    Option<SchemaConversions>,
-    pub defaults:              Option<HashMap<String, String>>,
+    pub engine: String,
+    pub order_by: Vec<String>,
+    pub primary_keys: Vec<String>,
+    pub partition_by: Option<String>,
+    pub sampling: Option<String>,
+    pub settings: Settings,
+    pub ttl: Option<String>,
+    pub schema_conversions: Option<SchemaConversions>,
+    pub defaults: Option<HashMap<String, String>>,
     pub defaults_for_nullable: bool,
 }
 
@@ -109,7 +109,10 @@ impl CreateOptions {
     /// A new `CreateOptions` instance with the specified engine.
     #[must_use]
     pub fn new(engine: impl Into<String>) -> Self {
-        Self { engine: engine.into(), ..Default::default() }
+        Self {
+            engine: engine.into(),
+            ..Default::default()
+        }
     }
 
     /// Creates a new `CreateOptions` with the specified engine.
@@ -121,7 +124,10 @@ impl CreateOptions {
     /// A new `CreateOptions` instance with the specified engine.
     #[must_use]
     pub fn from_engine(engine: impl Into<ClickHouseEngine>) -> Self {
-        Self { engine: engine.into().to_string(), ..Default::default() }
+        Self {
+            engine: engine.into().to_string(),
+            ..Default::default()
+        }
     }
 
     /// Sets the `ORDER BY` clause for the table.
@@ -135,8 +141,11 @@ impl CreateOptions {
     /// Self for method chaining.
     #[must_use]
     pub fn with_order_by(mut self, order_by: &[String]) -> Self {
-        self.order_by =
-            order_by.iter().filter(|k| !k.is_empty()).map(ToString::to_string).collect();
+        self.order_by = order_by
+            .iter()
+            .filter(|k| !k.is_empty())
+            .map(ToString::to_string)
+            .collect();
         self
     }
 
@@ -151,8 +160,11 @@ impl CreateOptions {
     /// Self for method chaining.
     #[must_use]
     pub fn with_primary_keys(mut self, keys: &[String]) -> Self {
-        self.primary_keys =
-            keys.iter().filter(|k| !k.is_empty()).map(ToString::to_string).collect();
+        self.primary_keys = keys
+            .iter()
+            .filter(|k| !k.is_empty())
+            .map(ToString::to_string)
+            .collect();
         self
     }
 
@@ -284,7 +296,9 @@ impl CreateOptions {
     ///
     /// # Returns
     /// An optional reference to the `HashMap` of column names to default values.
-    pub fn defaults(&self) -> Option<&HashMap<String, String>> { self.defaults.as_ref() }
+    pub fn defaults(&self) -> Option<&HashMap<String, String>> {
+        self.defaults.as_ref()
+    }
 
     /// Returns the configured default values, if any.
     ///
@@ -310,7 +324,9 @@ impl CreateOptions {
     fn build(&self) -> Result<String> {
         let engine = self.engine.clone();
         if engine.is_empty() {
-            return Err(Error::DDLMalformed("An engine is required, received empty string".into()));
+            return Err(Error::DDLMalformed(
+                "An engine is required, received empty string".into(),
+            ));
         }
 
         let mut options = vec![format!("ENGINE = {engine}")];
@@ -336,7 +352,11 @@ impl CreateOptions {
 
             // Validate primary keys
             if !self.primary_keys.is_empty()
-                && !self.primary_keys.iter().enumerate().all(|(i, k)| order_by.get(i) == Some(k))
+                && !self
+                    .primary_keys
+                    .iter()
+                    .enumerate()
+                    .all(|(i, k)| order_by.get(i) == Some(k))
             {
                 return Err(Error::DDLMalformed(format!(
                     "Primary keys but be present in order by and the ordering must match: order \
@@ -376,7 +396,10 @@ impl CreateOptions {
         }
 
         if !self.settings.is_empty() {
-            options.push(format!("SETTINGS {}", self.settings.encode_to_strings().join(", ")));
+            options.push(format!(
+                "SETTINGS {}",
+                self.settings.encode_to_strings().join(", ")
+            ));
         }
 
         Ok(options.join("\n"))
@@ -408,7 +431,9 @@ pub(crate) fn create_db_statement(database: &str) -> Result<String> {
     }
 
     if database.eq_ignore_ascii_case("default") {
-        return Err(Error::DDLMalformed("Cannot create `default` database".into()));
+        return Err(Error::DDLMalformed(
+            "Cannot create `default` database".into(),
+        ));
     }
 
     Ok(format!("CREATE DATABASE IF NOT EXISTS {database}"))
@@ -440,7 +465,9 @@ pub(crate) fn drop_db_statement(database: &str, sync: bool) -> Result<String> {
     }
 
     if database.eq_ignore_ascii_case("default") {
-        return Err(Error::DDLMalformed("Cannot create `default` database".into()));
+        return Err(Error::DDLMalformed(
+            "Cannot create `default` database".into(),
+        ));
     }
 
     let mut ddl = "DROP DATABASE IF EXISTS ".to_string();
@@ -493,7 +520,9 @@ pub(crate) fn create_table_statement_from_arrow(
     arrow_options: Option<ArrowOptions>,
 ) -> Result<String> {
     if schema.fields().is_empty() {
-        return Err(Error::DDLMalformed("Arrow Schema is empty, cannot create table".into()));
+        return Err(Error::DDLMalformed(
+            "Arrow Schema is empty, cannot create table".into(),
+        ));
     }
     let definition = RecordBatchDefinition {
         arrow_options,
@@ -558,7 +587,9 @@ pub(crate) fn create_table_statement<T: ColumnDefine>(
         .or(T::definitions());
 
     let Some(definitions) = column_definitions.filter(|c| !c.is_empty()) else {
-        return Err(Error::DDLMalformed("Schema is empty, cannot create table".into()));
+        return Err(Error::DDLMalformed(
+            "Schema is empty, cannot create table".into(),
+        ));
     };
 
     let db_pre = database.map(|c| format!("{c}.")).unwrap_or_default();
@@ -621,7 +652,9 @@ pub trait ColumnDefine: Sized {
 impl<T: Row> ColumnDefine for T {
     type DefaultValue = crate::Value;
 
-    fn definitions() -> Option<Vec<ColumnDefinition>> { Self::to_schema() }
+    fn definitions() -> Option<Vec<ColumnDefinition>> {
+        Self::to_schema()
+    }
 
     fn runtime_definitions(
         &self,
@@ -650,14 +683,16 @@ impl<T: Row> ColumnDefine for T {
 /// Helper struct to encapsulate schema creation logic for Arrow schemas.
 pub(crate) struct RecordBatchDefinition {
     pub(crate) arrow_options: Option<ArrowOptions>,
-    pub(crate) schema:        SchemaRef,
-    pub(crate) defaults:      Option<HashMap<String, String>>,
+    pub(crate) schema: SchemaRef,
+    pub(crate) defaults: Option<HashMap<String, String>>,
 }
 
 impl ColumnDefine for RecordBatchDefinition {
     type DefaultValue = String;
 
-    fn definitions() -> Option<Vec<ColumnDefinition<String>>> { None }
+    fn definitions() -> Option<Vec<ColumnDefinition<String>>> {
+        None
+    }
 
     fn runtime_definitions(
         &self,
@@ -671,7 +706,11 @@ impl ColumnDefine for RecordBatchDefinition {
                 })?;
             let default_val =
                 if let Some(d) = self.defaults.as_ref().and_then(|d| d.get(field.name())) {
-                    if !d.is_empty() && d != "NULL" { Some(d.clone()) } else { None }
+                    if !d.is_empty() && d != "NULL" {
+                        Some(d.clone())
+                    } else {
+                        None
+                    }
                 } else {
                     None
                 };
@@ -692,7 +731,10 @@ mod tests {
 
     #[allow(clippy::needless_pass_by_value)]
     fn compare_sql(left: impl AsRef<str> + Into<String>, right: impl AsRef<str> + Into<String>) {
-        assert_eq!(left.as_ref().replace(['\n', ' '], ""), right.as_ref().replace(['\n', ' '], ""));
+        assert_eq!(
+            left.as_ref().replace(['\n', ' '], ""),
+            right.as_ref().replace(['\n', ' '], "")
+        );
     }
 
     #[test]
@@ -726,7 +768,10 @@ mod tests {
             String::new(),
             "name".to_string(),
         ]);
-        assert_eq!(options.primary_keys, vec!["id".to_string(), "name".to_string()]);
+        assert_eq!(
+            options.primary_keys,
+            vec!["id".to_string(), "name".to_string()]
+        );
     }
 
     #[test]
@@ -757,9 +802,10 @@ mod tests {
     #[test]
     fn test_create_options_with_setting() {
         let options = CreateOptions::new("MergeTree").with_setting("index_granularity", 4096);
-        assert_eq!(options.settings.encode_to_strings(), vec![
-            "index_granularity = 4096".to_string()
-        ]);
+        assert_eq!(
+            options.settings.encode_to_strings(),
+            vec!["index_granularity = 4096".to_string()]
+        );
     }
 
     #[test]
@@ -931,7 +977,10 @@ mod tests {
 
         let enum_i8 = HashMap::from_iter([(
             "status".to_string(),
-            Type::Enum8(vec![("active".to_string(), 1_i8), ("inactive".to_string(), 2)]),
+            Type::Enum8(vec![
+                ("active".to_string(), 1_i8),
+                ("inactive".to_string(), 2),
+            ]),
         )]);
 
         let options = CreateOptions::new("MergeTree").with_order_by(&["id".to_string()]);
@@ -967,7 +1016,10 @@ mod tests {
 
         let enum_i8 = HashMap::from_iter([(
             "status".to_string(),
-            Type::Enum8(vec![("active".to_string(), 1_i8), ("inactive".to_string(), 2)]),
+            Type::Enum8(vec![
+                ("active".to_string(), 1_i8),
+                ("inactive".to_string(), 2),
+            ]),
         )]);
 
         let options = CreateOptions::new("MergeTree")
@@ -997,7 +1049,11 @@ mod tests {
 
         let enum_i16 = HashMap::from_iter([(
             "category".to_string(),
-            Type::Enum16(vec![("x".to_string(), 1), ("y".to_string(), 2), ("z".to_string(), 3)]),
+            Type::Enum16(vec![
+                ("x".to_string(), 1),
+                ("y".to_string(), 2),
+                ("z".to_string(), 3),
+            ]),
         )]);
         let options = CreateOptions::new("MergeTree")
             .with_order_by(&["category".to_string()])
@@ -1015,11 +1071,18 @@ mod tests {
 
     #[test]
     fn test_create_table_with_invalid_enum_type() {
-        let schema = Arc::new(Schema::new(vec![Field::new("status", DataType::Int32, true)]));
+        let schema = Arc::new(Schema::new(vec![Field::new(
+            "status",
+            DataType::Int32,
+            true,
+        )]));
 
         let enum_i8 = HashMap::from_iter([(
             "status".to_string(),
-            Type::Enum8(vec![("active".to_string(), 1_i8), ("inactive".to_string(), 2)]),
+            Type::Enum8(vec![
+                ("active".to_string(), 1_i8),
+                ("inactive".to_string(), 2),
+            ]),
         )]);
 
         let options = CreateOptions::new("MergeTree").with_schema_conversions(enum_i8);
@@ -1039,7 +1102,10 @@ mod tests {
 
         let enum_i8 = HashMap::from_iter([(
             "name".to_string(),
-            Type::Enum8(vec![("active".to_string(), 1_i8), ("inactive".to_string(), 2)]),
+            Type::Enum8(vec![
+                ("active".to_string(), 1_i8),
+                ("inactive".to_string(), 2),
+            ]),
         )]);
         let options = CreateOptions::new("MergeTree").with_schema_conversions(enum_i8);
 
@@ -1062,13 +1128,19 @@ mod tests {
         let enum_i8 = HashMap::from_iter([
             (
                 "name".to_string(),
-                Type::Enum8(vec![("active".to_string(), 1_i8), ("inactive".to_string(), 2)])
-                    .into_nullable(),
+                Type::Enum8(vec![
+                    ("active".to_string(), 1_i8),
+                    ("inactive".to_string(), 2),
+                ])
+                .into_nullable(),
             ),
             (
                 "status".to_string(),
-                Type::Enum8(vec![("active".to_string(), 1_i8), ("inactive".to_string(), 2)])
-                    .into_nullable(),
+                Type::Enum8(vec![
+                    ("active".to_string(), 1_i8),
+                    ("inactive".to_string(), 2),
+                ])
+                .into_nullable(),
             ),
         ]);
         let options = CreateOptions::new("MergeTree").with_schema_conversions(enum_i8);
@@ -1115,7 +1187,10 @@ mod tests {
         let enums = HashMap::from_iter([
             (
                 "status".to_string(),
-                Type::Enum8(vec![("active".to_string(), 1_i8), ("inactive".to_string(), 2)]),
+                Type::Enum8(vec![
+                    ("active".to_string(), 1_i8),
+                    ("inactive".to_string(), 2),
+                ]),
             ),
             (
                 "category".to_string(),

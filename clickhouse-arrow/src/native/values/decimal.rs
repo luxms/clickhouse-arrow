@@ -2,7 +2,9 @@ use rust_decimal::Decimal;
 
 use crate::{Error, FromSql, Result, ToSql, Type, Value, unexpected_type};
 
-fn count_digits_i128(n: i128) -> u32 { if n == 0 { 1 } else { n.abs().ilog10() + 1 } }
+fn count_digits_i128(n: i128) -> u32 {
+    if n == 0 { 1 } else { n.abs().ilog10() + 1 }
+}
 
 impl FromSql for Decimal {
     #[expect(clippy::cast_possible_truncation)]
@@ -86,7 +88,9 @@ impl ToSql for Decimal {
                 }
                 Ok(Value::Decimal32(
                     scale as usize,
-                    mantissa.try_into().map_err(|_| out_of_range("Decimal32 mantissa"))?,
+                    mantissa
+                        .try_into()
+                        .map_err(|_| out_of_range("Decimal32 mantissa"))?,
                 ))
             }
             Some(Type::Decimal64(s)) => {
@@ -110,7 +114,9 @@ impl ToSql for Decimal {
                 }
                 Ok(Value::Decimal128(scale as usize, mantissa))
             }
-            Some(x) => Err(Error::serialize(format!("unexpected type for scale {scale}: {x}"))),
+            Some(x) => Err(Error::serialize(format!(
+                "unexpected type for scale {scale}: {x}"
+            ))),
         }
     }
 }

@@ -101,19 +101,25 @@ impl Eq for SettingValue {}
 macro_rules! setting_value {
     ($ty:ident, $inner:ty) => {
         impl From<$inner> for SettingValue {
-            fn from(value: $inner) -> Self { SettingValue::$ty(value) }
+            fn from(value: $inner) -> Self {
+                SettingValue::$ty(value)
+            }
         }
     };
     ($ty:ident, $inner:ty, $override:ty) => {
         impl From<$override> for SettingValue {
             #[allow(clippy::cast_lossless)]
             #[allow(clippy::cast_possible_wrap)]
-            fn from(value: $override) -> Self { SettingValue::$ty(value as $inner) }
+            fn from(value: $override) -> Self {
+                SettingValue::$ty(value as $inner)
+            }
         }
     };
     ($ty:ident, $inner:ty, $v:tt =>  { $override:expr }) => {
         impl From<$inner> for SettingValue {
-            fn from($v: $inner) -> Self { SettingValue::$ty($override) }
+            fn from($v: $inner) -> Self {
+                SettingValue::$ty($override)
+            }
         }
     };
 }
@@ -139,14 +145,22 @@ macro_rules! setting_value_array {
     ($ty:ty) => {
         impl From<Vec<$ty>> for SettingValue {
             fn from(value: Vec<$ty>) -> Self {
-                let formatted = value.iter().map(ToString::to_string).collect::<Vec<_>>().join(",");
+                let formatted = value
+                    .iter()
+                    .map(ToString::to_string)
+                    .collect::<Vec<_>>()
+                    .join(",");
                 SettingValue::String(format!("[{formatted}]"))
             }
         }
 
         impl From<&[$ty]> for SettingValue {
             fn from(value: &[$ty]) -> Self {
-                let formatted = value.iter().map(ToString::to_string).collect::<Vec<_>>().join(",");
+                let formatted = value
+                    .iter()
+                    .map(ToString::to_string)
+                    .collect::<Vec<_>>()
+                    .join(",");
                 SettingValue::String(format!("[{formatted}]"))
             }
         }
@@ -241,10 +255,10 @@ impl fmt::Display for SettingValue {
 #[derive(Debug, Clone, PartialEq, PartialOrd)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Setting {
-    key:       String,
-    value:     SettingValue,
+    key: String,
+    value: SettingValue,
     important: bool,
-    custom:    bool,
+    custom: bool,
 }
 
 impl Setting {
@@ -335,7 +349,12 @@ impl Setting {
             Self::parse_setting_value(&String::from_utf8_lossy(&value_str))
         };
 
-        Ok(Setting { key, value, important: is_important, custom: is_custom })
+        Ok(Setting {
+            key,
+            value,
+            important: is_important,
+            custom: is_custom,
+        })
     }
 
     /// Encodes the setting value as a string for custom settings.
@@ -388,10 +407,10 @@ impl Setting {
 impl<T: Into<String>, U: Into<SettingValue>> From<(T, U)> for Setting {
     fn from(value: (T, U)) -> Self {
         Setting {
-            key:       value.0.into(),
-            value:     value.1.into(),
+            key: value.0.into(),
+            value: value.1.into(),
             important: false,
-            custom:    false,
+            custom: false,
         }
     }
 }
@@ -453,7 +472,12 @@ impl Settings {
         if let Some(current) = self.0.iter_mut().find(|s| s.key == key) {
             current.value = setting.into();
         } else {
-            self.0.push(Setting { key, value: setting.into(), important: false, custom: false });
+            self.0.push(Setting {
+                key,
+                value: setting.into(),
+                important: false,
+                custom: false,
+            });
         }
     }
 
@@ -483,7 +507,12 @@ impl Settings {
         if let Some(current) = self.0.iter_mut().find(|s| s.key == key) {
             current.value = setting.into();
         } else {
-            self.0.push(Setting { key, value: setting.into(), important: false, custom: false });
+            self.0.push(Setting {
+                key,
+                value: setting.into(),
+                important: false,
+                custom: false,
+            });
         }
         self
     }
@@ -501,7 +530,10 @@ impl Settings {
     /// assert_eq!(kv_pairs, vec![("max_threads".to_string(), "8".to_string())]);
     /// ```
     pub fn encode_to_key_value_strings(&self) -> Vec<(String, String)> {
-        self.0.iter().map(|setting| (setting.key.clone(), setting.value.to_string())).collect()
+        self.0
+            .iter()
+            .map(|setting| (setting.key.clone(), setting.value.to_string()))
+            .collect()
     }
 
     /// Converts settings to a vector of formatted strings.
@@ -517,7 +549,10 @@ impl Settings {
     /// assert_eq!(strings, vec!["max_threads = 8"]);
     /// ```
     pub fn encode_to_strings(&self) -> Vec<String> {
-        self.0.iter().map(|setting| format!("{} = {}", setting.key, setting.value)).collect()
+        self.0
+            .iter()
+            .map(|setting| format!("{} = {}", setting.key, setting.value))
+            .collect()
     }
 
     // TODO: Remove - docs
@@ -540,7 +575,10 @@ impl Settings {
         ignore: &Settings,
     ) -> Result<()> {
         for setting in &self.0 {
-            if ignore.get(&setting.key).is_some_and(|s| s.value == setting.value) {
+            if ignore
+                .get(&setting.key)
+                .is_some_and(|s| s.value == setting.value)
+            {
                 continue;
             }
 
@@ -578,7 +616,9 @@ impl Settings {
     }
 
     /// Internal helper to find a specific settings
-    pub(crate) fn get(&self, key: &str) -> Option<&Setting> { self.0.iter().find(|s| s.key == key) }
+    pub(crate) fn get(&self, key: &str) -> Option<&Setting> {
+        self.0.iter().find(|s| s.key == key)
+    }
 }
 
 impl<T, K, S> From<T> for Settings
@@ -592,10 +632,10 @@ where
             value
                 .into_iter()
                 .map(|(k, v)| Setting {
-                    key:       k.into(),
-                    value:     v.into(),
+                    key: k.into(),
+                    value: v.into(),
                     important: false,
-                    custom:    false,
+                    custom: false,
                 })
                 .collect(),
         )
@@ -618,7 +658,9 @@ where
 impl std::ops::Deref for Settings {
     type Target = [Setting];
 
-    fn deref(&self) -> &Self::Target { &self.0 }
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
 }
 
 #[cfg(feature = "serde")]
@@ -798,13 +840,20 @@ pub mod deser {
         #[test]
         fn test_setting_value_deserialize_variants() {
             // Test deserialization from various JSON inputs
-            assert_eq!(serde_json::from_str::<SettingValue>("42").unwrap(), SettingValue::Int(42));
+            assert_eq!(
+                serde_json::from_str::<SettingValue>("42").unwrap(),
+                SettingValue::Int(42)
+            );
             assert_eq!(
                 serde_json::from_str::<SettingValue>("true").unwrap(),
                 SettingValue::Bool(true)
             );
             assert!(
-                (serde_json::from_str::<SettingValue>("3.15").unwrap().unwrap_float() - 3.15).abs()
+                (serde_json::from_str::<SettingValue>("3.15")
+                    .unwrap()
+                    .unwrap_float()
+                    - 3.15)
+                    .abs()
                     < 1e-6
             );
             assert_eq!(
@@ -865,7 +914,12 @@ mod tests {
     where
         SettingValue: From<S>,
     {
-        Setting { key: key.to_string(), value: value.into(), important, custom }
+        Setting {
+            key: key.to_string(),
+            value: value.into(),
+            important,
+            custom,
+        }
     }
 
     #[test]
@@ -882,7 +936,10 @@ mod tests {
         assert_eq!(SettingValue::from(true), SettingValue::Bool(true));
         assert!((SettingValue::from(3.15_f32).unwrap_float() - 3.15).abs() < 1e-6);
         assert_eq!(SettingValue::from(3.15_f64), SettingValue::Float(3.15));
-        assert_eq!(SettingValue::from("test"), SettingValue::String("test".to_string()));
+        assert_eq!(
+            SettingValue::from("test"),
+            SettingValue::String("test".to_string())
+        );
         assert_eq!(
             SettingValue::from("test".to_string()),
             SettingValue::String("test".to_string())
@@ -927,7 +984,10 @@ mod tests {
         let setting = create_setting("max_threads", 8_i32, false, false);
         let mut writer = MockWriter::default();
         setting
-            .encode(&mut writer, DBMS_MIN_REVISION_WITH_SETTINGS_SERIALIZED_AS_STRINGS)
+            .encode(
+                &mut writer,
+                DBMS_MIN_REVISION_WITH_SETTINGS_SERIALIZED_AS_STRINGS,
+            )
             .await
             .unwrap();
         writer.flush().await.unwrap();
@@ -943,7 +1003,10 @@ mod tests {
         let setting = create_setting("allow_experimental", true, false, false);
         let mut writer = MockWriter::default();
         setting
-            .encode(&mut writer, DBMS_MIN_REVISION_WITH_SETTINGS_SERIALIZED_AS_STRINGS)
+            .encode(
+                &mut writer,
+                DBMS_MIN_REVISION_WITH_SETTINGS_SERIALIZED_AS_STRINGS,
+            )
             .await
             .unwrap();
         writer.flush().await.unwrap();
@@ -971,7 +1034,10 @@ mod tests {
         let setting = create_setting("max_threads", 8_i32, false, false);
         let mut writer = MockWriter::default();
         setting
-            .encode(&mut writer, DBMS_MIN_REVISION_WITH_SETTINGS_SERIALIZED_AS_STRINGS + 1)
+            .encode(
+                &mut writer,
+                DBMS_MIN_REVISION_WITH_SETTINGS_SERIALIZED_AS_STRINGS + 1,
+            )
             .await
             .unwrap();
         writer.flush().await.unwrap();
@@ -989,7 +1055,10 @@ mod tests {
         let setting = create_setting("custom_key", "value", true, true);
         let mut writer = MockWriter::default();
         setting
-            .encode(&mut writer, DBMS_MIN_REVISION_WITH_SETTINGS_SERIALIZED_AS_STRINGS + 1)
+            .encode(
+                &mut writer,
+                DBMS_MIN_REVISION_WITH_SETTINGS_SERIALIZED_AS_STRINGS + 1,
+            )
             .await
             .unwrap();
         writer.flush().await.unwrap();
@@ -1013,7 +1082,10 @@ mod tests {
         assert_eq!(settings.0[0].key, "max_threads");
         assert_eq!(settings.0[0].value, SettingValue::Int(8));
         assert_eq!(settings.0[1].key, "default_format");
-        assert_eq!(settings.0[1].value, SettingValue::String("JSON".to_string()));
+        assert_eq!(
+            settings.0[1].value,
+            SettingValue::String("JSON".to_string())
+        );
     }
 
     #[test]
@@ -1038,10 +1110,13 @@ mod tests {
         ]);
 
         let kv_pairs = settings.encode_to_key_value_strings();
-        assert_eq!(kv_pairs, vec![
-            ("max_threads".to_string(), "8".to_string()),
-            ("default_format".to_string(), "JSON".to_string()),
-        ]);
+        assert_eq!(
+            kv_pairs,
+            vec![
+                ("max_threads".to_string(), "8".to_string()),
+                ("default_format".to_string(), "JSON".to_string()),
+            ]
+        );
     }
 
     #[test]
@@ -1064,7 +1139,10 @@ mod tests {
 
         let mut writer = MockWriter::default();
         settings
-            .encode(&mut writer, DBMS_MIN_REVISION_WITH_SETTINGS_SERIALIZED_AS_STRINGS + 1)
+            .encode(
+                &mut writer,
+                DBMS_MIN_REVISION_WITH_SETTINGS_SERIALIZED_AS_STRINGS + 1,
+            )
             .await
             .unwrap();
         writer.write_string("").await.unwrap();
@@ -1171,7 +1249,10 @@ mod tests {
 
         assert_eq!(settings.0.len(), 1);
         assert_eq!(settings.0[0].key, "custom_setting");
-        assert_eq!(settings.0[0].value, SettingValue::String("custom_value".to_string()));
+        assert_eq!(
+            settings.0[0].value,
+            SettingValue::String("custom_value".to_string())
+        );
         assert!(!settings.0[0].important);
         assert!(settings.0[0].custom);
     }
@@ -1220,7 +1301,10 @@ mod tests {
 
         // Setting 4: Important + Custom
         writer.write_string("important_custom").await.unwrap();
-        writer.write_var_uint(SETTING_FLAG_IMPORTANT | SETTING_FLAG_CUSTOM).await.unwrap();
+        writer
+            .write_var_uint(SETTING_FLAG_IMPORTANT | SETTING_FLAG_CUSTOM)
+            .await
+            .unwrap();
         writer.write_string("special_value").await.unwrap();
 
         // Setting 5: Float value
@@ -1251,13 +1335,19 @@ mod tests {
 
         // Verify Setting 3
         assert_eq!(settings.0[2].key, "custom_config");
-        assert_eq!(settings.0[2].value, SettingValue::String("custom_data".to_string()));
+        assert_eq!(
+            settings.0[2].value,
+            SettingValue::String("custom_data".to_string())
+        );
         assert!(!settings.0[2].important);
         assert!(settings.0[2].custom);
 
         // Verify Setting 4
         assert_eq!(settings.0[3].key, "important_custom");
-        assert_eq!(settings.0[3].value, SettingValue::String("special_value".to_string()));
+        assert_eq!(
+            settings.0[3].value,
+            SettingValue::String("special_value".to_string())
+        );
         assert!(settings.0[3].important);
         assert!(settings.0[3].custom);
 
@@ -1309,7 +1399,10 @@ mod tests {
         assert_eq!(settings.0[0].value, SettingValue::Bool(false)); // "0" -> false
         assert_eq!(settings.0[1].value, SettingValue::Bool(true)); // "1" -> true
         assert_eq!(settings.0[2].value, SettingValue::Int(-42)); // "-42" -> int
-        assert_eq!(settings.0[3].value, SettingValue::String("not_a_number".to_string())); // fallback to string
+        assert_eq!(
+            settings.0[3].value,
+            SettingValue::String("not_a_number".to_string())
+        ); // fallback to string
         assert_eq!(settings.0[4].value, SettingValue::String(String::new())); // empty string
     }
 
@@ -1319,7 +1412,10 @@ mod tests {
         let original_settings = Settings::from(vec![
             ("max_threads".to_string(), SettingValue::Int(8)),
             ("allow_experimental".to_string(), SettingValue::Bool(true)),
-            ("custom_setting".to_string(), SettingValue::String("custom_value".to_string())),
+            (
+                "custom_setting".to_string(),
+                SettingValue::String("custom_value".to_string()),
+            ),
         ]);
 
         // Mark one as custom for testing
@@ -1330,7 +1426,10 @@ mod tests {
         // Encode
         let mut writer = MockWriter::default();
         settings_with_custom
-            .encode(&mut writer, DBMS_MIN_REVISION_WITH_SETTINGS_SERIALIZED_AS_STRINGS + 1)
+            .encode(
+                &mut writer,
+                DBMS_MIN_REVISION_WITH_SETTINGS_SERIALIZED_AS_STRINGS + 1,
+            )
             .await
             .unwrap();
         writer.write_string("").await.unwrap();
@@ -1354,7 +1453,10 @@ mod tests {
         assert!(!decoded_settings.0[1].custom);
 
         assert_eq!(decoded_settings.0[2].key, "custom_setting");
-        assert_eq!(decoded_settings.0[2].value, SettingValue::String("custom_value".to_string()));
+        assert_eq!(
+            decoded_settings.0[2].value,
+            SettingValue::String("custom_value".to_string())
+        );
         assert!(!decoded_settings.0[2].important);
         assert!(decoded_settings.0[2].custom);
     }
@@ -1375,7 +1477,10 @@ mod tests {
 
         assert_eq!(settings.0.len(), 3);
         assert_eq!(settings.0[0].key, "param1");
-        assert_eq!(settings.0[0].value, SettingValue::String("value1".to_string()));
+        assert_eq!(
+            settings.0[0].value,
+            SettingValue::String("value1".to_string())
+        );
         assert_eq!(settings.0[1].key, "param2");
         assert_eq!(settings.0[1].value, SettingValue::Int(42));
         assert_eq!(settings.0[2].key, "param3");
@@ -1400,10 +1505,16 @@ mod tests {
 
         // Test &[T] conversions
         let arr = [1_i32, 2_i32, 3_i32];
-        assert_eq!(SettingValue::from(&arr[..]), SettingValue::String("[1,2,3]".to_string()));
+        assert_eq!(
+            SettingValue::from(&arr[..]),
+            SettingValue::String("[1,2,3]".to_string())
+        );
 
         // Test empty array
-        assert_eq!(SettingValue::from(Vec::<i32>::new()), SettingValue::String("[]".to_string()));
+        assert_eq!(
+            SettingValue::from(Vec::<i32>::new()),
+            SettingValue::String("[]".to_string())
+        );
     }
 
     #[test]
@@ -1419,7 +1530,10 @@ mod tests {
 
         // Test &[T] conversion
         let arr = [1.5_f64, 2.5_f64];
-        assert_eq!(SettingValue::from(&arr[..]), SettingValue::String("[1.5,2.5]".to_string()));
+        assert_eq!(
+            SettingValue::from(&arr[..]),
+            SettingValue::String("[1.5,2.5]".to_string())
+        );
     }
 
     #[test]
@@ -1438,7 +1552,10 @@ mod tests {
 
         // Test &[&str]
         let arr = ["a", "b", "c"];
-        assert_eq!(SettingValue::from(&arr[..]), SettingValue::String("['a','b','c']".to_string()));
+        assert_eq!(
+            SettingValue::from(&arr[..]),
+            SettingValue::String("['a','b','c']".to_string())
+        );
 
         // Test string with quotes (should be escaped)
         assert_eq!(
@@ -1456,7 +1573,10 @@ mod tests {
     #[test]
     fn test_setting_value_array_edge_cases() {
         // Single element
-        assert_eq!(SettingValue::from(vec![42_i32]), SettingValue::String("[42]".to_string()));
+        assert_eq!(
+            SettingValue::from(vec![42_i32]),
+            SettingValue::String("[42]".to_string())
+        );
 
         // Large numbers
         assert_eq!(

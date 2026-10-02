@@ -18,7 +18,9 @@ pub trait ToSql {
 }
 
 impl ToSql for Value {
-    fn to_sql(self, _type_hint_: Option<&Type>) -> Result<Value> { Ok(self) }
+    fn to_sql(self, _type_hint_: Option<&Type>) -> Result<Value> {
+        Ok(self)
+    }
 }
 
 pub fn unexpected_type(type_: &Type) -> Error {
@@ -32,7 +34,9 @@ pub trait FromSql: Sized {
 }
 
 impl FromSql for Value {
-    fn from_sql(_type_: &Type, value: Value) -> Result<Self> { Ok(value) }
+    fn from_sql(_type_: &Type, value: Value) -> Result<Self> {
+        Ok(value)
+    }
 }
 
 /// A row that can be deserialized and serialized from a raw `ClickHouse` SQL value.
@@ -127,8 +131,12 @@ mod tests {
 
     #[test]
     fn test_unexpected_type_different_types() {
-        let types =
-            vec![Type::String, Type::Int64, Type::Float32, Type::Array(Box::new(Type::Int32))];
+        let types = vec![
+            Type::String,
+            Type::Int64,
+            Type::Float32,
+            Type::Array(Box::new(Type::Int32)),
+        ];
 
         for type_ in types {
             let error = unexpected_type(&type_);

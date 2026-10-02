@@ -29,7 +29,10 @@ pub fn with_where_predicates(
     predicates: &[syn::WherePredicate],
 ) -> syn::Generics {
     let mut generics = generics.clone();
-    generics.make_where_clause().predicates.extend(predicates.iter().cloned());
+    generics
+        .make_where_clause()
+        .predicates
+        .extend(predicates.iter().cloned());
     generics
 }
 
@@ -56,8 +59,8 @@ pub fn with_bound(
     bound: &[&syn::Path],
 ) -> syn::Generics {
     struct FindTyParams<'ast> {
-        all_type_params:       HashSet<syn::Ident>,
-        relevant_type_params:  HashSet<syn::Ident>,
+        all_type_params: HashSet<syn::Ident>,
+        relevant_type_params: HashSet<syn::Ident>,
         associated_type_usage: Vec<&'ast syn::TypePath>,
     }
 
@@ -177,7 +180,10 @@ pub fn with_bound(
         fn visit_macro(&mut self, _mac: &'ast syn::Macro) {}
     }
 
-    let all_type_params = generics.type_params().map(|param| param.ident.clone()).collect();
+    let all_type_params = generics
+        .type_params()
+        .map(|param| param.ident.clone())
+        .collect();
 
     let mut visitor = FindTyParams {
         all_type_params,
@@ -194,21 +200,24 @@ pub fn with_bound(
         .type_params()
         .map(|param| param.ident.clone())
         .filter(|id| relevant_type_params.contains(id))
-        .map(|id| syn::TypePath { qself: None, path: id.into() })
+        .map(|id| syn::TypePath {
+            qself: None,
+            path: id.into(),
+        })
         .chain(associated_type_usage.into_iter().cloned())
         .map(|bounded_ty| {
             syn::WherePredicate::Type(syn::PredicateType {
-                lifetimes:   None,
-                bounded_ty:  syn::Type::Path(bounded_ty),
+                lifetimes: None,
+                bounded_ty: syn::Type::Path(bounded_ty),
                 colon_token: <syn::token::Colon>::default(),
-                bounds:      bound
+                bounds: bound
                     .iter()
                     .map(|bound| {
                         syn::TypeParamBound::Trait(syn::TraitBound {
                             paren_token: None,
-                            modifier:    syn::TraitBoundModifier::None,
-                            lifetimes:   None,
-                            path:        (*bound).clone(),
+                            modifier: syn::TraitBoundModifier::None,
+                            lifetimes: None,
+                            path: (*bound).clone(),
                         })
                     })
                     .collect(),
@@ -216,6 +225,9 @@ pub fn with_bound(
         });
 
     let mut generics = generics.clone();
-    generics.make_where_clause().predicates.extend(new_predicates);
+    generics
+        .make_where_clause()
+        .predicates
+        .extend(new_predicates);
     generics
 }

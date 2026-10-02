@@ -78,7 +78,10 @@ pub async fn test_params_integer(ch: Arc<ClickHouseContainer>) {
 
     // Create database and table
     client
-        .execute(format!("CREATE DATABASE IF NOT EXISTS {db_name}"), Some(query_id))
+        .execute(
+            format!("CREATE DATABASE IF NOT EXISTS {db_name}"),
+            Some(query_id),
+        )
         .await
         .expect("Creating database");
 
@@ -128,8 +131,14 @@ pub async fn test_params_integer(ch: Arc<ClickHouseContainer>) {
         .expect("Querying with multiple integer params should succeed");
 
     // Cleanup
-    let _ = client.execute(format!("DROP TABLE {db_name}.{table_name}"), Some(query_id)).await.ok();
-    let _ = client.execute(format!("DROP DATABASE {db_name}"), Some(query_id)).await.ok();
+    let _ = client
+        .execute(format!("DROP TABLE {db_name}.{table_name}"), Some(query_id))
+        .await
+        .ok();
+    let _ = client
+        .execute(format!("DROP DATABASE {db_name}"), Some(query_id))
+        .await
+        .ok();
 
     header(query_id, "Integer parameter test completed");
 }
@@ -158,7 +167,10 @@ pub async fn test_params_string(ch: Arc<ClickHouseContainer>) {
 
     // Create database and table
     client
-        .execute(format!("CREATE DATABASE IF NOT EXISTS {db_name}"), Some(query_id))
+        .execute(
+            format!("CREATE DATABASE IF NOT EXISTS {db_name}"),
+            Some(query_id),
+        )
         .await
         .expect("Creating database");
 
@@ -205,8 +217,14 @@ pub async fn test_params_string(ch: Arc<ClickHouseContainer>) {
         .expect("Querying with LIKE and string params should succeed");
 
     // Cleanup
-    let _ = client.execute(format!("DROP TABLE {db_name}.{table_name}"), Some(query_id)).await.ok();
-    let _ = client.execute(format!("DROP DATABASE {db_name}"), Some(query_id)).await.ok();
+    let _ = client
+        .execute(format!("DROP TABLE {db_name}.{table_name}"), Some(query_id))
+        .await
+        .ok();
+    let _ = client
+        .execute(format!("DROP DATABASE {db_name}"), Some(query_id))
+        .await
+        .ok();
 
     header(query_id, "String parameter test completed");
 }
@@ -237,7 +255,10 @@ pub async fn test_params_array_int32(ch: Arc<ClickHouseContainer>) {
 
     // Create database and table
     client
-        .execute(format!("CREATE DATABASE IF NOT EXISTS {db_name}"), Some(query_id))
+        .execute(
+            format!("CREATE DATABASE IF NOT EXISTS {db_name}"),
+            Some(query_id),
+        )
         .await
         .expect("Creating database");
 
@@ -287,8 +308,14 @@ pub async fn test_params_array_int32(ch: Arc<ClickHouseContainer>) {
         .expect("Querying with different array params should succeed");
 
     // Cleanup
-    let _ = client.execute(format!("DROP TABLE {db_name}.{table_name}"), Some(query_id)).await.ok();
-    let _ = client.execute(format!("DROP DATABASE {db_name}"), Some(query_id)).await.ok();
+    let _ = client
+        .execute(format!("DROP TABLE {db_name}.{table_name}"), Some(query_id))
+        .await
+        .ok();
+    let _ = client
+        .execute(format!("DROP DATABASE {db_name}"), Some(query_id))
+        .await
+        .ok();
 
     header(query_id, "Array parameter test completed");
 }
@@ -317,7 +344,10 @@ pub async fn test_params_mixed_types(ch: Arc<ClickHouseContainer>) {
 
     // Create database and table
     client
-        .execute(format!("CREATE DATABASE IF NOT EXISTS {db_name}"), Some(query_id))
+        .execute(
+            format!("CREATE DATABASE IF NOT EXISTS {db_name}"),
+            Some(query_id),
+        )
         .await
         .expect("Creating database");
 
@@ -379,8 +409,14 @@ pub async fn test_params_mixed_types(ch: Arc<ClickHouseContainer>) {
         .expect("Querying with string and float params should succeed");
 
     // Cleanup
-    let _ = client.execute(format!("DROP TABLE {db_name}.{table_name}"), Some(query_id)).await.ok();
-    let _ = client.execute(format!("DROP DATABASE {db_name}"), Some(query_id)).await.ok();
+    let _ = client
+        .execute(format!("DROP TABLE {db_name}.{table_name}"), Some(query_id))
+        .await
+        .ok();
+    let _ = client
+        .execute(format!("DROP DATABASE {db_name}"), Some(query_id))
+        .await
+        .ok();
 
     header(query_id, "Mixed parameter types test completed");
 }

@@ -71,7 +71,11 @@ fn criterion_benchmark(c: &mut Criterion) {
     #[expect(clippy::cast_possible_truncation)]
     let pool_size = common::DEFAULT_INSERT_SAMPLE_SIZE as u32 + 3;
     let arrow_pool = rt
-        .block_on(arrow_tests::setup_test_arrow_pool(arrow_client_builder, pool_size, None))
+        .block_on(arrow_tests::setup_test_arrow_pool(
+            arrow_client_builder,
+            pool_size,
+            None,
+        ))
         .expect("clickhouse native arrow setup");
 
     // Manage client
@@ -90,19 +94,38 @@ fn criterion_benchmark(c: &mut Criterion) {
             common::setup_clickhouse_rs(ch).with_compression(clickhouse::Compression::Lz4);
 
         // Setup database
-        rt.block_on(arrow_tests::setup_database(common::TEST_DB_NAME, &arrow_manage))
-            .expect("setup database");
+        rt.block_on(arrow_tests::setup_database(
+            common::TEST_DB_NAME,
+            &arrow_manage,
+        ))
+        .expect("setup database");
 
         // Setup tables
         let arrow_table_ref = rt
-            .block_on(arrow_tests::setup_table(&arrow_manage, common::TEST_DB_NAME, &schema))
+            .block_on(arrow_tests::setup_table(
+                &arrow_manage,
+                common::TEST_DB_NAME,
+                &schema,
+            ))
             .expect("clickhouse rs table");
         let rs_table_ref = rt
-            .block_on(arrow_tests::setup_table(&arrow_manage, common::TEST_DB_NAME, &schema))
+            .block_on(arrow_tests::setup_table(
+                &arrow_manage,
+                common::TEST_DB_NAME,
+                &schema,
+            ))
             .expect("clickhouse rs table");
 
         // Benchmark native arrow insert
-        insert_arrow("lz4", &arrow_table_ref, rows, &arrow_pool, &batch, &mut insert_group, &rt);
+        insert_arrow(
+            "lz4",
+            &arrow_table_ref,
+            rows,
+            &arrow_pool,
+            &batch,
+            &mut insert_group,
+            &rt,
+        );
 
         // Benchmark clickhouse-rs insert
         common::insert_rs(

@@ -82,7 +82,9 @@ impl Deserializer for LowCardinalityDeserializer {
                         if has_additional_keys {
                             let key_count = reader.read_u64_le().await?;
                             additional_keys = Some(
-                                inner.deserialize_column(reader, key_count as usize, state).await?,
+                                inner
+                                    .deserialize_column(reader, key_count as usize, state)
+                                    .await?,
                             );
                         }
 
@@ -91,8 +93,9 @@ impl Deserializer for LowCardinalityDeserializer {
 
                     let reading_rows = limit.min(num_pending_rows);
 
-                    let entries =
-                        indexed_type.deserialize_column(reader, reading_rows, state).await?;
+                    let entries = indexed_type
+                        .deserialize_column(reader, reading_rows, state)
+                        .await?;
                     limit -= reading_rows;
                     num_pending_rows -= reading_rows;
                     if has_additional_keys && !needs_global_dictionary {

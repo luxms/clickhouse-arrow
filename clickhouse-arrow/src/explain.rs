@@ -29,14 +29,20 @@ impl ExplainOperation {
     }
 
     #[must_use]
-    pub fn supports_json(&self) -> bool { matches!(self, ExplainOperation::Plan) }
+    pub fn supports_json(&self) -> bool {
+        matches!(self, ExplainOperation::Plan)
+    }
 
     #[must_use]
-    pub fn is_tabular(&self) -> bool { matches!(self, ExplainOperation::Estimate) }
+    pub fn is_tabular(&self) -> bool {
+        matches!(self, ExplainOperation::Estimate)
+    }
 }
 
 impl fmt::Display for ExplainOperation {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result { write!(f, "{}", self.as_sql()) }
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.as_sql())
+    }
 }
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
@@ -74,31 +80,54 @@ pub enum ExplainMode {
 #[derive(Debug, Clone, Copy, Default)]
 pub struct ExplainOptions {
     pub operation: ExplainOperation,
-    pub format:    ExplainFormat,
-    pub mode:      ExplainMode,
+    pub format: ExplainFormat,
+    pub mode: ExplainMode,
 }
 
 impl ExplainOptions {
     #[must_use]
-    pub fn new() -> Self { Self::default() }
+    pub fn new() -> Self {
+        Self::default()
+    }
 
     #[must_use]
-    pub fn ast() -> Self { Self { operation: ExplainOperation::Ast, ..Default::default() } }
+    pub fn ast() -> Self {
+        Self {
+            operation: ExplainOperation::Ast,
+            ..Default::default()
+        }
+    }
 
     #[must_use]
-    pub fn syntax() -> Self { Self { operation: ExplainOperation::Syntax, ..Default::default() } }
+    pub fn syntax() -> Self {
+        Self {
+            operation: ExplainOperation::Syntax,
+            ..Default::default()
+        }
+    }
 
     #[must_use]
-    pub fn plan() -> Self { Self { operation: ExplainOperation::Plan, ..Default::default() } }
+    pub fn plan() -> Self {
+        Self {
+            operation: ExplainOperation::Plan,
+            ..Default::default()
+        }
+    }
 
     #[must_use]
     pub fn pipeline() -> Self {
-        Self { operation: ExplainOperation::Pipeline, ..Default::default() }
+        Self {
+            operation: ExplainOperation::Pipeline,
+            ..Default::default()
+        }
     }
 
     #[must_use]
     pub fn estimate() -> Self {
-        Self { operation: ExplainOperation::Estimate, ..Default::default() }
+        Self {
+            operation: ExplainOperation::Estimate,
+            ..Default::default()
+        }
     }
 
     #[must_use]
@@ -156,12 +185,20 @@ pub enum ExplainResult {
 impl ExplainResult {
     #[must_use]
     pub fn as_text(&self) -> Option<&str> {
-        if let ExplainResult::Text(text) = self { Some(text) } else { None }
+        if let ExplainResult::Text(text) = self {
+            Some(text)
+        } else {
+            None
+        }
     }
 
     #[must_use]
     pub fn as_arrow(&self) -> Option<&RecordBatch> {
-        if let ExplainResult::Arrow(batch) = self { Some(batch) } else { None }
+        if let ExplainResult::Arrow(batch) = self {
+            Some(batch)
+        } else {
+            None
+        }
     }
 
     #[cfg(feature = "serde")]
@@ -187,7 +224,12 @@ impl fmt::Display for ExplainResult {
                 }
             }
             ExplainResult::Arrow(batch) => {
-                write!(f, "RecordBatch({} rows, {} columns)", batch.num_rows(), batch.num_columns())
+                write!(
+                    f,
+                    "RecordBatch({} rows, {} columns)",
+                    batch.num_rows(),
+                    batch.num_columns()
+                )
             }
         }
     }
@@ -196,10 +238,10 @@ impl fmt::Display for ExplainResult {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ExplainEstimateRow {
     pub database: String,
-    pub table:    String,
-    pub parts:    u64,
-    pub rows:     u64,
-    pub marks:    u64,
+    pub table: String,
+    pub parts: u64,
+    pub rows: u64,
+    pub marks: u64,
 }
 
 impl ExplainEstimateRow {
@@ -224,22 +266,31 @@ impl ExplainEstimateRow {
             .column_by_name("marks")
             .ok_or_else(|| crate::Error::Deserialize("Missing 'marks' column".into()))?;
 
-        let databases = database_col.as_any().downcast_ref::<StringArray>().ok_or_else(|| {
-            crate::Error::Deserialize("'database' column is not a string array".into())
-        })?;
-        let tables = table_col.as_any().downcast_ref::<StringArray>().ok_or_else(|| {
-            crate::Error::Deserialize("'table' column is not a string array".into())
-        })?;
-        let parts =
-            parts_col.as_primitive_opt::<arrow::datatypes::UInt64Type>().ok_or_else(|| {
+        let databases = database_col
+            .as_any()
+            .downcast_ref::<StringArray>()
+            .ok_or_else(|| {
+                crate::Error::Deserialize("'database' column is not a string array".into())
+            })?;
+        let tables = table_col
+            .as_any()
+            .downcast_ref::<StringArray>()
+            .ok_or_else(|| {
+                crate::Error::Deserialize("'table' column is not a string array".into())
+            })?;
+        let parts = parts_col
+            .as_primitive_opt::<arrow::datatypes::UInt64Type>()
+            .ok_or_else(|| {
                 crate::Error::Deserialize("'parts' column is not a UInt64 array".into())
             })?;
-        let rows =
-            rows_col.as_primitive_opt::<arrow::datatypes::UInt64Type>().ok_or_else(|| {
+        let rows = rows_col
+            .as_primitive_opt::<arrow::datatypes::UInt64Type>()
+            .ok_or_else(|| {
                 crate::Error::Deserialize("'rows' column is not a UInt64 array".into())
             })?;
-        let marks =
-            marks_col.as_primitive_opt::<arrow::datatypes::UInt64Type>().ok_or_else(|| {
+        let marks = marks_col
+            .as_primitive_opt::<arrow::datatypes::UInt64Type>()
+            .ok_or_else(|| {
                 crate::Error::Deserialize("'marks' column is not a UInt64 array".into())
             })?;
 
@@ -247,10 +298,10 @@ impl ExplainEstimateRow {
         for i in 0..batch.num_rows() {
             out.push(Self {
                 database: databases.value(i).to_string(),
-                table:    tables.value(i).to_string(),
-                parts:    parts.value(i),
-                rows:     rows.value(i),
-                marks:    marks.value(i),
+                table: tables.value(i).to_string(),
+                parts: parts.value(i),
+                rows: rows.value(i),
+                marks: marks.value(i),
             });
         }
         Ok(out)
@@ -259,13 +310,15 @@ impl ExplainEstimateRow {
 
 #[derive(Debug, Clone, Copy, Default)]
 pub struct QueryOptions {
-    pub limits:  Option<QueryLimits>,
+    pub limits: Option<QueryLimits>,
     pub explain: Option<ExplainOptions>,
 }
 
 impl QueryOptions {
     #[must_use]
-    pub fn new() -> Self { Self::default() }
+    pub fn new() -> Self {
+        Self::default()
+    }
 
     #[must_use]
     pub fn with_limits(mut self, limits: QueryLimits) -> Self {
@@ -280,14 +333,20 @@ impl QueryOptions {
     }
 
     #[must_use]
-    pub fn has_options(&self) -> bool { self.limits.is_some() || self.explain.is_some() }
+    pub fn has_options(&self) -> bool {
+        self.limits.is_some() || self.explain.is_some()
+    }
 
     #[must_use]
-    pub fn has_explain(&self) -> bool { self.explain.is_some() }
+    pub fn has_explain(&self) -> bool {
+        self.explain.is_some()
+    }
 
     #[must_use]
     pub fn is_explain_only(&self) -> bool {
-        self.explain.as_ref().is_some_and(|e| e.mode == ExplainMode::ExplainOnly)
+        self.explain
+            .as_ref()
+            .is_some_and(|e| e.mode == ExplainMode::ExplainOnly)
     }
 }
 
@@ -369,21 +428,30 @@ mod tests {
             Field::new("rows", DataType::UInt64, false),
             Field::new("marks", DataType::UInt64, false),
         ]));
-        RecordBatch::try_new(schema, vec![
-            Arc::new(StringArray::from(vec!["db1", "db2"])),
-            Arc::new(StringArray::from(vec!["t1", "t2"])),
-            Arc::new(UInt64Array::from(vec![1, 2])),
-            Arc::new(UInt64Array::from(vec![10, 20])),
-            Arc::new(UInt64Array::from(vec![100, 200])),
-        ])
+        RecordBatch::try_new(
+            schema,
+            vec![
+                Arc::new(StringArray::from(vec!["db1", "db2"])),
+                Arc::new(StringArray::from(vec!["t1", "t2"])),
+                Arc::new(UInt64Array::from(vec![1, 2])),
+                Arc::new(UInt64Array::from(vec![10, 20])),
+                Arc::new(UInt64Array::from(vec![100, 200])),
+            ],
+        )
         .unwrap()
     }
 
     #[test]
     fn explain_prefix_generation_is_stable() {
         assert_eq!(ExplainOptions::plan().build_prefix(), "EXPLAIN PLAN");
-        assert_eq!(ExplainOptions::plan().with_json().build_prefix(), "EXPLAIN PLAN json=1");
-        assert_eq!(ExplainOptions::estimate().build_prefix(), "EXPLAIN ESTIMATE");
+        assert_eq!(
+            ExplainOptions::plan().with_json().build_prefix(),
+            "EXPLAIN PLAN json=1"
+        );
+        assert_eq!(
+            ExplainOptions::estimate().build_prefix(),
+            "EXPLAIN ESTIMATE"
+        );
     }
 
     #[test]
@@ -403,17 +471,35 @@ mod tests {
 
     #[test]
     fn explain_format_auto_resolution_is_operation_aware() {
-        assert_eq!(ExplainFormat::Auto.resolve(ExplainOperation::Estimate), ExplainFormat::Arrow);
-        assert_eq!(ExplainFormat::Auto.resolve(ExplainOperation::Plan), ExplainFormat::Text);
-        assert_eq!(ExplainFormat::Json.resolve(ExplainOperation::Plan), ExplainFormat::Json);
-        assert_eq!(ExplainFormat::Arrow.resolve(ExplainOperation::Ast), ExplainFormat::Arrow);
+        assert_eq!(
+            ExplainFormat::Auto.resolve(ExplainOperation::Estimate),
+            ExplainFormat::Arrow
+        );
+        assert_eq!(
+            ExplainFormat::Auto.resolve(ExplainOperation::Plan),
+            ExplainFormat::Text
+        );
+        assert_eq!(
+            ExplainFormat::Json.resolve(ExplainOperation::Plan),
+            ExplainFormat::Json
+        );
+        assert_eq!(
+            ExplainFormat::Arrow.resolve(ExplainOperation::Ast),
+            ExplainFormat::Arrow
+        );
     }
 
     #[test]
     fn explain_prefix_respects_json_capability() {
-        assert_eq!(ExplainOptions::plan().with_json().build_prefix(), "EXPLAIN PLAN json=1");
+        assert_eq!(
+            ExplainOptions::plan().with_json().build_prefix(),
+            "EXPLAIN PLAN json=1"
+        );
         // JSON suffix is only valid for PLAN.
-        assert_eq!(ExplainOptions::syntax().with_json().build_prefix(), "EXPLAIN SYNTAX");
+        assert_eq!(
+            ExplainOptions::syntax().with_json().build_prefix(),
+            "EXPLAIN SYNTAX"
+        );
     }
 
     #[test]
@@ -444,9 +530,11 @@ mod tests {
     fn explain_text_from_batches_ignores_non_utf8_and_nulls() {
         let utf8 = text_batch(&[Some("line-1"), None, Some("line-2")]);
         let non_utf8_schema = Arc::new(Schema::new(vec![Field::new("n", DataType::Int32, false)]));
-        let non_utf8 =
-            RecordBatch::try_new(non_utf8_schema, vec![Arc::new(Int32Array::from(vec![1, 2]))])
-                .unwrap();
+        let non_utf8 = RecordBatch::try_new(
+            non_utf8_schema,
+            vec![Arc::new(Int32Array::from(vec![1, 2]))],
+        )
+        .unwrap();
         let empty_cols = RecordBatch::new_empty(Arc::new(Schema::empty()));
 
         let out = explain_text_from_batches(&[utf8, non_utf8, empty_cols]);
@@ -505,7 +593,11 @@ mod tests {
 
     #[test]
     fn explain_estimate_row_from_batch_missing_column_errors() {
-        let schema = Arc::new(Schema::new(vec![Field::new("database", DataType::Utf8, false)]));
+        let schema = Arc::new(Schema::new(vec![Field::new(
+            "database",
+            DataType::Utf8,
+            false,
+        )]));
         let batch =
             RecordBatch::try_new(schema, vec![Arc::new(StringArray::from(vec!["db"]))]).unwrap();
         let err = ExplainEstimateRow::from_batch(&batch).unwrap_err();
@@ -521,15 +613,21 @@ mod tests {
             Field::new("rows", DataType::UInt64, false),
             Field::new("marks", DataType::UInt64, false),
         ]));
-        let batch = RecordBatch::try_new(schema, vec![
-            Arc::new(StringArray::from(vec!["db"])),
-            Arc::new(StringArray::from(vec!["tbl"])),
-            Arc::new(Int32Array::from(vec![1])),
-            Arc::new(UInt64Array::from(vec![1])),
-            Arc::new(UInt64Array::from(vec![1])),
-        ])
+        let batch = RecordBatch::try_new(
+            schema,
+            vec![
+                Arc::new(StringArray::from(vec!["db"])),
+                Arc::new(StringArray::from(vec!["tbl"])),
+                Arc::new(Int32Array::from(vec![1])),
+                Arc::new(UInt64Array::from(vec![1])),
+                Arc::new(UInt64Array::from(vec![1])),
+            ],
+        )
         .unwrap();
         let err = ExplainEstimateRow::from_batch(&batch).unwrap_err();
-        assert!(err.to_string().contains("'parts' column is not a UInt64 array"));
+        assert!(
+            err.to_string()
+                .contains("'parts' column is not a UInt64 array")
+        );
     }
 }

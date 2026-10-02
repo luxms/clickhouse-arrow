@@ -75,11 +75,19 @@ decode_qbit_values!(decode_qbit_values_f32, f32, 32, 0.0_f32, |bits: u64| {
     #[expect(clippy::cast_possible_truncation)]
     f32::from_bits(bits as u32)
 });
-decode_qbit_values!(decode_qbit_values_f64, f64, 64, 0.0_f64, |bits: u64| f64::from_bits(bits));
-decode_qbit_values!(decode_qbit_values_bfloat16, f32, 16, 0.0_f32, |bits: u64| {
-    #[expect(clippy::cast_possible_truncation)]
-    f32::from_bits((bits as u32) << 16)
+decode_qbit_values!(decode_qbit_values_f64, f64, 64, 0.0_f64, |bits: u64| {
+    f64::from_bits(bits)
 });
+decode_qbit_values!(
+    decode_qbit_values_bfloat16,
+    f32,
+    16,
+    0.0_f32,
+    |bits: u64| {
+        #[expect(clippy::cast_possible_truncation)]
+        f32::from_bits((bits as u32) << 16)
+    }
+);
 
 async fn read_qbit_planes_async<R: ClickHouseRead>(
     reader: &mut R,
@@ -103,8 +111,14 @@ pub(super) async fn deserialize<R: ClickHouseRead>(
     nulls: &[u8],
     rbuffer: &mut Vec<u8>,
 ) -> Result<ArrayRef> {
-    let Type::QBit { element_type, dimension } = type_hint.strip_null() else {
-        return Err(Error::ArrowDeserialize(format!("QBit deser w/ non-QBit type: {type_hint}")));
+    let Type::QBit {
+        element_type,
+        dimension,
+    } = type_hint.strip_null()
+    else {
+        return Err(Error::ArrowDeserialize(format!(
+            "QBit deser w/ non-QBit type: {type_hint}"
+        )));
     };
 
     let TypedBuilder::List(list_builder) = builder else {
@@ -129,8 +143,9 @@ pub(super) async fn deserialize<R: ClickHouseRead>(
     }
 
     let bytes_per_fixed_string = dim.div_ceil(8);
-    let null_buffer = (!nulls.is_empty())
-        .then_some(NullBuffer::from(nulls.iter().map(|&n| n == 0).collect::<Vec<_>>()));
+    let null_buffer = (!nulls.is_empty()).then_some(NullBuffer::from(
+        nulls.iter().map(|&n| n == 0).collect::<Vec<_>>(),
+    ));
 
     let values_array: ArrayRef = match element_type.strip_null() {
         Type::Float32 => {
@@ -177,8 +192,17 @@ pub(super) async fn deserialize<R: ClickHouseRead>(
         }
     };
 
-    let field = Arc::new(Field::new(LIST_ITEM_FIELD_NAME, values_array.data_type().clone(), false));
-    Ok(Arc::new(FixedSizeListArray::new(field, *size, values_array, null_buffer)))
+    let field = Arc::new(Field::new(
+        LIST_ITEM_FIELD_NAME,
+        values_array.data_type().clone(),
+        false,
+    ));
+    Ok(Arc::new(FixedSizeListArray::new(
+        field,
+        *size,
+        values_array,
+        null_buffer,
+    )))
 }
 
 #[cfg(test)]
@@ -193,7 +217,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_deserialize_qbit_zero_payload_float32() {
-        let type_hint = Type::QBit { element_type: Box::new(Type::Float32), dimension: 3 };
+        let type_hint = Type::QBit {
+            element_type: Box::new(Type::Float32),
+            dimension: 3,
+        };
         let rows = 2_usize;
         let bytes_per_fixed_string = 3_usize.div_ceil(8);
         let mut reader = Cursor::new(vec![0_u8; 32 * rows * bytes_per_fixed_string]);
@@ -203,19 +230,33 @@ mod tests {
         );
         let mut builder = TypedBuilder::try_new(&type_hint, &qbit_data_type).unwrap();
 
-        let array = deserialize(&type_hint, &mut builder, &mut reader, rows, &[], &mut Vec::new())
-            .await
-            .unwrap();
+        let array = deserialize(
+            &type_hint,
+            &mut builder,
+            &mut reader,
+            rows,
+            &[],
+            &mut Vec::new(),
+        )
+        .await
+        .unwrap();
         let list = array.as_any().downcast_ref::<FixedSizeListArray>().unwrap();
         assert_eq!(list.len(), rows);
         assert_eq!(list.value_length(), 3);
-        let values = list.values().as_any().downcast_ref::<Float32Array>().unwrap();
+        let values = list
+            .values()
+            .as_any()
+            .downcast_ref::<Float32Array>()
+            .unwrap();
         assert_eq!(values, &Float32Array::from(vec![0.0_f32; rows * 3]));
     }
 
     #[tokio::test]
     async fn test_deserialize_qbit_rejects_invalid_element_type() {
-        let type_hint = Type::QBit { element_type: Box::new(Type::Int32), dimension: 3 };
+        let type_hint = Type::QBit {
+            element_type: Box::new(Type::Int32),
+            dimension: 3,
+        };
         let mut reader = Cursor::new(vec![]);
         let qbit_data_type = DataType::FixedSizeList(
             Arc::new(Field::new(LIST_ITEM_FIELD_NAME, DataType::Int32, false)),
@@ -223,15 +264,25 @@ mod tests {
         );
         let mut builder = TypedBuilder::try_new(&type_hint, &qbit_data_type).unwrap();
 
-        let error = deserialize(&type_hint, &mut builder, &mut reader, 0, &[], &mut Vec::new())
-            .await
-            .unwrap_err();
+        let error = deserialize(
+            &type_hint,
+            &mut builder,
+            &mut reader,
+            0,
+            &[],
+            &mut Vec::new(),
+        )
+        .await
+        .unwrap_err();
         assert!(error.to_string().contains("QBit element type must be"));
     }
 
     #[tokio::test]
     async fn test_deserialize_qbit_zero_payload_float64() {
-        let type_hint = Type::QBit { element_type: Box::new(Type::Float64), dimension: 2 };
+        let type_hint = Type::QBit {
+            element_type: Box::new(Type::Float64),
+            dimension: 2,
+        };
         let rows = 3_usize;
         let bytes_per_fixed_string = 2_usize.div_ceil(8);
         let mut reader = Cursor::new(vec![0_u8; 64 * rows * bytes_per_fixed_string]);
@@ -241,17 +292,31 @@ mod tests {
         );
         let mut builder = TypedBuilder::try_new(&type_hint, &qbit_data_type).unwrap();
 
-        let array = deserialize(&type_hint, &mut builder, &mut reader, rows, &[], &mut Vec::new())
-            .await
-            .unwrap();
+        let array = deserialize(
+            &type_hint,
+            &mut builder,
+            &mut reader,
+            rows,
+            &[],
+            &mut Vec::new(),
+        )
+        .await
+        .unwrap();
         let list = array.as_any().downcast_ref::<FixedSizeListArray>().unwrap();
-        let values = list.values().as_any().downcast_ref::<Float64Array>().unwrap();
+        let values = list
+            .values()
+            .as_any()
+            .downcast_ref::<Float64Array>()
+            .unwrap();
         assert_eq!(values, &Float64Array::from(vec![0.0_f64; rows * 2]));
     }
 
     #[tokio::test]
     async fn test_deserialize_qbit_zero_payload_bfloat16() {
-        let type_hint = Type::QBit { element_type: Box::new(Type::BFloat16), dimension: 3 };
+        let type_hint = Type::QBit {
+            element_type: Box::new(Type::BFloat16),
+            dimension: 3,
+        };
         let rows = 2_usize;
         let bytes_per_fixed_string = 3_usize.div_ceil(8);
         let mut reader = Cursor::new(vec![0_u8; 16 * rows * bytes_per_fixed_string]);
@@ -261,11 +326,22 @@ mod tests {
         );
         let mut builder = TypedBuilder::try_new(&type_hint, &qbit_data_type).unwrap();
 
-        let array = deserialize(&type_hint, &mut builder, &mut reader, rows, &[], &mut Vec::new())
-            .await
-            .unwrap();
+        let array = deserialize(
+            &type_hint,
+            &mut builder,
+            &mut reader,
+            rows,
+            &[],
+            &mut Vec::new(),
+        )
+        .await
+        .unwrap();
         let list = array.as_any().downcast_ref::<FixedSizeListArray>().unwrap();
-        let values = list.values().as_any().downcast_ref::<Float32Array>().unwrap();
+        let values = list
+            .values()
+            .as_any()
+            .downcast_ref::<Float32Array>()
+            .unwrap();
         assert_eq!(values, &Float32Array::from(vec![0.0_f32; rows * 3]));
     }
 
@@ -277,21 +353,34 @@ mod tests {
             3,
         );
         let mut builder = TypedBuilder::try_new(
-            &Type::QBit { element_type: Box::new(Type::Float32), dimension: 3 },
+            &Type::QBit {
+                element_type: Box::new(Type::Float32),
+                dimension: 3,
+            },
             &qbit_data_type,
         )
         .unwrap();
         let mut reader = Cursor::new(vec![]);
 
-        let error = deserialize(&type_hint, &mut builder, &mut reader, 0, &[], &mut Vec::new())
-            .await
-            .unwrap_err();
+        let error = deserialize(
+            &type_hint,
+            &mut builder,
+            &mut reader,
+            0,
+            &[],
+            &mut Vec::new(),
+        )
+        .await
+        .unwrap_err();
         assert!(error.to_string().contains("non-QBit"));
     }
 
     #[test]
     fn test_deserialize_qbit_rejects_dimension_mismatch() {
-        let type_hint = Type::QBit { element_type: Box::new(Type::Float32), dimension: 4 };
+        let type_hint = Type::QBit {
+            element_type: Box::new(Type::Float32),
+            dimension: 4,
+        };
         let qbit_data_type = DataType::FixedSizeList(
             Arc::new(Field::new(LIST_ITEM_FIELD_NAME, DataType::Float32, false)),
             3,
@@ -302,13 +391,23 @@ mod tests {
 
     #[tokio::test]
     async fn test_deserialize_qbit_rejects_non_list_builder() {
-        let type_hint = Type::QBit { element_type: Box::new(Type::Float32), dimension: 3 };
+        let type_hint = Type::QBit {
+            element_type: Box::new(Type::Float32),
+            dimension: 3,
+        };
         let mut builder = TypedBuilder::try_new(&Type::UInt8, &DataType::UInt8).unwrap();
         let mut reader = Cursor::new(vec![]);
 
-        let error = deserialize(&type_hint, &mut builder, &mut reader, 0, &[], &mut Vec::new())
-            .await
-            .unwrap_err();
+        let error = deserialize(
+            &type_hint,
+            &mut builder,
+            &mut reader,
+            0,
+            &[],
+            &mut Vec::new(),
+        )
+        .await
+        .unwrap_err();
         assert!(error.to_string().contains("Unexpected QBit builder type"));
     }
 }

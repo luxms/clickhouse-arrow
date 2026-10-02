@@ -18,14 +18,14 @@ use crate::{Error, Result, Row, Type};
 /// A chunk of data in columnar form.
 pub struct Block {
     /// Metadata about the block
-    pub info:         BlockInfo,
+    pub info: BlockInfo,
     /// The number of rows contained in the block
-    pub rows:         u64,
+    pub rows: u64,
     /// The type of each column by name, in order.
     pub column_types: Vec<(String, Type)>,
     /// The data of each column by name, in order. All `Value` should correspond to the associated
     /// type in `column_types`.
-    pub column_data:  Vec<Value>,
+    pub column_data: Vec<Value>,
 }
 
 // Iterator type for `take_iter_rows`
@@ -132,9 +132,11 @@ impl Block {
                             "Value validation failed for row {i}"
                         );
                     })?;
-                    let column = columns.get_mut(key.as_ref()).ok_or(Error::Protocol(format!(
-                        "missing column for data in row {i}, column: {key}"
-                    )))?;
+                    let column = columns
+                        .get_mut(key.as_ref())
+                        .ok_or(Error::Protocol(format!(
+                            "missing column for data in row {i}, column: {key}"
+                        )))?;
                     column.push(value);
                 }
                 Ok(())
@@ -261,8 +263,11 @@ impl ProtocolData<Self, ()> for Block {
         _options: (),
         state: &mut DeserializerState,
     ) -> Result<Self> {
-        let info =
-            if revision > 0 { BlockInfo::read_async(reader).await? } else { BlockInfo::default() };
+        let info = if revision > 0 {
+            BlockInfo::read_async(reader).await?
+        } else {
+            BlockInfo::default()
+        };
 
         #[allow(clippy::cast_possible_truncation)]
         let columns = reader.read_var_uint().await? as usize;
@@ -296,17 +301,25 @@ impl ProtocolData<Self, ()> for Block {
                 };
 
             let type_ = Type::from_str(&type_name).inspect_err(|error| {
-                error!(?error, "Type deserialize failed: name={name}, type={type_name}");
+                error!(
+                    ?error,
+                    "Type deserialize failed: name={name}, type={type_name}"
+                );
             })?;
 
             if has_custom_serialization {
-                type_.deserialize_custom_serialization_prefix(reader, state).await?;
+                type_
+                    .deserialize_custom_serialization_prefix(reader, state)
+                    .await?;
             } else {
                 drop(state.replace_custom_plan(CustomPlan::from_type_structure(&type_)));
             }
 
             if let Some((_, node)) = state.custom_plan().and_then(|plan| {
-                plan.nodes.iter().enumerate().find(|(_, node)| node.stack_type != 0)
+                plan.nodes
+                    .iter()
+                    .enumerate()
+                    .find(|(_, node)| node.stack_type != 0)
             }) {
                 return Err(Error::Protocol(format!(
                     "value-mode block reader does not support non-default SerializationInfo stack \
@@ -345,7 +358,7 @@ mod custom_serialization_tests {
 
     #[derive(Clone)]
     struct TestRow {
-        id:   i32,
+        id: i32,
         name: String,
     }
 
@@ -384,9 +397,13 @@ mod custom_serialization_tests {
     impl Row for MissingColumnRow {
         const COLUMN_COUNT: Option<usize> = Some(1);
 
-        fn column_names() -> Option<Vec<Cow<'static, str>>> { Some(vec![Cow::Borrowed("missing")]) }
+        fn column_names() -> Option<Vec<Cow<'static, str>>> {
+            Some(vec![Cow::Borrowed("missing")])
+        }
 
-        fn to_schema() -> Option<Vec<ColumnDefinition<Value>>> { None }
+        fn to_schema() -> Option<Vec<ColumnDefinition<Value>>> {
+            None
+        }
 
         fn deserialize_row(_map: Vec<(&str, &Type, Value)>) -> Result<Self> {
             unreachable!("deserialize_row is not needed in these tests")
@@ -406,9 +423,13 @@ mod custom_serialization_tests {
     impl Row for WrongTypeRow {
         const COLUMN_COUNT: Option<usize> = Some(1);
 
-        fn column_names() -> Option<Vec<Cow<'static, str>>> { Some(vec![Cow::Borrowed("id")]) }
+        fn column_names() -> Option<Vec<Cow<'static, str>>> {
+            Some(vec![Cow::Borrowed("id")])
+        }
 
-        fn to_schema() -> Option<Vec<ColumnDefinition<Value>>> { None }
+        fn to_schema() -> Option<Vec<ColumnDefinition<Value>>> {
+            None
+        }
 
         fn deserialize_row(_map: Vec<(&str, &Type, Value)>) -> Result<Self> {
             unreachable!("deserialize_row is not needed in these tests")
@@ -423,15 +444,24 @@ mod custom_serialization_tests {
     }
 
     fn schema() -> Vec<(String, Type)> {
-        vec![("id".to_string(), Type::Int32), ("name".to_string(), Type::String)]
+        vec![
+            ("id".to_string(), Type::Int32),
+            ("name".to_string(), Type::String),
+        ]
     }
 
     #[test]
     fn block_from_rows_take_iter_rows_and_estimate_size() {
-        let rows = vec![TestRow { id: 1, name: "a".to_string() }, TestRow {
-            id:   2,
-            name: "b".to_string(),
-        }];
+        let rows = vec![
+            TestRow {
+                id: 1,
+                name: "a".to_string(),
+            },
+            TestRow {
+                id: 2,
+                name: "b".to_string(),
+            },
+        ];
         let mut block = Block::from_rows(rows, schema()).unwrap();
         assert_eq!(block.rows, 2);
         assert_eq!(block.column_types.len(), 2);
@@ -457,8 +487,11 @@ mod custom_serialization_tests {
 
     #[test]
     fn block_from_rows_reports_missing_column_and_type_validation_errors() {
-        let err = Block::from_rows(vec![MissingColumnRow], vec![("id".to_string(), Type::Int32)])
-            .unwrap_err();
+        let err = Block::from_rows(
+            vec![MissingColumnRow],
+            vec![("id".to_string(), Type::Int32)],
+        )
+        .unwrap_err();
         assert!(matches!(err, Error::Protocol(msg) if msg.contains("missing type")));
 
         let err = Block::from_rows(vec![WrongTypeRow], vec![("id".to_string(), Type::Int32)])

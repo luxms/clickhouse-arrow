@@ -82,6 +82,10 @@ const STACK_DICTIONARY_NULL_MASK_CAPACITY: usize = 1024;
 /// assert_eq!(values, &StringArray::from(vec!["a", "b"]));
 /// ```
 #[expect(clippy::cast_possible_truncation)]
+#[expect(
+    clippy::too_many_lines,
+    reason = "Keep the low-cardinality protocol decoder together"
+)]
 pub(crate) async fn deserialize<R: ClickHouseRead>(
     inner: &Type,
     builder: &mut TypedBuilder,
@@ -94,7 +98,9 @@ pub(crate) async fn deserialize<R: ClickHouseRead>(
     type Lckb = LowCardinalityKeyBuilder;
 
     let DataType::Dictionary(_, value_type) = data_type else {
-        return Err(Error::ArrowDeserialize(format!("Unexpected dict value type: {data_type:?}")));
+        return Err(Error::ArrowDeserialize(format!(
+            "Unexpected dict value type: {data_type:?}"
+        )));
     };
 
     let TypedBuilder::LowCardinality(lowcard_builder) = builder else {
@@ -104,7 +110,10 @@ pub(crate) async fn deserialize<R: ClickHouseRead>(
         )));
     };
 
-    let LowCardinalityBuilder { key_builder: keys, value_builder } = lowcard_builder;
+    let LowCardinalityBuilder {
+        key_builder: keys,
+        value_builder,
+    } = lowcard_builder;
 
     // Read flags to determine structure
     let flags = reader.read_u64_le().await?;
@@ -119,7 +128,9 @@ pub(crate) async fn deserialize<R: ClickHouseRead>(
         TUINT32 => Type::UInt32,
         TUINT64 => Type::UInt64,
         x => {
-            return Err(Error::deserialize(format!("LowCardinality: bad index type: {x}")));
+            return Err(Error::deserialize(format!(
+                "LowCardinality: bad index type: {x}"
+            )));
         }
     };
 
@@ -200,7 +211,9 @@ pub(crate) async fn deserialize<R: ClickHouseRead>(
         Type::UInt16 => deser_key!((u16, UInt16) => [(u8, UInt8), (u32, UInt32), (u64, UInt64)]),
         Type::UInt32 => deser_key!((u32, UInt32) => [(u8, UInt8), (u16, UInt16), (u64, UInt64)]),
         Type::UInt64 => deser_key!((u64, UInt64) => [(u8, UInt8), (u16, UInt16), (u32, UInt32)]),
-        _ => Err(Error::deserialize(format!("LowCardinality: index type {indexed_type:?}"))),
+        _ => Err(Error::deserialize(format!(
+            "LowCardinality: index type {indexed_type:?}"
+        ))),
     }
 }
 
@@ -229,24 +242,44 @@ mod tests {
         let key_type = DataType::Int32;
         let value_type = ch_to_arrow_type(&inner_type, opts, None)?.0;
         let data_type = DataType::Dictionary(Box::new(key_type), Box::new(value_type));
-        let mut builder =
-            TypedBuilder::try_new(&Type::LowCardinality(Box::new(inner_type.clone())), &data_type)
-                .unwrap();
+        let mut builder = TypedBuilder::try_new(
+            &Type::LowCardinality(Box::new(inner_type.clone())),
+            &data_type,
+        )
+        .unwrap();
         let mut row_buffer = Vec::new();
         let mut ctx = ArrowFieldCtx::new(&mut row_buffer);
-        let result =
-            deserialize(&inner_type, &mut builder, &data_type, &mut reader, rows, nulls, &mut ctx)
-                .await?;
+        let result = deserialize(
+            &inner_type,
+            &mut builder,
+            &data_type,
+            &mut reader,
+            rows,
+            nulls,
+            &mut ctx,
+        )
+        .await?;
 
-        let dict_array = result.as_any().downcast_ref::<DictionaryArray<Int32Type>>().unwrap();
+        let dict_array = result
+            .as_any()
+            .downcast_ref::<DictionaryArray<Int32Type>>()
+            .unwrap();
         let indices = dict_array.keys();
 
         let dictionary = dict_array.downcast_dict::<StringArray>().unwrap();
         let mapped_values: Vec<Option<&str>> = dictionary.into_iter().collect::<Vec<_>>();
         let expected_array = StringArray::from(mapped_values);
 
-        assert_eq!(indices, &Int32Array::from(expected_indices), "Indices mismatch");
-        assert_eq!(&expected_array, &StringArray::from(expected_values), "Values mismatch");
+        assert_eq!(
+            indices,
+            &Int32Array::from(expected_indices),
+            "Indices mismatch"
+        );
+        assert_eq!(
+            &expected_array,
+            &StringArray::from(expected_values),
+            "Values mismatch"
+        );
 
         Ok(result)
     }
@@ -426,8 +459,9 @@ mod tests {
         input.extend_from_slice(&(rows as u64).to_le_bytes());
 
         // Expected values: a-z
-        let char_values: Vec<String> =
-            (b'a'..=b'z').map(|c| String::from_utf8(vec![c]).unwrap()).collect();
+        let char_values: Vec<String> = (b'a'..=b'z')
+            .map(|c| String::from_utf8(vec![c]).unwrap())
+            .collect();
 
         // Indices: 0-25 repeated
         let mut indices = Vec::with_capacity(rows);
@@ -464,16 +498,25 @@ mod tests {
         let key_type = DataType::Int32;
         let value_type = ch_to_arrow_type(&inner_type, None, None).unwrap().0;
         let data_type = DataType::Dictionary(Box::new(key_type), Box::new(value_type));
-        let mut builder =
-            TypedBuilder::try_new(&Type::LowCardinality(Box::new(inner_type.clone())), &data_type)
-                .unwrap();
+        let mut builder = TypedBuilder::try_new(
+            &Type::LowCardinality(Box::new(inner_type.clone())),
+            &data_type,
+        )
+        .unwrap();
 
         let mut row_buffer = Vec::new();
         let mut ctx = ArrowFieldCtx::new(&mut row_buffer);
 
-        let result =
-            deserialize(&inner_type, &mut builder, &data_type, &mut reader, rows, &[], &mut ctx)
-                .await;
+        let result = deserialize(
+            &inner_type,
+            &mut builder,
+            &data_type,
+            &mut reader,
+            rows,
+            &[],
+            &mut ctx,
+        )
+        .await;
         assert!(matches!(
             result,
             Err(Error::Deserialize(msg))
@@ -494,16 +537,25 @@ mod tests {
         let key_type = DataType::Int32;
         let value_type = ch_to_arrow_type(&inner_type, None, None).unwrap().0;
         let data_type = DataType::Dictionary(Box::new(key_type), Box::new(value_type));
-        let mut builder =
-            TypedBuilder::try_new(&Type::LowCardinality(Box::new(inner_type.clone())), &data_type)
-                .unwrap();
+        let mut builder = TypedBuilder::try_new(
+            &Type::LowCardinality(Box::new(inner_type.clone())),
+            &data_type,
+        )
+        .unwrap();
 
         let mut row_buffer = Vec::new();
         let mut ctx = ArrowFieldCtx::new(&mut row_buffer);
 
-        let result =
-            deserialize(&inner_type, &mut builder, &data_type, &mut reader, rows, &[], &mut ctx)
-                .await;
+        let result = deserialize(
+            &inner_type,
+            &mut builder,
+            &data_type,
+            &mut reader,
+            rows,
+            &[],
+            &mut ctx,
+        )
+        .await;
 
         assert!(matches!(
             result,

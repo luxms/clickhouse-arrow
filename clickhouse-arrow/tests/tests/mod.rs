@@ -55,7 +55,9 @@ where
     test_utils::init_tracing(directives);
     let ch = test_utils::create_container(clickhouse_conf).await;
 
-    let result = AssertUnwindSafe(test_fn(Arc::clone(&ch))).catch_unwind().await;
+    let result = AssertUnwindSafe(test_fn(Arc::clone(&ch)))
+        .catch_unwind()
+        .await;
 
     // Either path will not update TESTS_RUNNING, and will keep containers running
     if disable_cleanup || (disable_cleanup_on_error && result.is_err()) {

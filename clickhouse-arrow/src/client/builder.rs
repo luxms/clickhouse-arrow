@@ -47,10 +47,10 @@ use crate::{ArrowFormat, ClientOptions, Error, NativeFormat, Result};
 #[derive(Default, Debug, Clone)]
 pub struct ClientBuilder {
     destination: Option<Destination>,
-    options:     ClientOptions,
-    settings:    Option<Settings>,
-    context:     Option<ConnectionContext>,
-    verified:    bool,
+    options: ClientOptions,
+    settings: Option<Settings>,
+    context: Option<ConnectionContext>,
+    verified: bool,
 }
 
 impl ClientBuilder {
@@ -75,10 +75,10 @@ impl ClientBuilder {
     pub fn new() -> Self {
         ClientBuilder {
             destination: None,
-            options:     ClientOptions::default(),
-            settings:    None,
-            context:     None,
-            verified:    false,
+            options: ClientOptions::default(),
+            settings: None,
+            context: None,
+            verified: false,
         }
     }
 
@@ -102,7 +102,9 @@ impl ClientBuilder {
     ///     println!("Destination: {:?}", dest);
     /// }
     /// ```
-    pub fn destination(&self) -> Option<&Destination> { self.destination.as_ref() }
+    pub fn destination(&self) -> Option<&Destination> {
+        self.destination.as_ref()
+    }
 
     /// Retrieves the current connection options.
     ///
@@ -124,7 +126,9 @@ impl ClientBuilder {
     /// let options = builder.options();
     /// println!("Username: {}", options.username);
     /// ```
-    pub fn options(&self) -> &ClientOptions { &self.options }
+    pub fn options(&self) -> &ClientOptions {
+        &self.options
+    }
 
     /// Retrieves the configured session settings, if set.
     ///
@@ -149,7 +153,9 @@ impl ClientBuilder {
     ///     assert_eq!(config_settings, &settings)
     /// }
     /// ```
-    pub fn settings(&self) -> Option<&Settings> { self.settings.as_ref() }
+    pub fn settings(&self) -> Option<&Settings> {
+        self.settings.as_ref()
+    }
 
     /// Checks whether the builder's destination has been verified.
     ///
@@ -173,7 +179,9 @@ impl ClientBuilder {
     /// let verified_builder = builder.verify().await.unwrap();
     /// println!("Verified: {}", verified_builder.verified()); // true
     /// ```
-    pub fn verified(&self) -> bool { self.verified }
+    pub fn verified(&self) -> bool {
+        self.verified
+    }
 
     /// Sets the `ClickHouse` server address using a socket address.
     ///
@@ -198,7 +206,9 @@ impl ClientBuilder {
     ///     .with_socket_addr(addr);
     /// ```
     #[must_use]
-    pub fn with_socket_addr(self, addr: SocketAddr) -> Self { self.with_destination(addr) }
+    pub fn with_socket_addr(self, addr: SocketAddr) -> Self {
+        self.with_destination(addr)
+    }
 
     /// Sets the `ClickHouse` server address using a hostname and port.
     ///
@@ -466,7 +476,10 @@ impl ClientBuilder {
         setting: impl Into<SettingValue>,
     ) -> Self {
         let setting: SettingValue = setting.into();
-        let settings = self.settings.unwrap_or_default().with_setting(name, setting);
+        let settings = self
+            .settings
+            .unwrap_or_default()
+            .with_setting(name, setting);
         self.settings = Some(settings);
         self
     }
@@ -698,8 +711,10 @@ impl ClientBuilder {
     /// ```
     pub async fn verify(mut self) -> Result<Self> {
         let (addrs, domain) = {
-            let destination =
-                self.destination.as_ref().ok_or(Error::MissingConnectionInformation)?;
+            let destination = self
+                .destination
+                .as_ref()
+                .ok_or(Error::MissingConnectionInformation)?;
             let addrs = destination
                 .resolve(self.options.ipv4_only)
                 .await
@@ -768,7 +783,11 @@ impl ClientBuilder {
     /// client.query("SELECT 1").await.unwrap();
     /// ```
     pub async fn build<T: ClientFormat>(self) -> Result<Client<T>> {
-        let verified_builder = if self.verified { self } else { self.verify().await? };
+        let verified_builder = if self.verified {
+            self
+        } else {
+            self.verify().await?
+        };
 
         Client::connect(
             verified_builder.destination.unwrap(), // Guaranteed in verify above
@@ -844,8 +863,9 @@ impl ClientBuilder {
         self,
         check_health: bool,
     ) -> Result<ConnectionManager<T>> {
-        let manager =
-            ConnectionManager::<T>::try_new_with_builder(self).await?.with_check(check_health);
+        let manager = ConnectionManager::<T>::try_new_with_builder(self)
+            .await?
+            .with_check(check_health);
         Ok(manager)
     }
 }
@@ -874,7 +894,10 @@ impl ClientBuilder {
     /// println!("Connection ID: {}", id);
     /// ```
     pub fn connection_identifier(&self) -> String {
-        let mut dest_str = self.destination.as_ref().map_or(String::new(), Destination::domain);
+        let mut dest_str = self
+            .destination
+            .as_ref()
+            .map_or(String::new(), Destination::domain);
         dest_str.push_str(&self.options.username);
         let mut hasher = rustc_hash::FxHasher::default();
         self.options.password.hash(&mut hasher);
@@ -994,7 +1017,9 @@ mod tests {
 
     use super::*;
 
-    fn default_builder() -> ClientBuilder { ClientBuilder::new() }
+    fn default_builder() -> ClientBuilder {
+        ClientBuilder::new()
+    }
 
     #[test]
     fn test_accessors_empty() {
@@ -1011,7 +1036,10 @@ mod tests {
         let builder = default_builder()
             .with_socket_addr(SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 9000))
             .with_settings(settings.clone())
-            .with_options(ClientOptions { use_tls: true, ..Default::default() });
+            .with_options(ClientOptions {
+                use_tls: true,
+                ..Default::default()
+            });
         assert!(builder.destination().is_some());
         assert!(builder.options().use_tls);
         assert_eq!(builder.settings(), Some(&settings));
@@ -1038,8 +1066,11 @@ mod tests {
 
     #[test]
     fn test_with_options() {
-        let options =
-            ClientOptions { username: "test".to_string(), use_tls: true, ..Default::default() };
+        let options = ClientOptions {
+            username: "test".to_string(),
+            use_tls: true,
+            ..Default::default()
+        };
         let builder = default_builder().with_options(options.clone());
         assert_eq!(builder.options(), &options);
         assert!(!builder.verified());
@@ -1108,7 +1139,10 @@ mod tests {
         assert!(id.contains("example.com"));
 
         let empty_builder = default_builder();
-        assert_eq!(empty_builder.connection_identifier(), "default13933120620573868840");
+        assert_eq!(
+            empty_builder.connection_identifier(),
+            "default13933120620573868840"
+        );
     }
 
     #[tokio::test]
@@ -1167,7 +1201,12 @@ mod tests {
         let track = Arc::new(std::sync::atomic::AtomicBool::new(false));
         let builder = default_builder().with_cloud_track(Arc::clone(&track));
         assert_eq!(
-            builder.context.unwrap().cloud.unwrap().load(Ordering::SeqCst),
+            builder
+                .context
+                .unwrap()
+                .cloud
+                .unwrap()
+                .load(Ordering::SeqCst),
             track.load(Ordering::SeqCst)
         );
     }
